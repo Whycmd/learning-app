@@ -1,0 +1,12 @@
+{
+  "base_url": "http://127.0.0.1:5340/v1",
+  "api_key": "在此填入你的智谱AI BigModel API Key",
+  "chat_model": "glm-4-flash",
+  "provider_type": "openai_compatible",
+  "embedding_model": "",
+  "request_timeout_sec": 120,
+  "max_tokens_default": 2048,
+  "temperature_default": 0.4,
+  "retry_times": 2,
+  "retry_interval_sec": 2
+}

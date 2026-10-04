@@ -1,0 +1,13 @@
+{
+  "host": "127.0.0.1",
+  "port": 3306,
+  "user": "eng_app",
+  "password_file": "../../../../../.local/mysql/.root_pw",
+  "database": "english_learning",
+  "socket": "/Users/junwang/.local/run/mysql.sock",
+  "charset": "utf8mb4",
+  "connect_timeout": 5,
+  "retry_times": 3,
+  "retry_interval_sec": 2,
+  "query_timeout_sec": 10
+}

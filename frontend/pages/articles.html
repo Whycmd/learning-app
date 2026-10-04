@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>文章阅读 · 英语学习</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/components.css">
+<script src="/static/theme.js"></script>
+<script src="/static/nav.js"></script>
+</head>
+<body>
+<div id="topbar-slot"></div>
+
+<div class="page">
+
+  <div class="dougong-bar">
+    <svg viewBox="0 0 400 32"><path d="M0 32 L40 18 L60 28 L80 12 L100 24 L120 8 L140 20 L160 4 L180 16 L200 0 L220 16 L240 4 L260 20 L280 8 L300 24 L320 12 L340 28 L360 18 L400 32Z" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/></svg>
+  </div>
+
+  <h1 class="section-title">文章阅读</h1>
+  <p class="section-sub">按分类 / CEFR 难度筛选 · AI 自动分析生词</p>
+
+  <!-- 筛选 + 操作 -->
+  <div class="wing-card">
+    <div class="wing-card__cap">
+      <span class="wing-card__title">筛选</span>
+      <span class="wing-card__meta" id="art-meta">加载中…</span>
+      <button class="btn btn-primary u-btn-sm u-push-right" data-open="drawer-create">
+        <svg class="u-icon-offset" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        录入文章
+      </button>
+    </div>
+    <div class="filter-bar">
+      <div class="filter-bar__group" id="filter-category">
+        <button class="filter-chip is-active" data-value="all">全部</button>
+        <button class="filter-chip" data-value="news">📰 新闻</button>
+        <button class="filter-chip" data-value="history">🏛 历史</button>
+        <button class="filter-chip" data-value="science">🔬 科学</button>
+        <button class="filter-chip" data-value="literature">📖 文学</button>
+        <button class="filter-chip" data-value="culture">🎎 文化</button>
+        <button class="filter-chip" data-value="professional">💼 专业</button>
+      </div>
+      <div class="filter-bar__group" id="filter-cefr">
+        <button class="filter-chip is-active" data-value="all">全部级别</button>
+        <button class="filter-chip" data-value="A1">A1</button>
+        <button class="filter-chip" data-value="A2">A2</button>
+        <button class="filter-chip" data-value="B1">B1</button>
+        <button class="filter-chip" data-value="B2">B2</button>
+        <button class="filter-chip" data-value="C1">C1</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 文章列表 -->
+  <div class="wing-card">
+    <div class="wing-card__cap">
+      <span class="wing-card__ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </span>
+      <span class="wing-card__title">文章列表</span>
+      <span class="wing-card__meta" id="art-count">0 篇</span>
+    </div>
+    <div id="art-list"><div class="loading">加载中…</div></div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+</div><!-- /.page -->
+
+<!-- ============== 抽屉：录入文章 ============== -->
+<div class="drawer-overlay" id="drawer-create">
+  <aside class="drawer-panel" role="dialog" aria-modal="true">
+    <div class="drawer-header">
+      <span class="drawer-title">录入新文章</span>
+      <button class="drawer-close" data-close="drawer-create" aria-label="关闭">×</button>
+    </div>
+    <div class="drawer-body">
+      <form class="art-form" id="form-create">
+        <label>标题 *</label>
+        <input id="f-title" placeholder="文章标题">
+        <label>正文内容 *</label>
+        <textarea id="f-content" placeholder="粘贴英文原文..."></textarea>
+        <label>分类</label>
+        <select id="f-category">
+          <option value="news">新闻</option>
+          <option value="history">历史</option>
+          <option value="literature">文学</option>
+          <option value="science">科学</option>
+          <option value="culture">文化</option>
+          <option value="professional">专业</option>
+          <option value="other">其他</option>
+        </select>
+        <label>来源名称（可选）</label>
+        <input id="f-source-name" placeholder="如 BBC、The Guardian">
+        <label>来源链接（可选）</label>
+        <input id="f-source-url" placeholder="https://...">
+        <label>难度等级（可选，留空则自动分析）</label>
+        <select id="f-cefr">
+          <option value="">自动分析</option>
+          <option value="A1">A1</option>
+          <option value="A2">A2</option>
+          <option value="B1">B1</option>
+          <option value="B2">B2</option>
+          <option value="C1">C1</option>
+        </select>
+        <label>录入方式</label>
+        <select id="f-import">
+          <option value="text">手动粘贴</option>
+          <option value="url">URL 导入</option>
+          <option value="manual">手动标注</option>
+        </select>
+        <div class="art-form__btns">
+          <button type="button" class="btn btn-secondary" data-close="drawer-create">取消</button>
+          <button type="submit" class="btn btn-primary">保存并分析</button>
+        </div>
+      </form>
+    </div>
+  </aside>
+</div>
+
+<!-- ============== 抽屉：文章阅读 ============== -->
+<div class="drawer-overlay" id="drawer-read">
+  <aside class="drawer-panel is-wide" role="dialog" aria-modal="true">
+    <div class="drawer-header">
+      <span class="drawer-title" id="read-title">阅读</span>
+      <button class="drawer-close" data-close="drawer-read" aria-label="关闭">×</button>
+    </div>
+    <div class="drawer-body" id="read-body"></div>
+  </aside>
+</div>
+
+<!-- ============== 抽屉：难度报告 ============== -->
+<div class="drawer-overlay" id="drawer-report">
+  <aside class="drawer-panel is-med" role="dialog" aria-modal="true">
+    <div class="drawer-header">
+      <span class="drawer-title">难度报告</span>
+      <button class="drawer-close" data-close="drawer-report" aria-label="关闭">×</button>
+    </div>
+    <div class="drawer-body" id="report-body"></div>
+  </aside>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const API = '/api/article';
+  const CATEGORY_MAP = {
+    news:'新闻', history:'历史', literature:'文学',
+    science:'科学', culture:'文化', professional:'专业', other:'其他'
+  };
+
+  const state = { page: 1, size: 20, category: 'all', cefrLevel: 'all', total: 0 };
+  const ESC = document.createElement('div');
+  function esc(s) { ESC.textContent = s == null ? '' : String(s); return ESC.innerHTML; }
+
+  // —— 抽屉开关（统一事件委托，覆盖 create/read/report 三抽屉） ——
+  function openDrawer(id) { document.getElementById(id)?.classList.add('open'); }
+  function closeDrawer(id) { document.getElementById(id)?.classList.remove('open'); }
+  document.addEventListener('click', (e) => {
+    const openBtn = e.target.closest('[data-open]');
+    if (openBtn) { openDrawer(openBtn.dataset.open); return; }
+    const closeBtn = e.target.closest('[data-close]');
+    if (closeBtn) { closeDrawer(closeBtn.dataset.close); return; }
+    const overlay = e.target.closest('.drawer-overlay.open');
+    if (overlay && e.target === overlay) closeDrawer(overlay.id);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.drawer-overlay.open').forEach(o => o.classList.remove('open'));
+  });
+
+  // —— 筛选 chip ——
+  function bindFilters() {
+    document.querySelectorAll('#filter-category .filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#filter-category .filter-chip').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        state.category = btn.dataset.value; state.page = 1; loadList();
+      });
+    });
+    document.querySelectorAll('#filter-cefr .filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#filter-cefr .filter-chip').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        state.cefrLevel = btn.dataset.value; state.page = 1; loadList();
+      });
+    });
+  }
+
+  async function loadList() {
+    const params = new URLSearchParams({ page: state.page, size: state.size });
+    if (state.category !== 'all') params.set('category', state.category);
+    if (state.cefrLevel !== 'all') params.set('cefr_level', state.cefrLevel);
+    document.getElementById('art-list').innerHTML = '<div class="loading">加载中…</div>';
+    try {
+      const r = await fetch(API + '?' + params);
+      const data = await r.json();
+      renderList(data); renderStats(data);
+    } catch (e) {
+      document.getElementById('art-list').innerHTML =
+        '<div class="empty-state"><div class="empty-state__icon">😵</div><p>加载失败：' + esc(e.message) + '</p></div>';
+    }
+  }
+
+  function renderList(data) {
+    const list = document.getElementById('art-list');
+    state.total = data.total || 0;
+    document.getElementById('art-count').textContent = state.total + ' 篇';
+    if (!data.data || data.data.length === 0) {
+      list.innerHTML =
+        '<div class="empty-state">' +
+        '<div class="empty-state__icon">📚</div>' +
+        '<p>暂无文章</p>' +
+        '<p class="u-muted u-muted-xs">点击右上角「录入文章」开始</p>' +
+        '</div>';
+      document.getElementById('pagination').innerHTML = '';
+      return;
+    }
+    list.innerHTML = data.data.map(art => `
+      <div class="art-card" data-id="${art.id}">
+        <div class="art-card__top">
+          <div class="art-card__title">${esc(art.title)}</div>
+          <span class="art-card__cefr level-${(art.cefr_level||'B1').toLowerCase()}">${esc(art.cefr_level||'B1')}</span>
+        </div>
+        <div class="art-card__meta">
+          <span class="art-card__cat">${esc(CATEGORY_MAP[art.category]||'其他')}</span>
+          ${art.source_name ? `<span>📰 ${esc(art.source_name)}</span>` : ''}
+          <span>📖 ${art.word_count||0} 词</span>
+          ${art.read_at ? `<span>✓ 已读</span>` : ''}
+        </div>
+        <div class="art-card__actions">
+          <button class="art-card__btn" data-action="view" data-id="${art.id}">阅读</button>
+          <button class="art-card__btn" data-action="report" data-id="${art.id}">难度报告</button>
+          <button class="art-card__btn is-danger" data-action="delete" data-id="${art.id}">删除</button>
+        </div>
+      </div>
+    `).join('');
+    renderPagination();
+  }
+
+  function renderPagination() {
+    const totalPages = Math.max(1, Math.ceil(state.total / state.size));
+    const pager = document.getElementById('pagination');
+    if (totalPages <= 1) { pager.innerHTML = ''; return; }
+    let html = `<button data-goto="${state.page-1}" ${state.page<=1?'disabled':''}>‹ 上一页</button>`;
+    html += `<span class="page-info">${state.page} / ${totalPages}</span>`;
+    html += `<button data-goto="${state.page+1}" ${state.page>=totalPages?'disabled':''}>下一页 ›</button>`;
+    pager.innerHTML = html;
+  }
+
+  // —— 列表按钮事件委托 ——
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const id = Number(btn.dataset.id);
+    const action = btn.dataset.action;
+    if (action === 'view') await viewArticle(id);
+    else if (action === 'report') await showDifficultyReport(id);
+    else if (action === 'delete') await confirmDelete(id);
+  });
+  // —— 分页事件委托 ——
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-goto]');
+    if (!btn) return;
+    state.page = Number(btn.dataset.goto);
+    loadList();
+  });
+
+  function renderStats() {
+    document.getElementById('art-meta').textContent = `共 ${state.total} 篇 · CEFR 难度自动分析`;
+  }
+
+  // —— 阅读：抽屉展示（替换原 alert） ——
+  async function viewArticle(id) {
+    const body = document.getElementById('read-body');
+    const titleEl = document.getElementById('read-title');
+    titleEl.textContent = '加载中…';
+    body.innerHTML = '<div class="loading">加载中…</div>';
+    openDrawer('drawer-read');
+    try {
+      const r = await fetch(`${API}/${id}`);
+      const d = await r.json();
+      titleEl.textContent = d.title || '文章';
+      body.innerHTML = `
+        <div class="art-read__title">${esc(d.title)}</div>
+        <div class="art-read__meta">
+          <span class="art-card__cat">${esc(CATEGORY_MAP[d.category]||'其他')}</span>
+          <span class="art-card__cefr level-${(d.cefr_level||'B1').toLowerCase()}">${esc(d.cefr_level||'B1')}</span>
+          <span>📖 ${d.word_count||0} 词</span><span>·</span>
+          <span>分句 ${(d.sentences||[]).length}</span><span>·</span>
+          <span>词汇 ${(d.vocabulary||[]).length}</span>
+        </div>
+        <div class="art-read__body">${esc((d.content||'').replace(/\r\n?/g, '\n'))}</div>
+      `;
+    } catch (err) {
+      titleEl.textContent = '加载失败';
+      body.innerHTML = `<div class="empty-state"><p>${esc(err.message)}</p></div>`;
+    }
+  }
+
+  // —— 难度报告：抽屉展示（替换原 alert） ——
+  async function showDifficultyReport(id) {
+    const body = document.getElementById('report-body');
+    body.innerHTML = '<div class="loading">加载中…</div>';
+    openDrawer('drawer-report');
+    try {
+      const r = await fetch(`${API}/${id}/difficulty-report`);
+      const d = await r.json();
+      const nw = d.new_words || [];
+      const ew = d.edge_words || [];
+      const lc = d.level_counts || {};
+      const rows = Object.entries(lc).map(([lv, n]) =>
+        `<div class="art-report__row"><span class="art-report__key">CEFR ${esc(lv)}</span><span class="art-report__val">${n}</span></div>`
+      ).join('');
+      body.innerHTML = `
+        <div class="art-report__row"><span class="art-report__key">文章 CEFR</span><span class="art-report__val">${esc(d.article_cefr||'–')}</span></div>
+        <div class="art-report__row"><span class="art-report__key">分析 CEFR</span><span class="art-report__val">${esc(d.analysis_cefr||'–')}</span></div>
+        <div class="art-report__row"><span class="art-report__key">总词数</span><span class="art-report__val">${d.total_words||0}</span></div>
+        <div class="art-report__row"><span class="art-report__key">独特词</span><span class="art-report__val">${d.unique_words||0}</span></div>
+        <h4 class="u-report-title">等级分布</h4>
+        ${rows || '<p class="state-line">无数据</p>'}
+        <h4 class="u-report-title">生词（${nw.length}）</h4>
+        <p class="u-report-text">${nw.length ? nw.slice(0,30).map(esc).join(', ') + (nw.length>30?'…':'') : '—'}</p>
+        <h4 class="u-report-title">边缘词（${ew.length}）</h4>
+        <p class="u-report-text">${ew.length ? ew.slice(0,30).map(esc).join(', ') + (ew.length>30?'…':'') : '—'}</p>
+      `;
+    } catch (err) {
+      body.innerHTML = `<div class="empty-state"><p>获取失败：${esc(err.message)}</p></div>`;
+    }
+  }
+
+  // —— 创建文章 ——
+  document.getElementById('form-create').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('f-title').value.trim();
+    const content = document.getElementById('f-content').value.trim();
+    if (!title || !content) { alert('标题和正文必填'); return; }
+    const body = {
+      title, content,
+      category: document.getElementById('f-category').value,
+      source_name: document.getElementById('f-source-name').value.trim(),
+      source_url: document.getElementById('f-source-url').value.trim(),
+      cefr_level: document.getElementById('f-cefr').value,
+      import_method: document.getElementById('f-import').value
+    };
+    try {
+      const r = await fetch(API, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+      });
+      const d = await r.json();
+      if (d.ok) {
+        closeDrawer('drawer-create');
+        toast('✓ 文章创建成功，难度已自动分析');
+        document.getElementById('form-create').reset();
+        state.page = 1; loadList();
+      } else {
+        alert('创建失败：' + (d.error || '未知错误'));
+      }
+    } catch (err) { alert('请求失败：' + err.message); }
+  });
+
+  // —— 删除 ——
+  async function confirmDelete(id) {
+    if (!confirm('确定删除这篇文章？分句和词汇数据也会一并删除。')) return;
+    try {
+      const r = await fetch(`${API}/${id}`, {method: 'DELETE'});
+      const d = await r.json();
+      if (d.ok) { toast('✓ 已删除'); loadList(); }
+      else alert('删除失败：' + (d.error||''));
+    } catch (err) { alert('请求失败：' + err.message); }
+  }
+
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast'; t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2000);
+  }
+
+  bindFilters();
+  loadList();
+})();
+</script>
+</body>
+</html>

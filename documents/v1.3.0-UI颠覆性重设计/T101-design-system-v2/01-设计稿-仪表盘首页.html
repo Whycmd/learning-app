@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>学习圣殿 · 仪表盘 · 设计稿 v1.3.0-T101</title>
+<style>
+/* ============================================================
+   T101 v2 设计稿 — 学习圣殿 对称圆形布局版
+   浏览器直接打开预览，右上角可切换亮/暗主题
+   ============================================================ */
+
+/* ---- 令牌 v2 ---- */
+:root {
+  /* 墨色 */
+  --ink:        #1c1917;
+  --ink-soft:   #44403c;
+  --muted:      #78716c;
+  --line:       rgba(28,25,23,.09);
+  --line-strong:rgba(28,25,23,.14);
+
+  /* 纸色（宣纸） */
+  --paper:      #faf7f2;
+  --paper-deep: #f0ebe3;
+  --surface:    rgba(255,253,248,.92);
+  --surface-solid:#fffdf8;
+
+  /* 主色 */
+  --accent:     #b45309;
+  --accent-hover:#9a3412;
+  --accent-glow: rgba(180,83,9,.25);
+  --accent-wash: rgba(180,83,9,.07);
+
+  /* 鎏金 */
+  --gold:       #d4a843;
+  --gold-light: #f5e6b8;
+  --gold-dark:  #b8860b;
+  --gold-glow:  rgba(212,168,67,.30);
+  --gold-wash:  rgba(212,168,67,.08);
+
+  /* 朱红（中式） */
+  --vermillion: #c0392b;
+  --vermillion-wash: rgba(192,57,43,.08);
+  --vermillion-light: #e74c3c;
+
+  /* 四技能色 */
+  --listen: #0891b2;
+  --speak:  #ea580c;
+  --read:   #2563eb;
+  --write:  var(--accent);
+
+  /* 语义 */
+  --success: #059669;
+  --success-wash: rgba(5,150,105,.08);
+  --danger:  #9f1239;
+  --warning: #d97706;
+  --warning-wash: rgba(217,119,6,.08);
+
+  /* 字体 */
+  --font-display: "Fraunces","Songti SC","STSong","Noto Serif SC",Georgia,serif;
+  --font-body:    "Karla",system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+
+  /* 圆角 */
+  --r-sm:  8px;
+  --r-md:  12px;
+  --r-lg:  18px;
+  --r-xl:  24px;
+  --r-circle:50%;
+  --r-pill:999px;
+
+  /* 阴影 */
+  --sh-sm:   0 1px 0 rgba(28,25,23,.06);
+  --sh-card: 0 12px 40px rgba(28,25,23,.07), 0 2px 8px rgba(28,25,23,.04);
+  --sh-float:0 22px 50px rgba(28,25,23,.12);
+  --sh-gold: 0 8px 30px rgba(180,83,9,.18), 0 2px 8px rgba(212,168,67,.10);
+
+  /* 动效 */
+  --dur-fast:120ms;
+  --dur-mid: 240ms;
+  --dur-slow:400ms;
+  --ease-out:cubic-bezier(.22,.61,.36,1);
+
+  /* 层级 */
+  --z-nav:    100;
+  --z-drawer: 200;
+  --z-overlay:300;
+
+  /* 间距 */
+  --sp-xs:  4px;
+  --sp-sm:  8px;
+  --sp-md:  16px;
+  --sp-lg:  24px;
+  --sp-xl:  32px;
+  --sp-2xl: 48px;
+}
+
+/* ============================================================
+   暗色主题层 — 圣殿夜间模式：装饰降量，文字优先
+   ============================================================ */
+html[data-theme="dark"] {
+  --ink:        #e8e0d4;
+  --ink-soft:   #b8afa4;
+  --muted:      #78716c;
+  --line:       rgba(232,224,212,.10);
+  --line-strong:rgba(232,224,212,.18);
+
+  --paper:      #1a1714;
+  --paper-deep: #12100e;
+  --surface:    rgba(30,27,24,.92);
+  --surface-solid:#1e1b18;
+
+  --accent-glow:rgba(212,168,67,.22);
+  --accent-wash:rgba(212,168,67,.07);
+  --gold-glow:  rgba(212,168,67,.35);
+  --gold-wash:  rgba(212,168,67,.08);
+  --vermillion-wash:rgba(192,57,43,.12);
+  --success-wash:   rgba(5,150,105,.10);
+
+  --sh-sm:   0 1px 0 rgba(0,0,0,.30);
+  --sh-card: 0 12px 40px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.20);
+  --sh-float:0 22px 50px rgba(0,0,0,.45);
+  --sh-gold: 0 8px 30px rgba(212,168,67,.15), 0 2px 8px rgba(0,0,0,.30);
+}
+
+/* ---- Reset / Base ---- */
+*,*::before,*::after{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body {
+  font-family:var(--font-body);
+  font-size:15px;
+  line-height:1.6;
+  color:var(--ink);
+  background:var(--paper-deep);
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  transition:background var(--dur-mid) var(--ease-out), color var(--dur-mid) var(--ease-out);
+}
+h1,h2,h3{font-family:var(--font-display);color:var(--ink);margin:0;font-weight:600;}
+a{color:var(--accent);text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+input,textarea,select{font-family:inherit;font-size:15px;color:var(--ink);}
+
+/* ============================================================
+   页面容器
+   ============================================================ */
+.page-wide {
+  width:100%; max-width:960px; margin:0 auto;
+  padding:0 var(--sp-lg) var(--sp-2xl);
+  position:relative;
+}
+
+/* ============================================================
+   圣殿门廊 — 金色屋檐顶条
+   ============================================================ */
+.temple-roof {
+  height:6px;
+  margin:0 calc(-1 * var(--sp-lg));
+  background:linear-gradient(90deg,
+    transparent 0%,
+    var(--gold-dark) 15%,
+    var(--gold) 30%,
+    var(--gold-light) 50%,
+    var(--gold) 70%,
+    var(--gold-dark) 85%,
+    transparent 100%
+  );
+  position:relative;
+}
+/* 屋脊装饰纹样（SVG） */
+.temple-roof::after {
+  content:"";
+  position:absolute; bottom:-8px; left:0; right:0; height:8px;
+  background:
+    repeating-linear-gradient(90deg,
+      transparent 0px, transparent 12px,
+      var(--gold) 12px, var(--gold) 14px,
+      transparent 14px, transparent 24px
+    );
+  opacity:.4;
+}
+
+/* ============================================================
+   顶部导航（分组 + 分隔）
+   ============================================================ */
+.topnav {
+  display:flex; gap:0; flex-wrap:wrap;
+  margin-bottom:var(--sp-xl);
+  padding:0 var(--sp-lg);
+  position:sticky; top:0; z-index:var(--z-nav);
+  background:var(--paper-deep);
+  border-bottom:1px solid var(--line);
+}
+.topnav-group{display:flex;gap:2px;align-items:center;}
+.topnav-sep{width:1px;height:20px;background:var(--line-strong);margin:0 var(--sp-sm);}
+.topnav a{
+  padding:10px 14px; border-radius:var(--r-sm);
+  color:var(--ink-soft); font-size:14px; font-weight:500;
+  transition:color var(--dur-fast), background var(--dur-fast);
+}
+.topnav a:hover{background:var(--accent-wash);color:var(--accent);}
+.topnav a.active{background:var(--gold-wash);color:var(--gold-dark);font-weight:700;}
+.topnav__user{margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:0 var(--sp-sm);}
+.topnav__name{font-size:13px;color:var(--muted);}
+
+/* 主题切换按钮 */
+.theme-toggle{
+  width:36px;height:36px;border-radius:var(--r-sm);
+  border:1px solid var(--line-strong);background:var(--surface-solid);
+  color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all var(--dur-fast);
+}
+.theme-toggle:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ============================================================
+   双灯笼装饰（侧边）
+   ============================================================ */
+.lanterns {
+  display:flex; justify-content:space-between;
+  margin-bottom:var(--sp-lg);
+  padding:0 var(--sp-xl);
+  pointer-events:none;
+}
+.lantern {
+  display:flex; flex-direction:column; align-items:center;
+  opacity:.7;
+}
+.lantern__string {
+  width:2px; height:16px; background:var(--gold-dark);
+}
+.lantern__body {
+  width:32px; height:42px;
+  background:linear-gradient(135deg, var(--vermillion) 0%, #a93226 100%);
+  border-radius:6px 6px 50% 50%;
+  position:relative;
+  box-shadow:0 4px 12px rgba(192,57,43,.25);
+  display:flex; align-items:center; justify-content:center;
+}
+.lantern__body::before {
+  content:"";
+  position:absolute; top:-4px; left:50%; transform:translateX(-50%);
+  width:16px; height:6px;
+  background:var(--gold-dark);
+  border-radius:2px;
+}
+.lantern__body::after {
+  content:"圣";
+  color:var(--gold-light);
+  font-family:var(--font-display);
+  font-size:11px; font-weight:700;
+}
+.lantern__tassel {
+  width:2px; height:12px;
+  background:var(--gold-dark);
+  position:relative;
+}
+.lantern__tassel::after {
+  content:"";
+  position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+  width:0; height:0;
+  border-left:4px solid transparent;
+  border-right:4px solid transparent;
+  border-top:8px solid var(--gold-dark);
+}
+
+/* ============================================================
+   对称仪表盘核心布局
+   ============================================================ */
+.dash-sym {
+  display:grid;
+  grid-template-columns: 1fr 200px 1fr;
+  grid-template-rows: auto auto;
+  gap:var(--sp-md);
+  align-items:center;
+  justify-items:center;
+}
+@media(max-width:700px){
+  .dash-sym{grid-template-columns:1fr; justify-items:stretch;}
+  .dash-center-ring{order:-1;}
+}
+
+/* --- 中心熟练度环 --- */
+.dash-center-ring {
+  grid-column:2; grid-row:1/3;
+  display:flex; flex-direction:column; align-items:center;
+  position:relative;
+}
+.ring-wrap {
+  position:relative; width:160px; height:160px;
+}
+.ring-wrap svg { width:100%; height:100%; transform:rotate(-90deg); }
+.ring-bg { fill:none; stroke:var(--line-strong); stroke-width:10; }
+.ring-fill {
+  fill:none; stroke:url(#ringGrad); stroke-width:10;
+  stroke-linecap:round;
+  stroke-dasharray:440; /* 2π*70 */
+  transition: stroke-dashoffset .8s var(--ease-out);
+}
+.ring-center {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.ring-level {
+  font-family:var(--font-display); font-size:42px; font-weight:700;
+  color:var(--accent); line-height:1;
+}
+.ring-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.12em; margin-top:2px; }
+.ring-wrap-title {
+  font-family:var(--font-display); font-size:16px; font-weight:600;
+  margin-top:var(--sp-sm); color:var(--ink);
+}
+.ring-wrap-sub { font-size:12px; color:var(--muted); margin-top:2px; }
+
+/* 环形光晕装饰（中式窗棂圆） */
+.ring-aura {
+  position:absolute; inset:-12px;
+  border:1px dashed var(--gold-wash);
+  border-radius:50%;
+  pointer-events:none;
+  animation: aura-rotate 30s linear infinite;
+}
+@keyframes aura-rotate { to{transform:rotate(360deg);} }
+
+/* 熟练度等级点阵（圆点） */
+.level-dots {
+  display:flex; gap:6px; margin-top:var(--sp-sm);
+}
+.level-dot {
+  width:18px; height:18px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700; color:#fff;
+  transition:all var(--dur-fast);
+}
+.level-dot.l0{background:var(--muted);}
+.level-dot.l1{background:#78716c;}
+.level-dot.l2{background:#d97706;}
+.level-dot.l3{background:var(--listen);}
+.level-dot.l4{background:var(--read);}
+.level-dot.l5{background:linear-gradient(135deg,var(--gold-dark),var(--gold));box-shadow:0 0 8px var(--gold-glow);}
+
+/* --- 左侧卡组 --- */
+.dash-left {
+  display:flex; flex-direction:column; gap:var(--sp-md);
+  width:100%;
+}
+/* --- 右侧卡组 --- */
+.dash-right {
+  display:flex; flex-direction:column; gap:var(--sp-md);
+  width:100%;
+}
+
+/* ============================================================
+   对称数据卡（圆形 + 圆角矩形混合）
+   ============================================================ */
+.sym-card {
+  border-radius:var(--r-xl);
+  padding:var(--sp-lg);
+  background:linear-gradient(160deg,var(--surface-solid) 0%,var(--paper) 100%);
+  border:1px solid var(--line);
+  box-shadow:var(--sh-card);
+  position:relative; overflow:hidden;
+  display:flex; flex-direction:column; gap:6px;
+}
+/* 中式窗棂角饰 */
+.sym-card::before {
+  content:"";
+  position:absolute; top:0; left:0; right:0; height:3px;
+  background:linear-gradient(90deg, var(--gold-dark), var(--gold), var(--gold-dark));
+  opacity:.6;
+}
+/* 四角回字纹装饰 */
+.sym-card::after {
+  content:"";
+  position:absolute; inset:6px;
+  border:1px solid var(--gold-wash);
+  border-radius:calc(var(--r-xl) - 2px);
+  pointer-events:none;
+}
+
+.sym-card--circle {
+  border-radius:50%;
+  width:120px; height:120px;
+  padding:0;
+  align-items:center; justify-content:center;
+  text-align:center;
+  gap:4px;
+  margin:0 auto;
+}
+.sym-card--circle::before{height:2px;}
+.sym-card--circle::after{border-radius:50%;inset:4px;}
+
+.sym-card__icon { font-size:24px; margin-bottom:2px; }
+.sym-card__num { font-family:var(--font-display); font-size:28px; font-weight:700; color:var(--ink); line-height:1; }
+.sym-card__label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+
+/* --- 连击火焰卡（圆形）--- */
+.streak-card {
+  border-radius:50%;
+  width:120px; height:120px;
+  padding:0;
+  background:linear-gradient(135deg,#fff8ee 0%,var(--surface-solid) 100%);
+  border:1px solid var(--gold-wash);
+  box-shadow:var(--sh-sm), inset 0 1px 0 rgba(255,255,255,.6);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; position:relative; overflow:hidden;
+  margin:0 auto;
+}
+.streak-card::before {
+  content:"";
+  position:absolute; top:-10px; right:-10px;
+  width:50px; height:50px;
+  background:radial-gradient(circle,var(--gold-light) 0%,transparent 70%);
+  opacity:.35;
+}
+.streak-card .flame { font-size:26px; line-height:1; }
+.streak-card .num { font-family:var(--font-display); font-size:30px; font-weight:700; color:var(--accent); line-height:1; }
+.streak-card .label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+
+/* --- 待办任务卡 --- */
+.tasks-card {
+  border-radius:var(--r-xl);
+  padding:var(--sp-lg);
+  background:var(--surface-solid);
+  border:1px solid var(--line);
+  box-shadow:var(--sh-sm);
+  position:relative; overflow:hidden;
+}
+.tasks-card::before {
+  content:"";
+  position:absolute; top:0; left:0; right:0; height:3px;
+  background:linear-gradient(90deg,var(--gold-dark),var(--gold),var(--gold-dark));
+  opacity:.6;
+}
+.tasks-card h3 { font-size:15px; margin-bottom:var(--sp-md); display:flex; align-items:center; gap:8px; }
+.tasks-card h3 .count {
+  font-size:11px; font-weight:700;
+  padding:2px 8px; border-radius:var(--r-pill);
+  background:var(--vermillion-wash); color:var(--vermillion);
+}
+.task-list { display:flex; flex-direction:column; gap:6px; }
+.task-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px;
+  border-radius:var(--r-sm);
+  background:var(--paper);
+  border:1px solid var(--line);
+  font-size:14px;
+  cursor:pointer;
+  transition:all var(--dur-fast);
+}
+.task-item:hover{border-color:var(--gold);background:var(--gold-wash);}
+.task-check {
+  width:18px; height:18px; border-radius:50%;
+  border:2px solid var(--line-strong);
+  flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  transition:all var(--dur-fast);
+}
+.task-item:hover .task-check{border-color:var(--gold);}
+.task-check.done{background:var(--success);border-color:var(--success);}
+.task-check.done::after{content:"✓";color:#fff;font-size:11px;}
+.task-text{flex:1;}
+.task-text.done{text-decoration:line-through;color:var(--muted);}
+.task-due{font-size:12px;color:var(--muted);white-space:nowrap;}
+
+/* --- 技能入口行 --- */
+.skills-row {
+  display:flex; gap:var(--sp-md); justify-content:center;
+  margin-top:var(--sp-xl);
+  flex-wrap:wrap;
+}
+.skill-btn {
+  width:72px; height:72px;
+  border-radius:50%;
+  border:2px solid var(--line);
+  background:var(--surface-solid);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:4px; cursor:pointer;
+  text-decoration:none; color:var(--ink);
+  transition:all var(--dur-fast) var(--ease-out);
+  box-shadow:var(--sh-sm);
+  position:relative;
+}
+.skill-btn::before {
+  content:"";
+  position:absolute; inset:-4px;
+  border:1px solid transparent;
+  border-radius:50%;
+  transition:border-color var(--dur-fast);
+}
+.skill-btn:hover{transform:translateY(-3px);box-shadow:var(--sh-gold);border-color:var(--gold);}
+.skill-btn:hover::before{border-color:var(--gold-wash);}
+.skill-btn__icon{font-size:22px;}
+.skill-btn__label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.skill-btn.listen{border-color:rgba(8,145,178,.2);}
+.skill-btn.listen:hover{border-color:var(--listen);box-shadow:0 4px 16px rgba(8,145,178,.2);}
+.skill-btn.speak{border-color:rgba(234,88,12,.2);}
+.skill-btn.speak:hover{border-color:var(--speak);box-shadow:0 4px 16px rgba(234,88,12,.2);}
+.skill-btn.read{border-color:rgba(37,99,235,.2);}
+.skill-btn.read:hover{border-color:var(--read);box-shadow:0 4px 16px rgba(37,99,235,.2);}
+.skill-btn.write{border-color:rgba(180,83,9,.2);}
+.skill-btn.write:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(180,83,9,.2);}
+
+/* ============================================================
+   组件基座展示
+   ============================================================ */
+.section-title {
+  font-family:var(--font-display);
+  font-size:22px;
+  margin:var(--sp-xl) 0 var(--sp-md);
+  display:flex; align-items:center; gap:var(--sp-sm);
+  color:var(--ink);
+}
+.section-title::before {
+  content:"◆"; color:var(--gold); font-size:12px;
+}
+.section-sub {
+  font-size:13px; color:var(--muted); margin-bottom:var(--sp-lg);
+}
+
+.card {
+  border-radius:var(--r-xl);
+  padding:var(--sp-lg);
+  background:linear-gradient(160deg,var(--surface-solid) 0%,var(--paper) 100%);
+  border:1px solid var(--line);
+  box-shadow:var(--sh-card);
+  margin-bottom:var(--sp-md);
+  position:relative; overflow:hidden;
+}
+.card::before {
+  content:"";
+  position:absolute; top:0; left:0; right:0; height:3px;
+  background:linear-gradient(90deg,var(--gold-dark),var(--gold),var(--gold-dark));
+  opacity:.5;
+}
+.card__label {
+  font-size:11px; font-weight:700; letter-spacing:.1em;
+  color:var(--muted); text-transform:uppercase; margin-bottom:var(--sp-sm);
+}
+
+/* 按钮 */
+.btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  border:0; border-radius:var(--r-pill);
+  padding:11px 24px;
+  font-size:14px; font-weight:700;
+  transition:all var(--dur-fast) var(--ease-out);
+}
+.btn-primary {
+  color:var(--surface-solid);
+  background:linear-gradient(120deg,var(--gold-dark) 0%,var(--accent) 60%,var(--gold) 100%);
+  box-shadow:0 6px 20px rgba(180,83,9,.25);
+}
+.btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 10px 28px rgba(180,83,9,.30);}
+.btn-secondary {
+  background:var(--surface-solid); color:var(--ink);
+  border:1px solid var(--line-strong); box-shadow:var(--sh-sm);
+}
+.btn-secondary:hover{border-color:var(--gold);color:var(--gold-dark);}
+.btn-danger{background:var(--vermillion);color:#fff;box-shadow:0 4px 14px rgba(192,57,43,.25);}
+.btn-danger:hover{filter:brightness(1.1);}
+.btn-icon{width:40px;height:40px;padding:0;border-radius:var(--r-circle);border:1px solid var(--line);background:var(--surface-solid);color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;transition:all var(--dur-fast);}
+.btn-icon:hover{border-color:var(--gold);color:var(--gold-dark);}
+.btn-block{width:100%;}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+
+/* 进度环 */
+.progress-ring{display:inline-block;position:relative;}
+.progress-ring svg{width:100%;height:100%;transform:rotate(-90deg);}
+.progress-ring__bg{fill:none;stroke:var(--line-strong);stroke-width:6;}
+.progress-ring__fill{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .6s var(--ease-out);}
+.progress-ring__value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--ink);}
+
+/* 徽章 */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:var(--r-pill);font-size:12px;font-weight:700;}
+.badge--gold{background:var(--gold-wash);color:var(--gold-dark);}
+.badge--verm{background:var(--vermillion-wash);color:var(--vermillion);}
+.badge--teal{background:rgba(8,145,178,.10);color:var(--listen);}
+.badge--blue{background:rgba(37,99,235,.10);color:var(--read);}
+.badge--orange{background:rgba(234,88,12,.10);color:var(--speak);}
+.badge--success{background:var(--success-wash);color:var(--success);}
+
+/* 熟练度徽章 */
+.prof-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-family:var(--font-display);font-size:13px;font-weight:700;color:#fff;}
+.prof-badge.l0{background:var(--muted);}
+.prof-badge.l1{background:#78716c;}
+.prof-badge.l2{background:#d97706;}
+.prof-badge.l3{background:var(--listen);}
+.prof-badge.l4{background:var(--read);}
+.prof-badge.l5{background:linear-gradient(135deg,var(--gold-dark),var(--gold));box-shadow:0 0 10px var(--gold-glow);}
+
+/* 骨架屏 */
+.skeleton{border-radius:var(--r-sm);background:linear-gradient(90deg,var(--line) 25%,var(--line-strong) 50%,var(--line) 75%);background-size:200% 100%;animation:skeleton-shimmer 1.4s ease-in-out infinite;}
+@keyframes skeleton-shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+.skeleton--circle{border-radius:50%;}
+.skeleton--text{height:14px;margin-bottom:8px;}
+.skeleton--title{height:22px;width:60%;margin-bottom:12px;}
+
+/* 印章 */
+.seal-stamp{
+  width:64px;height:64px;
+  border:3px solid var(--vermillion);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--vermillion);
+  font-family:var(--font-display);font-size:13px;font-weight:700;
+  transform:rotate(-12deg);
+  opacity:.85;position:relative;
+  text-align:center;line-height:1.2;
+}
+.seal-stamp::after{
+  content:"";position:absolute;inset:4px;
+  border:1px dashed var(--vermillion);border-radius:50%;opacity:.5;
+}
+
+/* 装饰分隔线（回字纹） */
+.divider-ornament{
+  display:flex;align-items:center;gap:var(--sp-sm);
+  margin:var(--sp-xl) 0;
+  color:var(--gold);opacity:.5;
+}
+.divider-ornament::before,.divider-ornament::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+
+/* 六态演示 */
+.state-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:var(--sp-md);margin-bottom:var(--sp-xl);}
+.state-card{border-radius:var(--r-md);padding:var(--sp-md);text-align:center;border:1px solid var(--line);background:var(--surface-solid);}
+.state-card__label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:var(--sp-sm);}
+.state-card__preview{min-height:60px;display:flex;align-items:center;justify-content:center;}
+
+/* 主题切换器 */
+.theme-switcher{position:fixed;top:16px;right:16px;z-index:999;display:flex;gap:6px;}
+.theme-btn{padding:8px 18px;border-radius:var(--r-pill);border:1px solid var(--line-strong);background:var(--surface-solid);color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer;transition:all var(--dur-fast);}
+.theme-btn.active{border-color:var(--gold);background:var(--gold-wash);color:var(--gold-dark);}
+
+/* 设计稿标注 */
+.design-note{background:var(--gold-wash);border:1px solid var(--gold-wash);border-left:3px solid var(--gold);padding:var(--sp-md);margin-bottom:var(--sp-lg);font-size:13px;color:var(--ink-soft);border-radius:0 var(--r-sm) var(--r-sm) 0;}
+
+/* 抽屉浮层 */
+.drawer-overlay{position:fixed;inset:0;background:rgba(28,25,23,.4);z-index:var(--z-overlay);opacity:0;pointer-events:none;transition:opacity var(--dur-mid) var(--ease-out);}
+.drawer-overlay.open{opacity:1;pointer-events:auto;}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,90vw);background:var(--paper);z-index:var(--z-drawer);transform:translateX(100%);transition:transform var(--dur-mid) var(--ease-out);box-shadow:var(--sh-float);display:flex;flex-direction:column;}
+.drawer.open{transform:translateX(0);}
+.drawer__header{padding:var(--sp-lg);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+.drawer__header h3{font-size:18px;}
+.drawer__body{flex:1;overflow-y:auto;padding:var(--sp-lg);}
+.drawer__footer{padding:var(--sp-md) var(--sp-lg);border-top:1px solid var(--line);display:flex;gap:var(--sp-sm);justify-content:flex-end;}
+
+/* Toast */
+.toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:var(--z-overlay);display:flex;flex-direction:column;gap:8px;align-items:center;}
+.toast{padding:12px 20px;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);font-size:14px;font-weight:600;box-shadow:var(--sh-float);animation:toast-in .3s var(--ease-out);display:flex;align-items:center;gap:8px;}
+@keyframes toast-in{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+/* 令牌展示 */
+.token-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:var(--sp-xl);}
+.token-table th{text-align:left;padding:8px 12px;background:var(--paper);border-bottom:2px solid var(--line-strong);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+.token-table td{padding:8px 12px;border-bottom:1px solid var(--line);}
+.token-table code{background:var(--accent-wash);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--accent);}
+.color-swatch{display:inline-flex;align-items:center;gap:8px;}
+.color-swatch__box{width:24px;height:24px;border-radius:6px;border:1px solid var(--line);}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     主题切换器（固定右上角）
+     ============================================================ -->
+<div class="theme-switcher">
+  <button class="theme-btn active" onclick="setTheme('light',this)">☀ 亮色</button>
+  <button class="theme-btn" onclick="setTheme('dark',this)">☾ 暗色</button>
+  <button class="theme-btn" onclick="setTheme('both',this)">◐ 双预览</button>
+</div>
+
+<!-- ============================================================
+     亮色主题预览
+     ============================================================ -->
+<div id="preview-light">
+
+<!-- 金色屋檐顶条 -->
+<div class="temple-roof"></div>
+
+<!-- 顶部导航 -->
+<nav class="topnav">
+  <div class="topnav-group">
+    <a href="#" class="active">首页</a>
+    <a href="#">知识点录入</a>
+    <a href="#">知识点详情</a>
+  </div>
+  <div class="topnav-sep"></div>
+  <div class="topnav-group">
+    <a href="#">单词本</a>
+    <a href="#">每日复习</a>
+    <a href="#">每日小测</a>
+  </div>
+  <div class="topnav-sep"></div>
+  <div class="topnav-group">
+    <a href="#">文章阅读</a>
+    <a href="#">学情中心</a>
+  </div>
+  <div class="topnav__user">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+    <span class="topnav__name">本地学习者</span>
+  </div>
+</nav>
+
+<!-- 主内容 -->
+<div class="page-wide">
+
+  <div class="design-note">
+    <strong>T101 设计稿 v2</strong> — 学习圣殿 · 对称圆形布局 · 中式装饰元素（灯笼/回字纹/鎏金檐）
+  </div>
+
+  <!-- 双灯笼装饰 -->
+  <div class="lanterns">
+    <div class="lantern">
+      <div class="lantern__string"></div>
+      <div class="lantern__body"></div>
+      <div class="lantern__tassel"></div>
+    </div>
+    <div class="lantern">
+      <div class="lantern__string"></div>
+      <div class="lantern__body" style="opacity:.7;"></div>
+      <div class="lantern__tassel"></div>
+    </div>
+  </div>
+
+  <h2 class="section-title">学习仪表盘</h2>
+  <p class="section-sub">对称式圣殿布局 · 圆形熟练度环居中 · 四周数据环绕 · 底部技能入口圆形图标</p>
+
+  <!-- ============================================================
+       对称仪表盘核心
+       ============================================================ -->
+  <div class="dash-sym">
+
+    <!-- 左列 -->
+    <div class="dash-left">
+
+      <!-- 连击火焰（圆形） -->
+      <div class="streak-card">
+        <div class="flame">🔥</div>
+        <div class="num">7</div>
+        <div class="label">连击</div>
+      </div>
+
+      <!-- 今日小测 -->
+      <div class="sym-card sym-card--circle">
+        <div class="sym-card__icon">📝</div>
+        <div class="sym-card__num">3</div>
+        <div class="sym-card__label">今日小测</div>
+      </div>
+
+    </div>
+
+    <!-- 中央熟练度环 -->
+    <div class="dash-center-ring">
+      <div class="ring-wrap">
+        <div class="ring-aura"></div>
+        <svg viewBox="0 0 140 140">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="var(--gold)"/>
+              <stop offset="100%" stop-color="var(--accent)"/>
+            </linearGradient>
+          </defs>
+          <circle class="ring-bg" cx="70" cy="70" r="65"/>
+          <circle class="ring-fill" cx="70" cy="70" r="65" style="stroke-dashoffset:176;" />
+        </svg>
+        <div class="ring-center">
+          <div class="ring-level">3</div>
+          <div class="ring-label">熟练度</div>
+        </div>
+      </div>
+      <div class="ring-wrap-title">平均熟练度</div>
+      <div class="ring-wrap-sub">已学习 12 个知识点 · 3 个已掌握</div>
+      <div class="level-dots">
+        <span class="level-dot l5">5</span>
+        <span class="level-dot l4">4</span>
+        <span class="level-dot l3">3</span>
+        <span class="level-dot l2">2</span>
+        <span class="level-dot l1">1</span>
+        <span class="level-dot l0">0</span>
+      </div>
+    </div>
+
+    <!-- 右列 -->
+    <div class="dash-right">
+
+      <!-- 正确率 -->
+      <div class="sym-card sym-card--circle">
+        <div class="sym-card__icon">🎯</div>
+        <div class="sym-card__num">86%</div>
+        <div class="sym-card__label">正确率</div>
+      </div>
+
+      <!-- 待办任务 -->
+      <div class="tasks-card">
+        <h3>今日待办 <span class="count">3</span></h3>
+        <div class="task-list">
+          <div class="task-item">
+            <div class="task-check done"></div>
+            <span class="task-text done">完成每日小测</span>
+            <span class="task-due">✓</span>
+          </div>
+          <div class="task-item">
+            <div class="task-check"></div>
+            <span class="task-text">复习 5 个到期知识点</span>
+            <span class="task-due">5</span>
+          </div>
+          <div class="task-item">
+            <div class="task-check"></div>
+            <span class="task-text">录入新知识点</span>
+            <span class="task-due">可选</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /dash-sym -->
+
+  <!-- 技能入口行（圆形按钮） -->
+  <div class="skills-row">
+    <a class="skill-btn write" href="#" title="录入知识点">
+      <span class="skill-btn__icon">✍</span>
+      <span class="skill-btn__label">录入</span>
+    </a>
+    <a class="skill-btn listen" href="#" title="每日复习">
+      <span class="skill-btn__icon">👂</span>
+      <span class="skill-btn__label">复习</span>
+    </a>
+    <a class="skill-btn speak" href="#" title="每日小测">
+      <span class="skill-btn__icon">⚡</span>
+      <span class="skill-btn__label">小测</span>
+    </a>
+    <a class="skill-btn read" href="#" title="单词本">
+      <span class="skill-btn__icon">📖</span>
+      <span class="skill-btn__label">单词本</span>
+    </a>
+  </div>
+
+  <!-- 分隔线 -->
+  <div class="divider-ornament">❖</div>
+
+  <!-- ============================================================
+       组件基座展示
+       ============================================================ -->
+  <h2 class="section-title">组件基座</h2>
+  <p class="section-sub">components.css 预定义组件 · 全站复用</p>
+
+  <!-- 按钮 -->
+  <div class="card">
+    <div class="card__label">按钮系统</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <button class="btn btn-primary">主要操作</button>
+      <button class="btn btn-secondary">次要操作</button>
+      <button class="btn btn-danger">危险操作</button>
+      <button class="btn btn-secondary" disabled>禁用状态</button>
+      <button class="btn-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 徽章 -->
+  <div class="card">
+    <div class="card__label">徽章 / 标签</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <span class="badge badge--gold">鎏金徽章</span>
+      <span class="badge badge--verm">朱红标注</span>
+      <span class="badge badge--teal">听力</span>
+      <span class="badge badge--blue">阅读</span>
+      <span class="badge badge--orange">口语</span>
+      <span class="badge badge--success">已完成</span>
+      <span class="prof-badge l5">5</span>
+      <span class="prof-badge l3">3</span>
+      <span class="prof-badge l1">1</span>
+    </div>
+  </div>
+
+  <!-- 六态设计 -->
+  <div class="card">
+    <div class="card__label">六态设计清单</div>
+    <div class="state-grid">
+      <div class="state-card">
+        <div class="state-card__label">默认态</div>
+        <div class="state-card__preview"><button class="btn btn-primary" style="padding:6px 16px;font-size:12px;">开始复习</button></div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">加载态</div>
+        <div class="state-card__preview">
+          <div style="width:80px">
+            <div class="skeleton skeleton--title" style="height:12px;margin-bottom:6px;"></div>
+            <div class="skeleton skeleton--text" style="height:8px;width:70%;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">空态</div>
+        <div class="state-card__preview">
+          <div style="font-size:12px;color:var(--muted);text-align:center;">
+            <div style="font-size:22px;margin-bottom:4px;">📭</div>暂无数据
+          </div>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">错误态</div>
+        <div class="state-card__preview">
+          <div style="font-size:12px;color:var(--danger);text-align:center;">
+            <div style="font-size:18px;margin-bottom:2px;">⚠</div>
+            操作失败
+            <div style="margin-top:4px;"><button class="btn btn-secondary" style="padding:3px 10px;font-size:11px;">重试</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">成功态</div>
+        <div class="state-card__preview">
+          <div style="text-align:center;font-size:12px;">
+            <div style="font-size:22px;margin-bottom:2px;">🎉</div>
+            <div style="color:var(--success);font-weight:700;">完成！</div>
+          </div>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">边界态</div>
+        <div class="state-card__preview">
+          <div style="width:100%;font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            一个非常长的知识点名称显示效果测试...
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 印章效果 -->
+  <div class="card">
+    <div class="card__label">成就印章</div>
+    <div style="display:flex;gap:var(--sp-lg);align-items:center;flex-wrap:wrap;">
+      <div style="text-align:center;">
+        <div class="seal-stamp">打卡<br>7天</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;">连续打卡</div>
+      </div>
+      <div style="text-align:center;">
+        <div class="seal-stamp" style="border-color:var(--gold);color:var(--gold-dark);"> mastery<br>L5</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;">熟练度满级</div>
+      </div>
+      <div style="text-align:center;">
+        <div class="seal-stamp" style="border-color:var(--listen);color:var(--listen);"> 全通</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;">小测满分</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 抽屉浮层演示 -->
+  <div class="card">
+    <div class="card__label">抽屉浮层</div>
+    <button class="btn btn-primary" onclick="demoDrawer()">打开详情抽屉</button>
+  </div>
+
+</div><!-- /preview-light -->
+
+<!-- ============================================================
+     暗色主题预览
+     ============================================================ -->
+<div id="preview-dark" style="display:none;">
+
+<!-- 金色屋檐顶条（暗色降量） -->
+<div class="temple-roof"></div>
+
+<!-- 顶部导航 -->
+<nav class="topnav">
+  <div class="topnav-group">
+    <a href="#" class="active">首页</a>
+    <a href="#">知识点录入</a>
+    <a href="#">知识点详情</a>
+  </div>
+  <div class="topnav-sep"></div>
+  <div class="topnav-group">
+    <a href="#">单词本</a>
+    <a href="#">每日复习</a>
+    <a href="#">每日小测</a>
+  </div>
+  <div class="topnav-sep"></div>
+  <div class="topnav-group">
+    <a href="#">文章阅读</a>
+    <a href="#">学情中心</a>
+  </div>
+  <div class="topnav__user">
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <span class="topnav__name">本地学习者</span>
+  </div>
+</nav>
+
+<!-- 主内容 -->
+<div class="page-wide">
+
+  <div class="design-note">
+    <strong>T101 设计稿 v2 · 暗色</strong> — 装饰元素降量，保留环形光晕与鎏金檐
+  </div>
+
+  <!-- 双灯笼（暗色） -->
+  <div class="lanterns">
+    <div class="lantern">
+      <div class="lantern__string"></div>
+      <div class="lantern__body"></div>
+      <div class="lantern__tassel"></div>
+    </div>
+    <div class="lantern">
+      <div class="lantern__string"></div>
+      <div class="lantern__body"></div>
+      <div class="lantern__tassel"></div>
+    </div>
+  </div>
+
+  <!-- 3列对称圣殿布局 -->
+  <div class="dash-sym">
+
+    <!-- 左列 -->
+    <div class="dash-col-left">
+
+      <!-- 熟练度概览 -->
+      <div class="card card--glow">
+        <div class="card__label">今日学习概况</div>
+        <div class="overview-stats">
+          <div class="stat-item">
+            <div class="stat-value">87<span class="stat-unit">%</span></div>
+            <div class="stat-label">完成率</div>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <div class="stat-value">24<span class="stat-unit">min</span></div>
+            <div class="stat-label">学习时长</div>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <div class="stat-value">3<span class="stat-unit">/5</span></div>
+            <div class="stat-label">目标进度</div>
+          </div>
+        </div>
+        <div style="margin-top:14px;">
+          <div class="progress-bar"><div class="progress-fill" style="width:87%"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px;">
+            <span>87/100 课时</span><span>目标：100</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 四技能进度 -->
+      <div class="card">
+        <div class="card__label">技能掌握</div>
+        <div class="skill-list">
+          <div class="skill-row">
+            <span class="skill-dot" style="background:var(--listen)"></span>
+            <span>听力</span>
+            <div class="skill-progress"><div class="skill-fill" style="width:90%;background:var(--listen)"></div></div>
+            <span class="skill-pct" style="color:var(--listen)">90%</span>
+          </div>
+          <div class="skill-row">
+            <span class="skill-dot" style="background:var(--speak)"></span>
+            <span>口语</span>
+            <div class="skill-progress"><div class="skill-fill" style="width:75%;background:var(--speak)"></div></div>
+            <span class="skill-pct" style="color:var(--speak)">75%</span>
+          </div>
+          <div class="skill-row">
+            <span class="skill-dot" style="background:var(--read)"></span>
+            <span>阅读</span>
+            <div class="skill-progress"><div class="skill-fill" style="width:82%;background:var(--read)"></div></div>
+            <span class="skill-pct" style="color:var(--read)">82%</span>
+          </div>
+          <div class="skill-row">
+            <span class="skill-dot" style="background:var(--write)"></span>
+            <span>写作</span>
+            <div class="skill-progress"><div class="skill-fill" style="width:68%;background:var(--write)"></div></div>
+            <span class="skill-pct" style="color:var(--write)">68%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 成就印章 -->
+      <div class="card">
+        <div class="card__label">近期成就</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <div style="text-align:center;">
+            <div class="seal-stamp">打卡<br>7天</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px;">连续打卡</div>
+          </div>
+          <div style="text-align:center;">
+            <div class="seal-stamp" style="border-color:var(--gold);color:var(--gold-dark);"> mastery<br>L5</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px;">熟练度满级</div>
+          </div>
+          <div style="text-align:center;">
+            <div class="seal-stamp" style="border-color:var(--listen);color:var(--listen);"> 全通</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px;">小测满分</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /dash-col-left -->
+
+    <!-- 中央：环形熟练度 -->
+    <div class="dash-center-ring">
+      <div class="ring-container">
+        <div class="ring-aura"></div>
+        <svg class="ring-svg" viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="50"/>
+          <circle class="ring-fg" cx="60" cy="60" r="50"
+            stroke-dasharray="314" stroke-dashoffset="50"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-pct">84%</div>
+          <div class="ring-label">总熟练度</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--ink);">Bronze Tier</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">距离 Silver 还差 16%</div>
+      </div>
+      <!-- 技能圆形按钮行 -->
+      <div class="skills-row">
+        <button class="skill-btn skill-btn--listen"><span>L</span><small>听</small></button>
+        <button class="skill-btn skill-btn--speak"><span>S</span><small>说</small></button>
+        <button class="skill-btn skill-btn--read"><span>R</span><small>读</small></button>
+        <button class="skill-btn skill-btn--write"><span>W</span><small>写</small></button>
+      </div>
+    </div><!-- /dash-center-ring -->
+
+    <!-- 右列 -->
+    <div class="dash-col-right">
+
+      <!-- 今日任务 -->
+      <div class="card card--gold">
+        <div class="card__label">今日任务</div>
+        <div class="task-list">
+          <div class="task-item task-done">
+            <div class="task-check done"></div>
+            <span>完成听力练习</span>
+            <span class="task-tag tag-green">✓ 已完成</span>
+          </div>
+          <div class="task-item task-active">
+            <div class="task-check active"></div>
+            <span>口语跟读 Unit 3</span>
+            <span class="task-tag tag-blue">进行中</span>
+          </div>
+          <div class="task-item">
+            <div class="task-check"></div>
+            <span>阅读短文 2篇</span>
+            <span class="task-tag tag-muted">待完成</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:12px;">
+          继续学习 →
+        </button>
+      </div>
+
+      <!-- 连续打卡 -->
+      <div class="card">
+        <div class="card__label">连续打卡</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="streak-ring">7</div>
+          <div>
+            <div style="font-size:22px;font-weight:700;color:var(--ink);">7 天</div>
+            <div style="font-size:12px;color:var(--muted);">已连续学习</div>
+          </div>
+          <div style="margin-left:auto;text-align:center;">
+            <div style="font-size:11px;color:var(--muted);">个人最佳</div>
+            <div style="font-size:18px;font-weight:700;color:var(--gold);">14 天</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 学习报告 -->
+      <div class="card">
+        <div class="card__label">本周学习报告</div>
+        <div style="display:flex;gap:16px;">
+          <div class="report-metric">
+            <div class="report-val">5.2h</div>
+            <div class="report-lbl">总时长</div>
+          </div>
+          <div class="report-metric">
+            <div class="report-val" style="color:var(--green);">+12%</div>
+            <div class="report-lbl">环比上周</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:4px;align-items:flex-end;height:50px;">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="width:100%;height:28px;background:var(--listen);border-radius:3px;"></div>
+            <span style="font-size:10px;color:var(--muted);">一</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="width:100%;height:40px;background:var(--speak);border-radius:3px;"></div>
+            <span style="font-size:10px;color:var(--muted);">二</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="width:100%;height:20px;background:var(--read);border-radius:3px;"></div>
+            <span style="font-size:10px;color:var(--muted);">三</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="width:100%;height:35px;background:var(--write);border-radius:3px;"></div>
+            <span style="font-size:10px;color:var(--muted);">四</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="width:100%;height:45px;background:var(--accent);border-radius:3px;"></div>
+            <span style="font-size:10px;color:var(--muted);">五</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="width:100%;height:15px;background:var(--muted);border-radius:3px;opacity:.4;"></div>
+            <span style="font-size:10px;color:var(--muted);">六</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="width:100%;height:10px;background:var(--muted);border-radius:3px;opacity:.3;"></div>
+            <span style="font-size:10px;color:var(--muted);">日</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 抽屉浮层演示 -->
+      <div class="card">
+        <div class="card__label">抽屉浮层</div>
+        <button class="btn btn-primary" onclick="demoDrawer()">打开详情抽屉</button>
+      </div>
+
+    </div><!-- /dash-col-right -->
+
+  </div><!-- /dash-sym -->
+
+</div><!-- /page-wide -->
+</div><!-- /preview-dark -->
+
+<!-- ============================================================
+     抽屉浮层（共享 DOM）
+     ============================================================ -->
+<div id="drawer-overlay" class="drawer-overlay" onclick="closeDrawer(event)">
+  <div class="drawer-panel" onclick="event.stopPropagation()">
+    <div class="drawer-header">
+      <span class="drawer-title">学习详情</span>
+      <button class="drawer-close" onclick="closeDrawer()">&times;</button>
+    </div>
+    <div class="drawer-body">
+      <p style="color:var(--ink-soft);line-height:1.7;">
+        这里是抽屉浮层的示例内容。<br>
+        右侧滑入，不覆盖整个屏幕，适合展示次级信息。
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+function setTheme(mode, btn) {
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  if (btn && btn.classList) btn.classList.add('active');
+  const light = document.getElementById('preview-light');
+  const dark  = document.getElementById('preview-dark');
+  if (mode === 'light') { light.style.display='block'; dark.style.display='none'; }
+  else if (mode === 'dark')  { light.style.display='none';  dark.style.display='block'; }
+  else { light.style.display='block'; dark.style.display='block'; }
+}
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+}
+function demoDrawer() {
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+function closeDrawer(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+// 初始化：双预览模式
+setTheme('both');
+</script>
+
+</body>
+</html>
+

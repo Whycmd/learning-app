@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+
+# 编译产物
+backend/build/
+backend/src/*.o
+backend/src/*.d
+
+# 运行时临时文件
+word_tmp/
+
+# IDE
+.vscode/
+
+# 数据库备份（体量大，保留在磁盘但不纳入版本控制）
+backups/
+
+# Node
+node_modules/
+package-lock.json
+
+# 运行时生成的文档
+*.docx
+
+# 日志
+*.log
+logs/
+
+# 密钥与本地私有配置（人工修改渠道：复制 config/ai.example.json 为 config/ai.json 后填入自己的 Key）
+config/ai.json
+
+# 编辑器/工具本地文件
+.rooignore
+
+# 备份文件
+*.bak

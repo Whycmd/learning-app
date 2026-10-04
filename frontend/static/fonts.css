@@ -1,0 +1,32 @@
+/* 本地字体（离线可用）—— 复刻 Suratify 字体体系
+   Fraunces: 衬线展示字（标题）   Karla: 正文无衬线
+   仅含 latin 子集；中文标题回退 macOS Songti SC，正文回退 PingFang SC */
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/static/fonts/fraunces-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/static/fonts/fraunces-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Karla';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/static/fonts/karla-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Karla';
+  font-style: italic;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/static/fonts/karla-italic.woff2') format('woff2');
+}

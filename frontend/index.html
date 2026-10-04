@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>学习圣殿 · 首页仪表盘</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/components.css">
+<script src="/static/theme.js"></script>
+<script src="/static/nav.js"></script>
+</head>
+<body>
+<div id="topbar-slot"></div>
+
+<!-- 学习圣殿 · 首页（学习仪表盘）：五幕叙事轴 → 中轴对称三开间 → 登阶 → 留印
+     结构来源：设计稿 01D-设计稿-仪表盘首页-融合方案.html（样式类全部取自 components.css） -->
+<div class="page">
+
+  <!-- 一、微剧情五幕叙事轴（入殿 → 课规 → 观卷 → 留印 → 登阶） -->
+  <ol class="narr">
+    <li class="narr__node done">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><path d="M4 21V11.5C4 7 7.6 4 12 4s8 3 8 7.5V21"/><path d="M9 21v-7h6v7"/></svg>
+      </span>
+      <span class="narr__label">入殿</span>
+    </li>
+    <li class="narr__node now">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 8h5M9 12h6M9 16h6"/></svg>
+      </span>
+      <span class="narr__label">课规</span>
+    </li>
+    <li class="narr__node">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M3 4h3v16H3zM18 4h3v16h-3z"/><path d="M10 9h4M10 13h4"/></svg>
+      </span>
+      <span class="narr__label">观卷</span>
+    </li>
+    <li class="narr__node">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><rect x="8" y="8" width="8" height="8"/></svg>
+      </span>
+      <span class="narr__label">留印</span>
+    </li>
+    <li class="narr__node">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><path d="M4 20h5v-5h5v-5h5V5"/><path d="M2 22h20"/></svg>
+      </span>
+      <span class="narr__label">登阶</span>
+    </li>
+  </ol>
+
+  <!-- 二、圣殿主屏：中轴对称三开间（左厢 · 明间 · 右厢） -->
+  <div class="hall">
+
+    <!-- 西厢：本周课规 + 今日所得 -->
+    <div class="hall__wing">
+
+      <div class="wing-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 8h5M9 12h6M9 16h6"/></svg>
+          </span>
+          <span class="wing-card__title">本周课规</span>
+          <span class="wing-card__meta" id="weekly-meta">–</span>
+        </div>
+        <div id="weekly-body">
+          <div class="skeleton skeleton--text"></div>
+          <div class="skeleton skeleton--text"></div>
+        </div>
+        <div class="wing-card__foot u-row-sm">
+          <span id="weekly-foot">圣殿为你订下每周课规，钟响达成，即落印为证。</span>
+          <button class="btn btn-secondary u-btn-sm u-push-end" type="button" data-goal-open>设定课规</button>
+        </div>
+      </div>
+
+      <div class="wing-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h3.5a1.5 1.5 0 0 1 0 3h-2a1.5 1.5 0 0 0 0 3h3.5"/></svg>
+          </span>
+          <span class="wing-card__title">今日所得</span>
+          <span class="wing-card__meta" id="earn-meta">–</span>
+        </div>
+        <div class="task-list" id="earn-list">
+          <div class="skeleton skeleton--text"></div>
+          <div class="skeleton skeleton--text"></div>
+        </div>
+        <div class="wing-card__foot">桂香即功名香 —— 每一次坚持，都化作一枚金桂存入宝库。</div>
+      </div>
+
+    </div>
+
+    <!-- 明间：藻井（总熟练度）+ 圣殿称谓 + 听说读写四圆形入口 -->
+    <div class="hall__center">
+
+      <div class="caisson">
+        <svg class="caisson__svg" viewBox="0 0 240 240" aria-hidden="true">
+          <polygon class="caisson__oct" points="230,120 197.8,197.8 120,230 42.2,197.8 10,120 42.2,42.2 120,10 197.8,42.2"/>
+          <circle class="caisson__ring" cx="120" cy="120" r="104"/>
+          <circle class="caisson__ring caisson__ring--spin" cx="120" cy="120" r="96"/>
+          <g class="caisson__spokes">
+            <line x1="120" y1="28" x2="120" y2="46"/>
+            <line x1="120" y1="194" x2="120" y2="212"/>
+            <line x1="28" y1="120" x2="46" y2="120"/>
+            <line x1="194" y1="120" x2="212" y2="120"/>
+            <line x1="55" y1="55" x2="67" y2="67"/>
+            <line x1="185" y1="55" x2="173" y2="67"/>
+            <line x1="55" y1="185" x2="67" y2="173"/>
+            <line x1="185" y1="185" x2="173" y2="173"/>
+          </g>
+          <g class="caisson__quad">
+            <circle cx="120" cy="120" r="86"/>
+            <circle cx="120" cy="120" r="86"/>
+            <circle cx="120" cy="120" r="86"/>
+            <circle cx="120" cy="120" r="86"/>
+          </g>
+          <circle class="caisson__prog-bg" cx="120" cy="120" r="66"/>
+          <circle class="caisson__prog" cx="120" cy="120" r="66"/>
+          <circle class="caisson__core-ring" cx="120" cy="120" r="52"/>
+        </svg>
+        <div class="caisson__core">
+          <div class="caisson__num" id="prof-num">–<span>%</span></div>
+          <div class="caisson__cap">总熟练度</div>
+        </div>
+      </div>
+
+      <span class="caisson__tier" id="tier-label">称谓载入中…</span>
+
+      <!-- 四技能圆形入口：模块尚未开放，暂不可点（保留设计稿外观） -->
+      <div class="skills-row">
+        <button class="skill-btn skill-btn--listen" type="button" disabled title="听力 · 四技能模块开发中">
+          <svg viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+          <small>听力</small>
+        </button>
+        <button class="skill-btn skill-btn--speak" type="button" disabled title="口语 · 四技能模块开发中">
+          <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>
+          <small>口语</small>
+        </button>
+        <button class="skill-btn skill-btn--read" type="button" disabled title="阅读 · 四技能模块开发中">
+          <svg viewBox="0 0 24 24"><path d="M2 5h7a3 3 0 0 1 3 3v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-7a3 3 0 0 0-3 3v11a3 3 0 0 1 3-3h7z"/></svg>
+          <small>阅读</small>
+        </button>
+        <button class="skill-btn skill-btn--write" type="button" disabled title="写作 · 四技能模块开发中">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          <small>写作</small>
+        </button>
+      </div>
+    </div>
+
+    <!-- 东厢：观卷（今日复习队列） -->
+    <div class="hall__wing">
+      <div class="wing-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M3 4h3v16H3zM18 4h3v16h-3z"/></svg>
+          </span>
+          <span class="wing-card__title">观卷</span>
+          <span class="wing-card__meta" id="queue-meta">–</span>
+        </div>
+        <div class="scroll">
+          <div class="task-list" id="queue-list">
+            <div class="skeleton skeleton--text"></div>
+            <div class="skeleton skeleton--text"></div>
+            <div class="skeleton skeleton--text"></div>
+          </div>
+        </div>
+        <a class="btn btn-primary u-full u-mt-md" href="/pages/review.html">前往复习 →</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 三、登阶（圣殿称谓五级：书童 → 秀才 → 举人 → 进士 → 状元） -->
+  <section class="terrace">
+    <div class="terrace__head">
+      <h3>登阶</h3>
+      <span class="terrace__hint" id="terrace-hint">圣殿称谓 · –</span>
+    </div>
+    <p class="terrace__verse">寒窗苦读，自有功名加身 —— 固化次数累计达标，即晋一级，并一次性入账 100 金桂。</p>
+    <div class="stairs" id="stairs">
+      <div class="stair"><span class="stair__dot"></span></div>
+      <div class="stair"><span class="stair__dot"></span></div>
+      <div class="stair"><span class="stair__dot"></span></div>
+      <div class="stair"><span class="stair__dot"></span></div>
+      <div class="stair"><span class="stair__dot"></span></div>
+    </div>
+    <div class="terrace__axis"></div>
+    <div class="terrace__legend">
+      <span>书童</span><span>秀才</span><span>举人</span><span>进士</span><span>状元</span>
+    </div>
+  </section>
+
+  <!-- 四、留印（朱砂印墙：3 掌握成就 + 4 课规里程碑） -->
+  <section class="terrace">
+    <div class="terrace__head">
+      <h3>留印</h3>
+      <span class="terrace__hint" id="seal-hint">朱砂印 · –</span>
+    </div>
+    <p class="terrace__verse">学至纯熟，圣殿赐印为证 —— 印章只多不少、不可兑换消耗；灰色轮廓为未解锁，留作收集动力。</p>
+    <div class="seal-wall" id="seal-wall">
+      <div class="seal-item"><div class="skeleton skeleton--badge"></div></div>
+      <div class="seal-item"><div class="skeleton skeleton--badge"></div></div>
+      <div class="seal-item"><div class="skeleton skeleton--badge"></div></div>
+      <div class="seal-item"><div class="skeleton skeleton--badge"></div></div>
+      <div class="seal-item"><div class="skeleton skeleton--badge"></div></div>
+      <div class="seal-item"><div class="skeleton skeleton--badge"></div></div>
+      <div class="seal-item"><div class="skeleton skeleton--badge"></div></div>
+    </div>
+  </section>
+
+  <!-- AI 服务状态（原首页横幅中的健康徽章，保留并以行内状态呈现） -->
+  <p class="u-row-sm u-mt-md">
+    <span class="u-muted">AI 服务</span>
+    <span class="ai-status ai-status--ok" id="ai-status">AI: 就绪</span>
+  </p>
+
+</div>
+
+<!-- 设定课规 · 抽屉浮层（T103：由宝库页迁至仪表盘页，不整屏覆盖，保持上下文） -->
+<div class="drawer-overlay" id="goal-drawer">
+  <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="goal-drawer-title">
+    <div class="drawer-header">
+      <h3 class="drawer-title" id="goal-drawer-title">设定本周课规</h3>
+      <button class="drawer-close" type="button" data-goal-close aria-label="关闭">×</button>
+    </div>
+    <div class="drawer-body">
+      <label class="field-label" for="goal-type-select">课规类型</label>
+      <select class="input" id="goal-type-select">
+        <option value="review_items">复习 X 条</option>
+        <option value="new_words">学习 X 个新词</option>
+        <option value="quiz_count">完成 X 次小测</option>
+      </select>
+      <label class="field-label" for="goal-target-input">目标数量</label>
+      <input class="input" type="number" id="goal-target-input" min="1" placeholder="例如 30">
+      <p class="state-line u-mt-md" id="goal-drawer-msg"></p>
+      <button class="btn btn-primary btn-block u-mt-md" type="button" id="goal-save">保存课规</button>
+    </div>
+  </aside>
+</div>
+
+<script>
+// ============================================================
+// v1.3.0-T103 首页仪表盘：真实 API 驱动
+//   数据源：/api/treasury（课规 · 所得 · 称谓 · 朱砂印）
+//          /api/learn/stats（总熟练度）
+//          /api/learn/candidates（今日复习队列）
+//   六态：默认 / 加载（骨架屏） / 空（引导行动） / 错误（可重试） / 成功 / 边界（截断·封顶）
+//   注：不改后端接口，下列常量镜像 config/rewards.json；后端调整时需同步本表。
+// ============================================================
+const TITLES = [
+  { threshold: 10,   name: '书童' },
+  { threshold: 50,   name: '秀才' },
+  { threshold: 200,  name: '举人' },
+  { threshold: 500,  name: '进士' },
+  { threshold: 2000, name: '状元' }
+];
+const SEAL_TIERS = ['bronze', 'silver', 'gold', 'bronze', 'silver', 'gold', 'gilt'];
+const GOAL_REWARD = 30;   // rewards.json income.goal_done
+const GOAL_TYPES = { review_items: '复习', new_words: '学习新词', quiz_count: '完成小测' };
+const REASONS = {
+  quiz_done: '应试（小测完成）',
+  quiz_perfect: '妙笔（小测满分）',
+  review_done: '晨诵（每日复习）',
+  title_up: '登科（称谓升级）',
+  goal_done: '课规有成',
+  streak_bonus: '守规加持',
+  quiz_cost: '研墨（生成试题）',
+  solidify_cost: '镌刻（固化）',
+  lookup_spend: '问道（查词）',
+  wordbook_spend: '编经（单词本）'
+};
+const RING_LEN = 414.7;   // 藻井进度环周长（r = 66）
+const QUEUE_SHOWN = 5;    // 复习队列展示上限（边界态：极多数据只列前 5）
+const EARN_SHOWN = 4;     // 今日所得展示上限
+
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+// 三态小构件（错误态带重试，重试按钮由全局委托统一处理）
+function errorBox(msg) {
+  return '<p class="state-line state-line--danger">' + esc(msg) + '</p>' +
+         '<button class="btn btn-secondary u-btn-sm" type="button" data-retry>重试</button>';
+}
+function emptyBox(msg) { return '<p class="state-line">' + esc(msg) + '</p>'; }
+function todayStr() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+function daysLeftInWeek() {
+  const day = new Date().getDay();      // 0 = 周日
+  return 7 - (day === 0 ? 7 : day);     // 周一为 6，周日为 0
+}
+
+// ---------- 西厢一：本周课规 ----------
+function renderWeekly(goal) {
+  const foot = $('weekly-foot');
+  if (!goal) {
+    $('weekly-meta').textContent = '–';
+    $('weekly-body').innerHTML = errorBox('本周课规读取失败');
+    foot.textContent = '圣殿为你订下每周课规，钟响达成，即落印为证。';
+    return;
+  }
+  const target = Math.max(1, goal.target || 1);
+  const pct = Math.min(100, Math.round((goal.progress || 0) / target * 100));
+  const label = GOAL_TYPES[goal.goal_type] || '完成';
+  $('weekly-meta').textContent = label + ' · 目标 ' + goal.target + (goal.achieved ? ' · 已达成' : '');
+  $('weekly-body').innerHTML =
+    '<div class="u-row-sm">' +
+      '<span class="u-strong">已' + label + ' ' + (goal.progress || 0) + ' / ' + goal.target + '</span>' +
+      '<span class="u-gold u-push-end">' + pct + '%</span>' +
+    '</div>' +
+    '<div class="meter"><div class="meter__fill" id="weekly-fill"></div></div>';
+  $('weekly-fill').style.width = pct + '%';
+  const rest = daysLeftInWeek();
+  foot.textContent = goal.achieved
+    ? '本周课规已达成，印已落。新的一周重新起规 · 未达成不惩罚。'
+    : '圣殿为你订下每周课规，钟响达成，即落印为证。达成 +' + GOAL_REWARD + ' 金桂 · 剩余 ' + rest + ' 天 · 未达成自动作废不惩罚。';
+  // 同步抽屉表单初值
+  $('goal-type-select').value = goal.goal_type;
+  $('goal-target-input').value = goal.target;
+}
+
+// ---------- 西厢二：今日所得 ----------
+function renderEarnings(txns) {
+  const list = (txns || []).filter(t => t.delta > 0 && String(t.created_at || '').startsWith(todayStr()));
+  const sum = list.reduce((acc, t) => acc + t.delta, 0);
+  $('earn-meta').textContent = '金桂 +' + sum;
+  if (!list.length) {
+    $('earn-list').innerHTML = emptyBox('今日尚无进项 —— 完成每日复习或小测即可得金桂。');
+    return;
+  }
+  $('earn-list').innerHTML = list.slice(0, EARN_SHOWN).map(t => {
+    const reason = REASONS[t.reason_code] || t.reason_code;
+    return '<div class="task-item task-item--static">' +
+      '<span class="task-check done"></span>' +
+      '<span class="task-text u-truncate" title="' + esc(reason) + '">' + esc(reason) + '</span>' +
+      '<span class="task-flag u-gold">+' + t.delta + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+// ---------- 明间一：总熟练度（藻井进度环） ----------
+function renderProficiency(dist) {
+  let weighted = 0, count = 0;
+  (dist || []).forEach(d => { weighted += (d.level || 0) * (d.count || 0); count += (d.count || 0); });
+  const pct = count ? Math.round(weighted / (count * 5) * 100) : 0;   // 熟练度 0–5，5 为满级
+  $('prof-num').innerHTML = pct + '<span>%</span>';
+  const ring = document.querySelector('.caisson__prog');
+  if (ring) ring.style.strokeDashoffset = String(RING_LEN * (1 - pct / 100));
+}
+
+// ---------- 明间二 + 登阶：圣殿称谓 ----------
+function renderTier(solidifyCount) {
+  let cur = null, next = null;
+  for (const t of TITLES) { if (solidifyCount >= t.threshold) cur = t; else { next = t; break; } }
+  if (cur && !next) $('tier-label').textContent = cur.name + ' · 已至最高阶';
+  else if (cur) {
+    $('tier-label').textContent = cur.name + ' · 距' + next.name + '还需 ' + (next.threshold - solidifyCount) + ' 次固化';
+    $('terrace-hint').textContent = '圣殿称谓 · ' + cur.name + '（已固化 ' + solidifyCount + ' / ' + next.threshold + ' 次）';
+  } else {
+    $('tier-label').textContent = '未入阶 · 距书童还需 ' + (TITLES[0].threshold - solidifyCount) + ' 次固化';
+    $('terrace-hint').textContent = '圣殿称谓 · 未入阶（已固化 ' + solidifyCount + ' / ' + TITLES[0].threshold + ' 次）';
+  }
+  if (cur && !next) $('terrace-hint').textContent = '圣殿称谓 · ' + cur.name + '（已固化 ' + solidifyCount + ' 次 · 满阶）';
+  // 踏跺：已达级为成，当前级为“此刻”
+  const stairs = $('stairs').children;
+  TITLES.forEach((t, i) => {
+    const node = stairs[i];
+    node.classList.remove('stair--done', 'stair--now');
+    if (solidifyCount >= t.threshold) {
+      const isNow = !TITLES[i + 1] || solidifyCount < TITLES[i + 1].threshold;
+      node.classList.add(isNow ? 'stair--now' : 'stair--done');
+    }
+  });
+}
+
+// ---------- 四、留印：朱砂印墙 ----------
+function renderSeals(seals) {
+  if (!Array.isArray(seals) || !seals.length) {
+    $('seal-hint').textContent = '朱砂印 · –';
+    $('seal-wall').innerHTML = errorBox('朱砂印读取失败');
+    return;
+  }
+  const earned = seals.filter(s => s.earned).length;
+  $('seal-hint').textContent = '朱砂印 · 已得 ' + earned + ' / ' + seals.length + ' 印';
+  $('seal-wall').innerHTML = seals.map((s, i) => {
+    const tier = 'seal-stamp--' + (SEAL_TIERS[i] || 'bronze');
+    const locked = s.earned ? '' : ' seal-stamp--locked';
+    const tip = (s.label_cn || '') + ' · ' + (s.label_sub || '') + (s.earned ? '（已得）' : '（未解锁）');
+    return '<figure class="seal-item">' +
+      '<div class="seal-stamp ' + tier + locked + '" title="' + esc(tip) + '">' + esc(s.label_cn || '') + '</div>' +
+      '<figcaption class="seal-cap">' + esc(s.label_sub || '') + '</figcaption>' +
+    '</figure>';
+  }).join('');
+}
+
+// ---------- 东厢：观卷（今日复习队列） ----------
+function renderQueue(res) {
+  const list = (res && res.data) || [];
+  const total = (res && typeof res.total === 'number') ? res.total : list.length;
+  $('queue-meta').textContent = '今日 ' + total + ' 条' + (total > QUEUE_SHOWN ? '（列前 ' + QUEUE_SHOWN + '）' : '');
+  if (!total) {
+    $('queue-list').innerHTML = emptyBox('今日无待复习词条 —— 先去录入知识点，圣殿自会为你排卷。');
+    return;
+  }
+  $('queue-list').innerHTML = list.slice(0, QUEUE_SHOWN).map((it, i) => {
+    const word = it.standard_content || it.user_input_content || '（未命名词条）';
+    return '<a class="task-item" href="/pages/review.html" title="' + esc(word) + '">' +
+      '<span class="task-check' + (i === 0 ? ' now' : '') + '"></span>' +
+      '<span class="task-text u-truncate">' + esc(word) + '</span>' +
+      '<span class="task-flag">L' + it.proficiency_level + ' ' + esc(it.proficiency_name || '') + '</span>' +
+    '</a>';
+  }).join('');
+}
+
+// ---------- 主加载：逐区独立容错，任一路失败不影响其余区块 ----------
+async function load() {
+  try {
+    const t = await (await fetch('/api/treasury', { cache: 'no-store' })).json();
+    renderWeekly(t.weekly_goal);
+    renderEarnings(t.txns);
+    renderTier(t.solidify_count || 0);
+    renderSeals(t.seals);
+  } catch (e) {
+    renderWeekly(null);
+    $('earn-meta').textContent = '–';
+    $('earn-list').innerHTML = errorBox('今日所得读取失败');
+    $('tier-label').textContent = '称谓载入失败';
+    $('terrace-hint').textContent = '圣殿称谓 · –';
+    renderSeals(null);
+  }
+  try {
+    const s = await (await fetch('/api/learn/stats', { cache: 'no-store' })).json();
+    renderProficiency(s.distribution);
+  } catch (e) {
+    $('prof-num').textContent = '–';
+  }
+  try {
+    const q = await (await fetch('/api/learn/candidates', { cache: 'no-store' })).json();
+    renderQueue(q);
+  } catch (e) {
+    $('queue-meta').textContent = '–';
+    $('queue-list').innerHTML = errorBox('复习队列读取失败');
+  }
+}
+
+// ---------- 设定课规 · 抽屉浮层（T103：由宝库页迁入本页） ----------
+function openGoal() {
+  const msg = $('goal-drawer-msg');
+  msg.className = 'state-line u-mt-md';
+  msg.textContent = '';
+  $('goal-drawer').classList.add('open');
+}
+function closeGoal() { $('goal-drawer').classList.remove('open'); }
+
+async function saveWeeklyGoal() {
+  const msg = $('goal-drawer-msg'), btn = $('goal-save');
+  const type = $('goal-type-select').value;
+  const target = parseInt($('goal-target-input').value, 10);
+  if (!target || target <= 0) {
+    msg.className = 'state-line state-line--danger u-mt-md';
+    msg.textContent = '请输入大于 0 的目标数。';
+    return;
+  }
+  btn.disabled = true;
+  msg.className = 'state-line u-mt-md';
+  msg.textContent = '保存中…';
+  try {
+    const r = await fetch('/api/treasury/weekly-goal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goal_type: type, target: target })
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || '保存失败');
+    msg.className = 'state-line state-line--success u-mt-md';
+    msg.textContent = '课规已更新。';
+    await load();
+    setTimeout(closeGoal, 700);
+  } catch (e) {
+    msg.className = 'state-line state-line--danger u-mt-md';
+    msg.textContent = '保存失败：' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-goal-open]')) { openGoal(); return; }
+  if (e.target.closest('[data-goal-close]')) { closeGoal(); return; }
+  if (e.target.id === 'goal-drawer') { closeGoal(); return; }   // 点遮罩关闭
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeGoal(); });
+$('goal-save').addEventListener('click', saveWeeklyGoal);
+
+// 错误态「重试」：全局委托（区块内按钮为动态渲染）
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-retry]')) load();
+});
+
+load();
+
+// ---------- AI 健康状态徽章（每 30s 轮询） ----------
+async function updateAiStatus() {
+  const el = $('ai-status');
+  if (!el) return;
+  try {
+    const h = await (await fetch('/api/health', { cache: 'no-store' })).json();
+    const t = h.ai_tasks || {};
+    if (!h.ai) {
+      el.className = 'ai-status ai-status--bad';
+      el.textContent = 'AI: 离线';
+    } else if (h.ai_degraded) {
+      el.className = 'ai-status ai-status--warn';
+      el.textContent = 'AI: 受限';
+    } else if ((t.failed || 0) > 0) {
+      el.className = 'ai-status ai-status--warn';
+      el.textContent = 'AI: ' + t.failed + ' 失败待重试';
+    } else {
+      el.className = 'ai-status ai-status--ok';
+      el.textContent = 'AI: 就绪';
+    }
+  } catch (e) {
+    el.className = 'ai-status ai-status--bad';
+    el.textContent = 'AI: 未知';
+  }
+}
+updateAiStatus();
+setInterval(updateAiStatus, 30000);
+</script>
+</body>
+</html>

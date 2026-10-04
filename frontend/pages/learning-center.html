@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>学情中心 · 英语学习</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/components.css">
+<script src="/static/theme.js"></script>
+<script src="/static/nav.js"></script>
+</head>
+<body>
+<div id="topbar-slot"></div>
+
+<div class="page">
+
+  <div class="dougong-bar">
+    <svg viewBox="0 0 400 32"><path d="M0 32 L40 18 L60 28 L80 12 L100 24 L120 8 L140 20 L160 4 L180 16 L200 0 L220 16 L240 4 L260 20 L280 8 L300 24 L320 12 L340 28 L360 18 L400 32Z" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/></svg>
+  </div>
+
+  <h1 class="section-title">学情中心</h1>
+  <p class="section-sub">学习数据统计 · 熟练度分布 · 近 30 天学习趋势</p>
+
+  <!-- 电脑端左右两栏（对齐设计稿 03-设计稿-学情中心.html） -->
+  <div class="lc-grid">
+
+    <!-- ============ 左栏 ============ -->
+    <div class="lc-col">
+
+      <!-- 学情概要（stat-grid 4 stat-card） -->
+      <div class="wing-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
+          </span>
+          <span class="wing-card__title">学情概要</span>
+          <span class="wing-card__meta" id="dash-meta">加载中…</span>
+        </div>
+        <div class="lc-stat-grid">
+          <div class="lc-stat-card">
+            <div class="lc-stat-card__icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            </div>
+            <div class="lc-stat-card__num" id="stat-total">–</div>
+            <div class="lc-stat-card__label">知识点总数</div>
+          </div>
+          <div class="lc-stat-card">
+            <div class="lc-stat-card__icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            </div>
+            <div class="lc-stat-card__num" id="stat-due">–</div>
+            <div class="lc-stat-card__label">今日待复习</div>
+          </div>
+          <div class="lc-stat-card">
+            <div class="lc-stat-card__icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h3.5a1.5 1.5 0 0 1 0 3h-2a1.5 1.5 0 0 0 0 3h3.5"/></svg>
+            </div>
+            <div class="lc-stat-card__num" id="stat-mastered">–</div>
+            <div class="lc-stat-card__label">已掌握 (L5)</div>
+          </div>
+          <div class="lc-stat-card">
+            <div class="lc-stat-card__icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            </div>
+            <div class="lc-stat-card__num lc-stat-card__num--sm" id="stat-avg">–</div>
+            <div class="lc-stat-card__label">平均熟练度 / 5</div>
+          </div>
+        </div>
+
+        <div class="lc-sub-row">
+          <span class="lc-streak">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--vermillion)" stroke-width="2"><path d="M12 2s4 4 4 9a4 4 0 1 1-8 0c0-5 4-9 4-9z"/><path d="M5 18c1-2 3-3 7-3s6 1 7 3"/></svg>
+            <span class="lc-streak__num" id="streak-num">0</span>
+            <span class="lc-streak__unit">天连续打卡</span>
+          </span>
+          <span class="u-muted">累计复习 <b id="stat-rt">0</b> · 累计错题 <b id="stat-et">0</b></span>
+        </div>
+      </div>
+
+      <!-- 熟练度分布 -->
+      <div class="wing-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10m6 10V4m6 16v-8m4 8V2"/></svg>
+          </span>
+          <span class="wing-card__title">熟练度分布</span>
+          <span class="wing-card__meta">0 未掌握 → 5 满级终止</span>
+        </div>
+        <div id="dist-wrap"></div>
+      </div>
+
+    </div><!-- /lc-col 左栏 -->
+
+    <!-- ============ 右栏 ============ -->
+    <div class="lc-col">
+
+      <!-- 近 30 天学习趋势（设计稿 .chart-wrap） -->
+      <div class="wing-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
+          </span>
+          <span class="wing-card__title">近 30 天学习趋势</span>
+          <span class="wing-card__meta" id="chart-meta">加载中…</span>
+        </div>
+        <div class="lc-chart-wrap">
+          <svg id="chart-svg" viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg">
+            <!-- 由 JS 动态渲染 -->
+          </svg>
+        </div>
+        <div class="u-muted u-flex-row" id="chart-legend"></div>
+      </div>
+
+    </div><!-- /lc-col 右栏 -->
+
+  </div><!-- /lc-grid -->
+
+  <!-- 主区末尾：维护入口按钮组（按用户要求，与设计稿内置不同） -->
+  <div class="lc-footer-actions">
+    <button class="btn btn-secondary lc-wb-icon" data-open="drawer-maintain">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      数据维护
+    </button>
+  </div>
+
+</div><!-- /.page -->
+
+<!-- ============== 维护抽屉（备份/重置/清理） ============== -->
+<div class="drawer-overlay" id="drawer-maintain">
+  <aside class="drawer-panel" role="dialog" aria-modal="true">
+    <div class="drawer-header">
+      <span class="drawer-title">数据维护</span>
+      <button class="drawer-close" data-close="drawer-maintain" aria-label="关闭">×</button>
+    </div>
+    <div class="drawer-body">
+
+      <div class="wing-card lc-wing-gap">
+        <div class="wing-card__cap lc-cap-tight">
+          <span class="wing-card__title">数据备份</span>
+          <span class="wing-card__meta">导出本地 .sql</span>
+        </div>
+        <p class="u-muted lc-note">备份文件存放于 backups/ 目录，可随时离线恢复。</p>
+        <button class="btn btn-primary btn-block" id="btn-backup">立即数据备份</button>
+        <p class="state-line lc-msg" id="backup-msg"></p>
+        <p class="u-muted lc-note-bold">历史备份</p>
+        <div id="backup-list"><p class="state-line">加载中…</p></div>
+      </div>
+
+      <div class="wing-card lc-wing-gap">
+        <div class="wing-card__cap lc-cap-tight">
+          <span class="wing-card__title">学情重置</span>
+          <span class="wing-card__meta">不删除已固化知识点</span>
+        </div>
+        <p class="u-muted lc-note">仅清空学习进度（熟练度/复习次数/错误次数）。</p>
+        <label class="field-label">单条重置</label>
+        <select class="input" id="reset-sel"></select>
+        <button class="btn btn-secondary btn-block lc-mt-md" id="btn-reset-one">重置该知识点学情</button>
+        <button class="btn btn-secondary btn-block lc-mt-sm" id="btn-reset-all">全量学情清空</button>
+        <p class="state-line lc-msg" id="reset-msg"></p>
+      </div>
+
+      <div class="wing-card">
+        <div class="wing-card__cap lc-cap-tight">
+          <span class="wing-card__title">临时文件</span>
+          <span class="wing-card__meta">习题 Word 自动清理</span>
+        </div>
+        <p class="u-muted lc-note">软件启动时清理，运行中每小时自动删除超过 1 小时的文件。</p>
+        <button class="btn btn-secondary btn-block" id="btn-cleanup">立即扫描清理临时 Word</button>
+        <p class="state-line lc-msg" id="clean-msg"></p>
+      </div>
+
+    </div>
+  </aside>
+</div>
+
+<script>
+(() => {
+  const LNAME = ['未掌握','生疏','理解','熟练','精通','满级'];
+  const DIST_FILL = { 0:'var(--muted)', 1:'var(--vermillion-soft)', 2:'var(--gold-soft)', 3:'var(--gold)', 4:'var(--gold-dark)', 5:'var(--accent)' };
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+  function setMsg(id, cls, t) {
+    const e = document.getElementById(id);
+    e.className = 'state-line lc-msg ' + (cls || '');
+    e.textContent = t;
+  }
+
+  // —— 抽屉开关（统一事件委托） ——
+  function openDrawer(id) { document.getElementById(id)?.classList.add('open'); }
+  function closeDrawer(id) { document.getElementById(id)?.classList.remove('open'); }
+  document.addEventListener('click', (e) => {
+    const openBtn = e.target.closest('[data-open]');
+    if (openBtn) { openDrawer(openBtn.dataset.open); return; }
+    const closeBtn = e.target.closest('[data-close]');
+    if (closeBtn) { closeDrawer(closeBtn.dataset.close); return; }
+    const overlay = e.target.closest('.drawer-overlay.open');
+    if (overlay && e.target === overlay) { closeDrawer(overlay.id); return; }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.drawer-overlay.open').forEach(o => o.classList.remove('open'));
+  });
+
+  // —— 1. 学情概要（stat-grid）+ 熟练度分布 ——
+  async function loadStats() {
+    const s = await fetch('/api/learn/stats').then(x => x.json()).catch(() => ({}));
+    document.getElementById('stat-total').textContent = s.total ?? '–';
+    document.getElementById('stat-due').textContent = s.due_for_review ?? '–';
+    document.getElementById('stat-mastered').textContent = s.mastered_count ?? '–';
+    document.getElementById('stat-avg').textContent = (s.avg_proficiency ?? 0).toFixed(2);
+    document.getElementById('stat-rt').textContent = s.review_times_sum ?? 0;
+    document.getElementById('stat-et').textContent = s.error_times_sum ?? 0;
+    document.getElementById('dash-meta').textContent =
+      `共 ${s.total || 0} 条 · 平均熟练度 ${(s.avg_proficiency ?? 0).toFixed(2)} / 5`;
+
+    const total = s.total || 0;
+    const map = {};
+    for (const d of (s.distribution || [])) map[d.level] = d.count;
+    let html = '';
+    // L5 在最上 → 对齐设计稿顺序（L5 精通 → L0 未学）
+    for (let lv = 5; lv >= 0; lv--) {
+      const cnt = map[lv] || 0;
+      const pct = total ? Math.round(cnt / total * 100) : 0;
+      html +=
+        `<div class="lc-dist-row">
+           <span class="lc-dist-row__label">L${lv} · ${esc(LNAME[lv])}</span>
+           <div class="lc-dist-row__bar">
+             <span class="lc-dist-row__fill" style="width:${pct}%;background:${DIST_FILL[lv]}"></span>
+           </div>
+           <span class="lc-dist-row__count">${cnt}</span>
+         </div>`;
+    }
+    document.getElementById('dist-wrap').innerHTML = html || '<p class="state-line">暂无数据</p>';
+  }
+
+  // —— 2. 近 30 天学习趋势 SVG 折线图（对齐设计稿 .chart-wrap） ——
+  async function loadChart() {
+    const c = await fetch('/api/learn/review-calendar?days=30').then(x => x.json()).catch(() => ({}));
+    const days = c.days || [];
+
+    // 生成连续 30 天（从今天往回数）
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const map = {};
+    for (const d of days) map[d.date] = d.count;
+    const arr = [];
+    for (let i = 29; i >= 0; i--) {
+      const dt = new Date(today);
+      dt.setDate(today.getDate() - i);
+      const k = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+      arr.push({ key: k, count: map[k] || 0, date: dt });
+    }
+
+    // SVG viewBox 700×200，边距左 40 右 20 上 15 下 25
+    const W = 700, H = 200, LX = 40, RX = 20, TY = 15, BY = 25;
+    const plotW = W - LX - RX;
+    const plotH = H - TY - BY;
+    const maxCount = Math.max(1, ...arr.map(a => a.count));
+    const xStep = plotW / (arr.length - 1);
+    const points = arr.map((a, i) => {
+      const x = LX + i * xStep;
+      // y: count=0 在 plotH 底部，count=max 在 TY
+      const y = TY + plotH - (a.count / maxCount * plotH);
+      return { x, y, count: a.count, date: a.date };
+    });
+
+    // grid 线（4 条，均分 plotH）
+    let gridLines = '';
+    for (let i = 0; i < 4; i++) {
+      const y = TY + (plotH * i / 3);
+      const labelY = ['高', '中', '低'][i];
+      gridLines += `<line class="lc-chart__grid" x1="${LX}" y1="${y}" x2="${W-RX}" y2="${y}"/>`;
+      gridLines += `<text class="lc-chart__label" x="${LX-6}" y="${y+4}" text-anchor="end">${labelY || ''}</text>`;
+    }
+
+    // polyline
+    const polyStr = points.map(p => `${p.x},${p.y}`).join(' ');
+
+    // area path（从 polyline 末点到底部再闭合）
+    const areaStr = `M${points[0].x},${TY+plotH} L${polyStr.replace(/ /g, ' L')} L${points[points.length-1].x},${TY+plotH} Z`;
+
+    // dots
+    let dots = points.map(p => `<circle class="lc-chart__dot" cx="${p.x}" cy="${p.y}" r="3.5"/>`).join('');
+
+    // x 轴 labels（5 个等分点）
+    const labelIdxs = [0, 7, 14, 21, 29];
+    let xLabels = '';
+    for (const idx of labelIdxs) {
+      const p = points[idx];
+      const m = p.date.getMonth() + 1;
+      const d = p.date.getDate();
+      let hint = '';
+      if (idx === 0) hint = '30天前';
+      else if (idx === 29) hint = '今天';
+      xLabels += `<text class="lc-chart__label" x="${p.x}" y="${H-BY+16}" text-anchor="middle">${m}/${d}${hint ? ' · ' + hint : ''}</text>`;
+    }
+
+    // 峰值标注
+    const peakIdx = points.reduce((mi, p, i, arr) => p.count > arr[mi].count ? i : mi, 0);
+    if (points[peakIdx].count > 0 && arr.length > 0) {
+      const p = points[peakIdx];
+      gridLines += `<text class="lc-chart__value" x="${p.x}" y="${p.y-6}" text-anchor="middle" fill="var(--accent)" font-size="11">峰值 ${p.count} 词</text>`;
+    }
+
+    const svg = `
+${gridLines}
+<path class="lc-chart__area" d="${areaStr}"/>
+<polyline class="lc-chart__line" points="${polyStr}"/>
+${dots}
+${xLabels}`;
+
+    document.getElementById('chart-svg').innerHTML = svg;
+
+    // 图例
+    const totalDays = arr.filter(a => a.count > 0).length;
+    const totalWords = arr.reduce((s, a) => s + a.count, 0);
+    const avg = totalDays ? Math.round(totalWords / totalDays) : 0;
+    document.getElementById('chart-meta').textContent = `近 30 天 · 共 ${totalWords} 次复习`;
+    document.getElementById('chart-legend').innerHTML =
+      `<span>复习词数（每日）</span>
+       <span>峰值：${points[peakIdx].count} 词</span>
+       <span>均值：约 ${avg} 词/天</span>`;
+
+    // 连续打卡
+    document.getElementById('streak-num').textContent = c.streak || 0;
+  }
+
+  // —— 3. 备份 / 重置 / 清理（维护抽屉） ——
+  async function doBackup() {
+    const btn = document.getElementById('btn-backup');
+    btn.disabled = true;
+    setMsg('backup-msg', '', '备份中…');
+    const r = await fetch('/api/maint/backup', {method:'POST'}).then(x => x.json()).catch(() => ({}));
+    btn.disabled = false;
+    if (r.ok) { setMsg('backup-msg', 'state-line--success', `备份成功：${(r.size/1024).toFixed(1)} KB`); loadBackups(); }
+    else setMsg('backup-msg', 'state-line--danger', r.error || '备份失败');
+  }
+
+  async function loadBackups() {
+    const list = await fetch('/api/maint/backups').then(x => x.json()).catch(() => []);
+    const el = document.getElementById('backup-list');
+    if (!list.length) { el.innerHTML = '<p class="state-line">暂无备份</p>'; return; }
+    el.innerHTML = list.map(b =>
+      `<div class="lc-backup">
+         <span class="lc-backup__date">${esc(b.time)}</span>
+         <span class="lc-backup__size">${(b.size/1024).toFixed(1)} KB</span>
+         <a class="btn btn-secondary u-btn-sm lc-backup__action" href="/api/word/download?path=${encodeURIComponent(b.path)}">下载</a>
+       </div>`
+    ).join('');
+  }
+
+  async function loadResetList() {
+    const r = await fetch('/api/kp?limit=1000').then(x => x.json()).catch(() => ({}));
+    const sel = document.getElementById('reset-sel');
+    sel.innerHTML = (r.data || []).map(k =>
+      `<option value="${k.id}">${esc(k.standard_content || k.user_input_content)}</option>`
+    ).join('') || '<option value="">（暂无可重置知识点）</option>';
+  }
+
+  async function resetOne() {
+    const sel = document.getElementById('reset-sel');
+    if (!sel.value) { setMsg('reset-msg', 'state-line--danger', '请先选择要重置的知识点'); return; }
+    const r = await fetch(`/api/maint/reset-learning/${sel.value}`, {method:'POST'}).then(x => x.json()).catch(() => ({}));
+    setMsg('reset-msg', r.ok ? 'state-line--success' : 'state-line--danger', r.ok ? '已重置该知识点学情' : (r.error || '重置失败'));
+    if (r.ok) loadStats();
+  }
+
+  async function clearAll() {
+    if (!confirm('确定清空全部学情？已固化知识点不会删除。')) return;
+    const r = await fetch('/api/maint/clear-all-learning', {method:'POST'}).then(x => x.json()).catch(() => ({}));
+    setMsg('reset-msg', r.ok ? 'state-line--success' : 'state-line--danger', r.ok ? '已全部清空' : (r.error || '操作失败'));
+    if (r.ok) loadStats();
+  }
+
+  async function cleanup() {
+    const r = await fetch('/api/maint/cleanup-temp-word?max_age=0', {method:'POST'}).then(x => x.json()).catch(() => ({}));
+    setMsg('clean-msg', 'state-line--success', `清理完成：删除 ${r.deleted || 0} 个文件`);
+  }
+
+  document.getElementById('btn-backup').addEventListener('click', doBackup);
+  document.getElementById('btn-reset-one').addEventListener('click', resetOne);
+  document.getElementById('btn-reset-all').addEventListener('click', clearAll);
+  document.getElementById('btn-cleanup').addEventListener('click', cleanup);
+
+  loadStats();
+  loadChart();
+  loadBackups();
+  loadResetList();
+})();
+</script>
+</body>
+</html>

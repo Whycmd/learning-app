@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>学习圣殿 · 仪表盘 · 融合方案 D「点金圣殿对齐版」 · v1.3.0-T101</title>
+<style>
+/* ============================================================
+   T101 设计稿 融合方案 D「点金圣殿对齐版」
+   来源：01C 融合方案 C（骨架取 B、密度与用色取 A）
+   本轮四项落实：
+     1) 叙事与内容对齐《v1.3.0-T005 点金圣殿设计计划》（金桂 / 朱砂印 / 圣殿称谓 / 本周课规）
+     2) 顶部导航与主体内容之间新增鎏金渐变条分界（.temple-roof 移到导航之下）
+     3) 导航右侧成就激励区（金桂 / 称谓 / 头像）经竖杠分隔后推到导航最右端，与导航链接分离不紧贴
+     4) 左右对称：中列固定 360px，左右两厢同为 1fr 严格等宽 → 藻井精确居中；
+        听说读写四个圆形入口独立成行、整体居中
+   并存资产：方案 A（01）、方案 B（01B）、融合方案 C（01C）保留作后期参考
+   ============================================================ */
+
+/* ---- 令牌 v2 ---- */
+:root {
+  --ink:#1c1917; --ink-soft:#44403c; --muted:#78716c;
+  --line:rgba(28,25,23,.09); --line-strong:rgba(28,25,23,.14);
+  --paper:#faf7f2; --paper-deep:#f0ebe3;
+  --surface:rgba(255,253,248,.92); --surface-solid:#fffdf8;
+  --accent:#b45309; --accent-hover:#9a3412;
+  --accent-glow:rgba(180,83,9,.25); --accent-wash:rgba(180,83,9,.07);
+  --gold:#d4a843; --gold-light:#f5e6b8; --gold-dark:#b8860b;
+  --gold-glow:rgba(212,168,67,.30); --gold-wash:rgba(212,168,67,.08);
+  --vermillion:#c0392b; --vermillion-wash:rgba(192,57,43,.08); --vermillion-light:#e74c3c;
+  /* 柔和变体：用于大面积着色，压低对比度（标识仍用原色相） */
+  --vermillion-soft:#b06a5e;
+  --gold-soft:#d8bd7e;
+  --listen:#0891b2; --speak:#ea580c; --read:#2563eb; --write:var(--accent);
+  --listen-soft:#78a7b6; --speak-soft:#c28457; --read-soft:#8194bd; --write-soft:#b08a52;
+  --success:#059669; --success-wash:rgba(5,150,105,.08);
+  --danger:#9f1239; --warning:#d97706;
+  /* 朱砂印四色阶：铜 / 银 / 金 / 鎏金（对齐设计计划 3.1 节） */
+  --seal-bronze:#b07a4a; --seal-silver:#8f979e; --seal-gold:var(--gold); --seal-gilt:#a97b1f;
+  --font-display:"Fraunces","Songti SC","STSong","Noto Serif SC",Georgia,serif;
+  --font-body:"Karla",system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px; --r-circle:50%; --r-pill:999px;
+  --sh-sm:0 1px 0 rgba(28,25,23,.06);
+  --sh-card:0 12px 40px rgba(28,25,23,.07),0 2px 8px rgba(28,25,23,.04);
+  --sh-float:0 22px 50px rgba(28,25,23,.12);
+  --sh-gold:0 8px 30px rgba(180,83,9,.18),0 2px 8px rgba(212,168,67,.10);
+  --dur-fast:120ms; --dur-mid:240ms; --dur-slow:400ms;
+  --ease-out:cubic-bezier(.22,.61,.36,1);
+  --z-nav:100; --z-drawer:200; --z-overlay:300;
+  --sp-xs:4px; --sp-sm:8px; --sp-md:16px; --sp-lg:24px; --sp-xl:32px; --sp-2xl:48px;
+  --page-max:1120px;
+  /* 需求4 固定约束：中列固定宽度（容纳 300px 藻井 + 四技能横排 352px） */
+  --center-col:360px;
+}
+
+/* 暗色主题层 — 圣殿夜间模式：装饰降量，文字优先 */
+html[data-theme="dark"], [data-theme="dark"] {
+  --ink:#e8e0d4; --ink-soft:#b8afa4; --muted:#78716c;
+  --line:rgba(232,224,212,.10); --line-strong:rgba(232,224,212,.18);
+  --paper:#1a1714; --paper-deep:#12100e;
+  --surface:rgba(30,27,24,.92); --surface-solid:#1e1b18;
+  --accent-glow:rgba(212,168,67,.22); --accent-wash:rgba(212,168,67,.07);
+  --gold-glow:rgba(212,168,67,.35); --gold-wash:rgba(212,168,67,.08);
+  --vermillion-wash:rgba(192,57,43,.12);
+  --success-wash:rgba(5,150,105,.10);
+  /* 暗色下柔和变体提亮，避免糊进底色 */
+  --vermillion-soft:#c98a7d;
+  --gold-soft:#c8ab6c;
+  --listen-soft:#8bb6c4; --speak-soft:#cf9a6e; --read-soft:#95a6c9; --write-soft:#c09c66;
+  --seal-bronze:#c69a72; --seal-silver:#adb5bb; --seal-gold:var(--gold-soft); --seal-gilt:#d7ac55;
+  --sh-sm:0 1px 0 rgba(0,0,0,.30);
+  --sh-card:0 12px 40px rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.20);
+  --sh-float:0 22px 50px rgba(0,0,0,.45);
+  --sh-gold:0 8px 30px rgba(212,168,67,.15),0 2px 8px rgba(0,0,0,.30);
+}
+
+/* ---- Reset ---- */
+*,*::before,*::after{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--font-body); font-size:15px; line-height:1.6;
+  color:var(--ink); background:var(--paper-deep);
+  -webkit-font-smoothing:antialiased; min-height:100vh;
+}
+h1,h2,h3{font-family:var(--font-display);color:var(--ink);margin:0;font-weight:600;}
+a{color:var(--accent);text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+input,textarea,select{font-family:inherit;font-size:15px;color:var(--ink);}
+[data-theme="dark"]{background:var(--paper-deep);color:var(--ink);}
+
+.page{width:100%;max-width:var(--page-max);margin:0 auto;padding:0 var(--sp-lg) var(--sp-2xl);}
+
+/* ============================================================
+   一、门额导航 + 导航与内容的分界（需求2 / 需求3）
+   .topbar 常驻吸顶：内含 .topnav（导航）与 .temple-roof（鎏金渐变条）
+   → 渐变条位于「导航」与「下方主体内容」之间，形成明显视觉区分
+   ============================================================ */
+.topbar{
+  position:sticky; top:0; z-index:var(--z-nav);
+  background:var(--paper-deep);
+  padding:0 var(--sp-lg);
+  margin:0 calc(-1 * var(--sp-lg)) var(--sp-2xl);
+}
+.topnav{display:flex;align-items:center;flex-wrap:wrap;gap:0;}
+
+/* 品牌（当前页＝仪表盘首页） */
+.topnav__brand{
+  display:inline-flex;align-items:center;
+  padding:11px 14px 11px 4px;
+  font-family:var(--font-display);font-size:16px;font-weight:700;
+  color:var(--gold-dark);letter-spacing:.02em;
+}
+
+/* 独立链接 */
+.topnav__link{
+  padding:11px 14px;border-radius:var(--r-sm);
+  color:var(--ink-soft);font-size:14px;font-weight:500;
+  transition:color var(--dur-fast),background var(--dur-fast);
+}
+.topnav__link:hover{background:var(--gold-wash);color:var(--gold-dark);}
+.topnav__link.active{background:var(--gold-wash);color:var(--gold-dark);font-weight:700;}
+
+/* 下拉菜单（纯 CSS hover / focus-within） */
+.topnav-dropdown{position:relative;display:inline-flex;}
+.topnav-dropdown__trigger{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:11px 14px;border:0;border-radius:var(--r-sm);background:transparent;
+  color:var(--ink-soft);font-size:14px;font-weight:500;
+  transition:color var(--dur-fast),background var(--dur-fast);
+}
+.topnav-dropdown__trigger svg{
+  width:14px;height:14px;stroke:currentColor;fill:none;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+  transition:transform var(--dur-fast);
+}
+.topnav-dropdown:hover .topnav-dropdown__trigger,
+.topnav-dropdown:focus-within .topnav-dropdown__trigger{background:var(--gold-wash);color:var(--gold-dark);}
+.topnav-dropdown:hover .topnav-dropdown__trigger svg,
+.topnav-dropdown:focus-within .topnav-dropdown__trigger svg{transform:rotate(180deg);}
+.topnav-dropdown__menu{
+  position:absolute;top:calc(100% + 4px);left:0;min-width:152px;
+  padding:6px;border-radius:var(--r-md);
+  background:var(--surface-solid);border:1px solid var(--line);box-shadow:var(--sh-float);
+  display:flex;flex-direction:column;gap:2px;
+  opacity:0;visibility:hidden;transform:translateY(-4px);
+  transition:opacity var(--dur-fast),transform var(--dur-fast),visibility var(--dur-fast);
+  z-index:var(--z-nav);
+}
+.topnav-dropdown:hover .topnav-dropdown__menu,
+.topnav-dropdown:focus-within .topnav-dropdown__menu{opacity:1;visibility:visible;transform:translateY(0);}
+.topnav-dropdown__menu a{
+  padding:9px 12px;border-radius:var(--r-sm);
+  color:var(--ink-soft);font-size:13.5px;font-weight:500;
+  transition:color var(--dur-fast),background var(--dur-fast);
+}
+.topnav-dropdown__menu a:hover{background:var(--gold-wash);color:var(--gold-dark);}
+
+/* 成就激励区：竖杠（border-left）分隔 + margin-left:auto 推到导航最右端
+   —— 与导航链接之间留出整段空白，分离、不紧贴（需求3） */
+.topnav__incentive{
+  display:inline-flex;align-items:center;gap:2px;
+  padding:0 var(--sp-sm);
+  border-left:1px solid var(--line-strong);
+  margin-left:auto;
+}
+.topnav__incentive-item{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:6px 10px;border-radius:var(--r-sm);
+  color:var(--ink-soft);font-size:13px;font-weight:600;
+  transition:background var(--dur-fast),color var(--dur-fast);
+}
+.topnav__incentive-item:hover{background:var(--gold-wash);color:var(--gold-dark);}
+.topnav__incentive-item svg{
+  width:15px;height:15px;flex-shrink:0;
+  fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
+}
+.topnav__incentive-item--coin{color:var(--gold-dark);font-weight:700;}
+.topnav__incentive-item--title{color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.02em;}
+.topnav__avatar{
+  width:30px;height:30px;flex-shrink:0;border-radius:var(--r-circle);
+  background:var(--gold-wash);border:1px solid var(--line-strong);
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:var(--gold-dark);
+  transition:border-color var(--dur-fast),background var(--dur-fast);
+}
+.topnav__avatar:hover{border-color:var(--gold);}
+.theme-toggle{
+  width:36px;height:36px;border-radius:var(--r-circle);
+  border:1px solid var(--line-strong);background:var(--surface-solid);
+  color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;
+  transition:all var(--dur-fast);
+}
+.theme-toggle:hover{border-color:var(--gold);color:var(--gold-dark);}
+
+/* 鎏金屋檐顶条：本方案中作为「导航 ↔ 内容」的分界带（需求2） */
+.temple-roof{
+  height:6px; position:relative;
+  margin:0 calc(-1 * var(--sp-lg));
+  background:linear-gradient(90deg,
+    transparent 0%,
+    var(--gold-dark) 15%,
+    var(--gold) 30%,
+    var(--gold-light) 50%,
+    var(--gold) 70%,
+    var(--gold-dark) 85%,
+    transparent 100%
+  );
+}
+/* 屋脊纹样带：紧贴渐变条下方 */
+.temple-roof::after{
+  content:""; position:absolute; top:100%; left:0; right:0; height:8px;
+  background:repeating-linear-gradient(90deg,
+    transparent 0px, transparent 12px,
+    var(--gold) 12px, var(--gold) 14px,
+    transparent 14px, transparent 24px
+  );
+  opacity:.4;
+}
+[data-theme="dark"] .temple-roof{opacity:.8;}
+
+/* ============================================================
+   二、微剧情五幕叙事轴（叙事对齐 设计计划.md）
+   ============================================================ */
+.narr{
+  display:flex; list-style:none; margin:0 0 var(--sp-lg); padding:var(--sp-md) var(--sp-sm);
+  border-radius:var(--r-lg);
+  background:linear-gradient(180deg,var(--surface),var(--paper));
+  border:1px solid var(--line); box-shadow:var(--sh-sm);
+  position:relative; overflow:hidden;
+}
+.narr::before{
+  content:""; position:absolute; left:10%; right:10%; top:calc(var(--sp-md) + 21px);
+  height:1px; background:linear-gradient(90deg,transparent,var(--gold),transparent); opacity:.45;
+}
+.narr__node{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:1;}
+.narr__dot{
+  width:42px;height:42px;border-radius:var(--r-circle);
+  border:1px solid var(--line-strong); background:var(--paper);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted); transition:all var(--dur-mid) var(--ease-out);
+}
+.narr__dot svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+.narr__label{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;}
+.narr__node.done .narr__dot{border-color:var(--gold-soft);background:var(--gold-wash);color:var(--gold-dark);}
+.narr__node.now  .narr__dot{
+  border-color:var(--vermillion-soft);background:var(--vermillion-wash);color:#9c5b50;
+  box-shadow:0 0 0 4px var(--vermillion-wash);
+}
+.narr__node.now .narr__label{color:#9c5b50;font-weight:700;}
+
+/* ============================================================
+   三、圣殿主屏 — 中轴对称三开间（需求4 固定约束）
+   grid-template-columns:minmax(0,1fr) var(--center-col) minmax(0,1fr)
+   → 中列固定宽度，左右两列同为 minmax(0,1fr)：
+     必须写成 minmax(0,1fr) 而非裸 1fr —— 裸 1fr 的隐含最小尺寸是 auto，
+     会被两厢内容的「最小内容宽度」撑开，导致左右两列宽度不相等
+     （实测过：1fr 下出现 247.36px / 416.64px 的不等宽）。
+     改用 minmax(0,1fr) 后两侧下限归零，剩余空间等分，宽度严格相等；
+     藻井位于中列正中，因此相对页面精确居中。
+   ============================================================ */
+.hall{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) var(--center-col) minmax(0,1fr);
+  gap:var(--sp-lg); align-items:start;
+}
+.hall__wing{display:flex;flex-direction:column;gap:var(--sp-md);min-width:0;}
+.hall__wing .wing-card{width:100%;}
+.hall__center{display:flex;flex-direction:column;align-items:center;gap:var(--sp-md);}
+@media(max-width:900px){
+  .hall{grid-template-columns:1fr;}
+  .hall__center{order:-1;}
+}
+
+/* --- 厢房卡片 --- */
+.wing-card{
+  border-radius:var(--r-lg); padding:var(--sp-md);
+  background:linear-gradient(165deg,var(--surface-solid) 0%,var(--paper) 100%);
+  border:1px solid var(--line); box-shadow:var(--sh-card);
+  position:relative; overflow:hidden;
+}
+/* 顶部鎏金檐线 */
+.wing-card::before{
+  content:"";position:absolute; top:0; left:14%; right:14%; height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold-soft),transparent);
+}
+/* 内侧回字细线 */
+.wing-card::after{
+  content:"";position:absolute; inset:5px; border:1px solid var(--gold-wash);
+  border-radius:calc(var(--r-lg) - 3px); pointer-events:none;
+}
+.wing-card__cap{display:flex;align-items:center;gap:8px;margin-bottom:var(--sp-sm);}
+.wing-card__ico{
+  width:26px;height:26px;border-radius:var(--r-circle);
+  border:1px solid var(--gold-wash); background:var(--gold-wash);
+  display:flex;align-items:center;justify-content:center;color:var(--gold-dark);
+}
+.wing-card__ico svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.wing-card__title{font-family:var(--font-display);font-size:14px;font-weight:600;}
+.wing-card__meta{margin-left:auto;font-size:12px;color:var(--muted);}
+.wing-card__foot{
+  margin-top:var(--sp-sm); padding-top:var(--sp-sm);
+  border-top:1px dashed var(--line); font-size:11.5px; color:var(--muted);
+}
+
+/* --- 观卷：卷轴任务 --- */
+.scroll{
+  position:relative; padding:var(--sp-md) var(--sp-sm);
+  background:linear-gradient(180deg,var(--surface-solid),var(--paper));
+  border-left:1px solid var(--line); border-right:1px solid var(--line);
+}
+.scroll::before,.scroll::after{
+  content:"";position:absolute; left:-7px; right:-7px; height:9px;
+  border-radius:var(--r-pill);
+  background:linear-gradient(90deg,var(--gold-dark),var(--gold) 30%,var(--gold-light) 50%,var(--gold) 70%,var(--gold-dark));
+}
+.scroll::before{top:-5px;} .scroll::after{bottom:-5px;}
+.task-list{display:flex;flex-direction:column;gap:6px;}
+.task-item{
+  display:flex;align-items:center;gap:9px;padding:9px 10px;
+  border-radius:var(--r-sm); background:var(--paper);
+  border:1px solid var(--line); font-size:13.5px; cursor:pointer;
+  transition:all var(--dur-fast);
+}
+.task-item:hover{border-color:var(--gold);background:var(--gold-wash);}
+.task-check{
+  width:17px;height:17px;border-radius:var(--r-circle);
+  border:2px solid var(--line-strong); flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:all var(--dur-fast);
+}
+.task-check.done{background:var(--gold-soft);border-color:var(--gold-soft);}
+.task-check.done::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--surface-solid);}
+.task-check.now{border-color:var(--vermillion-soft);box-shadow:0 0 0 3px var(--vermillion-wash);}
+.task-text{flex:1;}
+.task-text.done{text-decoration:line-through;color:var(--muted);}
+.task-flag{font-size:11px;color:var(--muted);white-space:nowrap;}
+
+/* ============================================================
+   四、藻井 — 中央熟练度（圆形 + 建筑）
+   ============================================================ */
+.caisson{position:relative;width:300px;height:300px;flex-shrink:0;}
+@media(max-width:900px){.caisson{width:260px;height:260px;}}
+.caisson__svg{width:100%;height:100%;overflow:visible;}
+.caisson__oct{fill:var(--gold-wash);stroke:var(--gold);stroke-width:1.6;opacity:.5;}
+.caisson__ring{fill:none;stroke:var(--gold);stroke-width:1.3;opacity:.45;}
+.caisson__ring--spin{
+  stroke-dasharray:4 8;opacity:.55;
+  transform-origin:120px 120px;
+  animation:caisson-spin 48s linear infinite;
+}
+@keyframes caisson-spin{to{transform:rotate(360deg);}}
+.caisson__spokes line{stroke:var(--gold);stroke-width:1.3;opacity:.4;}
+.caisson__quad circle{
+  fill:none; stroke:var(--gold-soft); stroke-width:5; stroke-linecap:butt; opacity:.7;
+  stroke-dasharray:116 424.35;
+  transform:rotate(-90deg); transform-origin:120px 120px;
+}
+.caisson__quad circle:nth-child(1){stroke-dashoffset:0;}
+.caisson__quad circle:nth-child(2){stroke-dashoffset:-135.09;}
+.caisson__quad circle:nth-child(3){stroke-dashoffset:-270.18;}
+.caisson__quad circle:nth-child(4){stroke-dashoffset:-405.26;}
+.caisson__prog-bg{fill:none;stroke:var(--line-strong);stroke-width:6;}
+.caisson__prog{
+  fill:none;stroke:var(--accent);stroke-width:6;stroke-linecap:round;opacity:.9;
+  stroke-dasharray:414.7; stroke-dashoffset:66.4; /* 84% */
+  transform:rotate(-90deg); transform-origin:120px 120px;
+  transition:stroke-dashoffset .8s var(--ease-out);
+}
+.caisson__core-ring{fill:none;stroke:var(--gold);stroke-width:1;opacity:.5;}
+.caisson__core{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;pointer-events:none;
+}
+.caisson__num{font-family:var(--font-display);font-size:52px;font-weight:700;color:var(--accent);line-height:1;}
+.caisson__num span{font-size:20px;margin-left:1px;}
+.caisson__cap{font-size:11px;color:var(--muted);letter-spacing:.16em;margin-top:4px;}
+.caisson__tier{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 12px;border-radius:var(--r-pill);
+  background:var(--gold-wash);border:1px solid var(--gold-wash);
+  font-size:12px;font-weight:700;color:var(--gold-dark);
+}
+.caisson__tier::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--gold);}
+
+/* --- 听说读写四个圆形入口：独立成行，整体居中（需求4） --- */
+.skills-row{
+  display:flex;gap:var(--sp-md);justify-content:center;align-items:center;flex-wrap:wrap;
+  width:100%;
+}
+.skill-btn{
+  width:76px;height:76px;border-radius:var(--r-circle);
+  border:2px solid var(--line); background:var(--surface-solid);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  cursor:pointer;color:var(--ink);position:relative;
+  transition:all var(--dur-mid) var(--ease-out);
+  box-shadow:var(--sh-sm);
+}
+.skill-btn::before{
+  content:"";position:absolute;inset:-5px;border-radius:var(--r-circle);
+  border:1px solid transparent;transition:border-color var(--dur-fast);
+}
+.skill-btn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.skill-btn small{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;}
+.skill-btn:hover{transform:translateY(-3px);}
+.skill-btn:hover::before{border-color:currentColor;opacity:.28;}
+.skill-btn.listen{color:var(--listen-soft);border-color:rgba(120,167,182,.35);}
+.skill-btn.speak{color:var(--speak-soft);border-color:rgba(194,132,87,.35);}
+.skill-btn.read{color:var(--read-soft);border-color:rgba(129,148,189,.35);}
+.skill-btn.write{color:var(--write-soft);border-color:rgba(176,138,82,.35);}
+
+/* ============================================================
+   五、登阶 — 圣殿称谓五级（书童→秀才→举人→进士→状元）
+   ============================================================ */
+.terrace{
+  margin-top:var(--sp-xl); padding:var(--sp-lg) var(--sp-md) 0;
+  border-radius:var(--r-lg);
+  background:linear-gradient(180deg,var(--surface),var(--paper));
+  border:1px solid var(--line); box-shadow:var(--sh-sm);
+}
+.terrace__head{display:flex;align-items:center;gap:8px;margin-bottom:var(--sp-md);}
+.terrace__head h3{font-size:15px;}
+.terrace__hint{margin-left:auto;font-size:12px;color:var(--muted);}
+.terrace__verse{font-size:12px;color:var(--muted);margin:-6px 0 var(--sp-md);}
+.stairs{display:flex;align-items:flex-end;gap:8px;justify-content:center;height:104px;}
+.stair{
+  flex:1;max-width:130px;position:relative;
+  border-radius:var(--r-sm) var(--r-sm) 0 0;
+  border:1px solid var(--line); border-bottom:0;
+  background:linear-gradient(180deg,var(--paper),var(--surface-solid));
+  transition:all var(--dur-mid) var(--ease-out);
+}
+.stair:nth-child(1){height:30%;} .stair:nth-child(2){height:45%;}
+.stair:nth-child(3){height:60%;} .stair:nth-child(4){height:78%;}
+.stair:nth-child(5){height:96%;}
+.stair__dot{
+  position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+  width:18px;height:18px;border-radius:var(--r-circle);
+  border:2px solid var(--line-strong);background:var(--surface-solid);
+}
+.stair--done{background:linear-gradient(180deg,var(--gold-soft),var(--gold));border-color:var(--gold-soft);}
+.stair--done .stair__dot{background:var(--gold-light);border-color:var(--gold-soft);}
+.stair--now{
+  background:linear-gradient(180deg,#d3a294,var(--vermillion-soft));
+  border-color:var(--vermillion-soft);
+}
+.stair--now .stair__dot{background:#e2c1b6;border-color:var(--vermillion-soft);}
+.terrace__axis{height:2px;background:linear-gradient(90deg,transparent,var(--gold-soft),transparent);opacity:.6;}
+.terrace__legend{display:flex;gap:8px;padding:var(--sp-sm) 0 var(--sp-md);}
+.terrace__legend span{flex:1;max-width:130px;text-align:center;font-size:11px;color:var(--muted);}
+
+/* ============================================================
+   六、留印 — 朱砂印墙（3 掌握成就 + 4 课规里程碑 = 7 枚）
+   ============================================================ */
+.seal-wall{display:flex;gap:var(--sp-lg);justify-content:center;flex-wrap:wrap;}
+.seal-item{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0;}
+.seal-stamp{
+  width:64px;height:64px;
+  border:3px solid var(--vermillion); border-radius:var(--r-circle);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--vermillion);
+  font-family:var(--font-display);font-size:13px;font-weight:700;
+  transform:rotate(-12deg);
+  opacity:.9;position:relative;text-align:center;line-height:1.2;
+}
+.seal-stamp::after{
+  content:"";position:absolute;inset:4px;
+  border:1px dashed currentColor;border-radius:var(--r-circle);opacity:.5;
+}
+/* 四色阶（对齐设计计划 3.1 节） */
+.seal-stamp--bronze{border-color:var(--seal-bronze);color:var(--seal-bronze);}
+.seal-stamp--silver{border-color:var(--seal-silver);color:var(--seal-silver);}
+.seal-stamp--gold{border-color:var(--seal-gold);color:var(--gold-dark);}
+.seal-stamp--gilt{border-color:var(--seal-gilt);color:var(--seal-gilt);}
+/* 未解锁：灰色轮廓，制造收集动力 */
+.seal-stamp--locked{border-color:var(--line-strong);color:var(--muted);opacity:.5;}
+.seal-cap{font-size:11.5px;color:var(--muted);letter-spacing:.04em;}
+.seal-cap--sub{font-size:10.5px;color:var(--muted);opacity:.8;}
+
+/* ============================================================
+   七、组件基座
+   ============================================================ */
+.section-title{font-family:var(--font-display);font-size:21px;margin:var(--sp-2xl) 0 var(--sp-md);display:flex;align-items:center;gap:var(--sp-sm);}
+.section-title::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--gold);}
+.section-sub{font-size:13px;color:var(--muted);margin-top:calc(-1 * var(--sp-sm) + 2px);margin-bottom:var(--sp-lg);}
+
+.card{
+  border-radius:var(--r-lg); padding:var(--sp-lg);
+  background:linear-gradient(165deg,var(--surface-solid) 0%,var(--paper) 100%);
+  border:1px solid var(--line); box-shadow:var(--sh-card);
+  margin-bottom:var(--sp-md); position:relative; overflow:hidden;
+}
+.card__label{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:var(--sp-md);}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:var(--r-pill);padding:11px 24px;font-size:14px;font-weight:700;transition:all var(--dur-fast) var(--ease-out);}
+.btn-primary{color:var(--surface-solid);background:linear-gradient(120deg,#bb8730 0%,var(--accent) 65%,#c1902f 100%);box-shadow:0 4px 14px rgba(180,83,9,.18);}
+.btn-primary:hover{filter:brightness(1.05);transform:translateY(-1px);box-shadow:0 8px 20px rgba(180,83,9,.22);}
+.btn-secondary{background:var(--surface-solid);color:var(--ink);border:1px solid var(--line-strong);box-shadow:var(--sh-sm);}
+.btn-secondary:hover{border-color:var(--gold);color:var(--gold-dark);}
+.btn-danger{background:var(--vermillion);color:#fff;}
+.btn-icon{width:40px;height:40px;padding:0;border-radius:var(--r-circle);border:1px solid var(--line);background:var(--surface-solid);color:var(--ink-soft);}
+.btn-icon:hover{border-color:var(--gold);color:var(--gold-dark);}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:var(--r-pill);font-size:12px;font-weight:700;}
+.badge--gold{background:var(--gold-wash);color:var(--gold-dark);}
+.badge--verm{background:var(--vermillion-wash);color:var(--vermillion);}
+.badge--teal{background:rgba(8,145,178,.10);color:var(--listen);}
+.badge--blue{background:rgba(37,99,235,.10);color:var(--read);}
+.badge--orange{background:rgba(234,88,12,.10);color:var(--speak);}
+.badge--success{background:var(--success-wash);color:var(--success);}
+
+.skeleton{border-radius:var(--r-sm);background:linear-gradient(90deg,var(--line) 25%,var(--line-strong) 50%,var(--line) 75%);background-size:200% 100%;animation:sk 1.4s ease-in-out infinite;}
+@keyframes sk{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+.skeleton--circle{border-radius:var(--r-circle);}
+.skeleton--text{height:14px;margin-bottom:8px;}
+.skeleton--roof{height:16px;clip-path:polygon(0 100%,0 62%,18% 20%,50% 0,82% 20%,100% 62%,100% 100%);}
+
+.state-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--sp-md);}
+.state-card{border-radius:var(--r-md);padding:var(--sp-md);text-align:center;border:1px solid var(--line);background:var(--surface-solid);}
+.state-card__label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:var(--sp-sm);}
+.state-card__view{min-height:64px;display:flex;align-items:center;justify-content:center;}
+.state-icon{width:26px;height:26px;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.state-icon--muted{stroke:var(--muted);}
+.state-icon--danger{stroke:var(--danger);}
+.state-icon--success{stroke:var(--success);}
+.state-line{font-size:12px;color:var(--muted);}
+.state-line--danger{color:var(--danger);font-weight:700;}
+.state-line--success{color:var(--success);font-weight:700;}
+
+.divider-ornament{display:flex;align-items:center;gap:var(--sp-sm);margin:var(--sp-xl) 0;color:var(--gold);opacity:.5;}
+.divider-ornament::before,.divider-ornament::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+
+.toast{padding:12px 20px;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);font-size:14px;font-weight:600;box-shadow:var(--sh-float);display:inline-flex;align-items:center;gap:8px;}
+
+/* 抽屉浮层 */
+.drawer-overlay{position:fixed;inset:0;background:rgba(28,25,23,.4);z-index:var(--z-overlay);opacity:0;pointer-events:none;transition:opacity var(--dur-mid) var(--ease-out);}
+.drawer-overlay.open{opacity:1;pointer-events:auto;}
+.drawer-panel{
+  position:absolute;top:0;right:0;bottom:0;width:min(440px,90vw);
+  background:var(--paper);box-shadow:var(--sh-float);
+  transform:translateX(100%);transition:transform var(--dur-mid) var(--ease-out);
+  display:flex;flex-direction:column;
+}
+.drawer-overlay.open .drawer-panel{transform:translateX(0);}
+.drawer-header{padding:var(--sp-lg);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+.drawer-title{font-family:var(--font-display);font-size:17px;font-weight:600;}
+.drawer-close{width:32px;height:32px;border-radius:var(--r-circle);border:1px solid var(--line);background:transparent;color:var(--ink-soft);font-size:18px;line-height:1;}
+.drawer-body{flex:1;overflow-y:auto;padding:var(--sp-lg);}
+
+/* 主题切换器 / 标注 */
+.theme-switcher{position:fixed;top:16px;right:16px;z-index:999;display:flex;gap:6px;}
+.theme-btn{padding:8px 16px;border-radius:var(--r-pill);border:1px solid var(--line-strong);background:var(--surface-solid);color:var(--ink-soft);font-size:13px;font-weight:600;transition:all var(--dur-fast);}
+.theme-btn.active{border-color:var(--gold);background:var(--gold-wash);color:var(--gold-dark);}
+.design-note{background:var(--gold-wash);border-left:3px solid var(--gold);padding:var(--sp-md);margin-bottom:var(--sp-lg);font-size:13px;color:var(--ink-soft);border-radius:0 var(--r-sm) var(--r-sm) 0;}
+
+/* ============================================================
+   八、工具类（避免行内样式）
+   ============================================================ */
+.u-hidden{display:none;}
+.u-full{width:100%;}
+.u-row{display:flex;gap:var(--sp-lg);flex-wrap:wrap;font-size:13px;}
+.u-row-sm{display:flex;gap:var(--sp-sm);flex-wrap:wrap;align-items:center;}
+.u-col-full{display:flex;flex-direction:column;width:100%;}
+.u-col-center{display:flex;flex-direction:column;gap:8px;align-items:center;}
+.u-prose{color:var(--ink-soft);line-height:1.75;}
+.u-muted{font-size:12px;color:var(--muted);}
+.u-strong{font-size:12px;color:var(--ink);}
+.u-gold{color:var(--gold-dark);font-weight:700;}
+.u-mt-md{margin-top:14px;}
+.u-btn-sm{padding:6px 14px;font-size:12px;}
+.meter{height:6px;border-radius:3px;background:var(--line);margin-top:10px;overflow:hidden;}
+.meter__fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold-dark),var(--gold));}
+.meter__fill--verm{background:linear-gradient(90deg,var(--vermillion-soft),var(--vermillion));}
+.sk-w100{width:100%;} .sk-w86{width:86%;} .sk-w70{width:70%;} .sk-w64{width:64%;}
+.u-truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.u-clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;}
+</style>
+</head>
+<body>
+
+<div class="theme-switcher">
+  <button class="theme-btn active" onclick="setTheme('light',this)">☀ 亮色</button>
+  <button class="theme-btn" onclick="setTheme('dark',this)">☾ 暗色</button>
+  <button class="theme-btn" onclick="setTheme('both',this)">◐ 双预览</button>
+</div>
+
+<div class="page" id="preview-light">
+
+  <!-- ===== 门额导航 + 导航/内容分界带（需求2、需求3） ===== -->
+  <div class="topbar">
+    <nav class="topnav">
+
+      <a class="topnav__brand" href="#" aria-current="page">学习圣殿</a>
+
+      <div class="topnav-dropdown">
+        <button class="topnav-dropdown__trigger" type="button">学习
+          <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="topnav-dropdown__menu">
+          <a href="#">知识点录入</a>
+          <a href="#">知识点详情</a>
+          <a href="#">单词本</a>
+        </div>
+      </div>
+
+      <div class="topnav-dropdown">
+        <button class="topnav-dropdown__trigger" type="button">练习
+          <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="topnav-dropdown__menu">
+          <a href="#">每日复习</a>
+          <a href="#">每日小测</a>
+        </div>
+      </div>
+
+      <a class="topnav__link" href="#">文章阅读</a>
+      <a class="topnav__link" href="#">学情中心</a>
+
+      <!-- 成就激励区：竖杠分隔 + 推到导航最右端，与导航链接分离不紧贴（需求3） -->
+      <div class="topnav__incentive">
+        <a class="topnav__incentive-item topnav__incentive-item--coin" href="#" title="金桂余额 · 进入圣殿宝库">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M9.6 9.9h3.3a1.5 1.5 0 0 1 0 3h-2a1.5 1.5 0 0 0 0 3h3.6"/></svg>
+          <span>86</span>
+        </a>
+        <a class="topnav__incentive-item topnav__incentive-item--title" href="#" title="圣殿称谓 · 进入圣殿宝库">秀才 Lv.2</a>
+        <a class="topnav__avatar" href="#" title="本地学习者">王</a>
+        <button class="theme-toggle" type="button" onclick="toggleTheme()" title="切换主题">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+
+    </nav>
+
+    <!-- 鎏金渐变条：导航与下方主体内容的视觉分界（需求2） -->
+    <div class="temple-roof"></div>
+  </div>
+
+  <div class="design-note">
+    <strong>融合方案 D「点金圣殿对齐版」</strong> — 在 01C（融合方案 C）基础上落实四项：
+    ① 叙事与内容按《v1.3.0-T005 点金圣殿设计计划》改写（金桂 · 朱砂印 · 圣殿称谓 · 本周课规），废除「连续打卡 / 今日学时」旧口径；
+    ② 鎏金渐变条 <code>.temple-roof</code> 由页面顶端**移到导航之下**，成为导航与主体内容的分界带；
+    ③ 导航右侧成就激励区（金桂 / 称谓 / 头像）经竖杠分隔后推到导航最右端，与导航链接分离不紧贴；
+    ④ 左右对称固定约束：中列固定 <code>360px</code>、左右两厢同为 <code>1fr</code>（宽度严格相等），藻井因此精确居中；听说读写四圆形入口独立成行、整体居中。
+  </div>
+
+  <!-- ===== 微剧情五幕（叙事：入殿 · 课规 · 观卷 · 留印 · 登阶） ===== -->
+  <ol class="narr">
+    <li class="narr__node done">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><path d="M4 21V11.5C4 7 7.6 4 12 4s8 3 8 7.5V21"/><path d="M9 21v-7h6v7"/></svg>
+      </span>
+      <span class="narr__label">入殿</span>
+    </li>
+    <li class="narr__node now">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 8h5M9 12h6M9 16h6"/></svg>
+      </span>
+      <span class="narr__label">课规</span>
+    </li>
+    <li class="narr__node">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M3 4h3v16H3zM18 4h3v16h-3z"/><path d="M10 9h4M10 13h4"/></svg>
+      </span>
+      <span class="narr__label">观卷</span>
+    </li>
+    <li class="narr__node">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><rect x="8" y="8" width="8" height="8"/></svg>
+      </span>
+      <span class="narr__label">留印</span>
+    </li>
+    <li class="narr__node">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><path d="M4 20h5v-5h5v-5h5V5"/><path d="M2 22h20"/></svg>
+      </span>
+      <span class="narr__label">登阶</span>
+    </li>
+  </ol>
+
+  <!-- ===== 圣殿主屏（中轴对称三开间 · 需求4 固定约束） ===== -->
+  <div class="hall">
+
+    <!-- 西厢：本周课规 + 今日所得 -->
+    <div class="hall__wing">
+
+      <div class="wing-card" id="card-weekly">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 8h5M9 12h6M9 16h6"/></svg>
+          </span>
+          <span class="wing-card__title">本周课规</span>
+          <span class="wing-card__meta">复习 30 条</span>
+        </div>
+        <div class="u-row-sm">
+          <span class="u-strong">已复习 18 / 30 条</span>
+          <span class="u-gold" style="margin-left:auto;">60%</span>
+        </div>
+        <div class="meter"><div class="meter__fill" style="width:60%"></div></div>
+        <div class="wing-card__foot">圣殿为你订下每周课规，钟响达成，即落印为证。达成 +30 金桂 · 剩余 4 天 · 未达成自动作废不惩罚。</div>
+      </div>
+
+      <div class="wing-card" id="card-earnings">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h3.5a1.5 1.5 0 0 1 0 3h-2a1.5 1.5 0 0 0 0 3h3.5"/></svg>
+          </span>
+          <span class="wing-card__title">今日所得</span>
+          <span class="wing-card__meta">金桂 +10</span>
+        </div>
+        <div class="task-list">
+          <div class="task-item" style="cursor:default;">
+            <span class="task-check done"></span>
+            <span class="task-text">晨诵（今日复习完成）</span>
+            <span class="task-flag u-gold">+5</span>
+          </div>
+          <div class="task-item" style="cursor:default;">
+            <span class="task-check done"></span>
+            <span class="task-text">应试（今日小测完成）</span>
+            <span class="task-flag u-gold">+5</span>
+          </div>
+        </div>
+        <div class="wing-card__foot">桂香即功名香 —— 每一次坚持，都化作一枚金桂存入宝库。</div>
+      </div>
+
+    </div>
+
+    <!-- 明间：藻井（精确居中）+ 称谓 + 听说读写四圆形入口（独立居中） -->
+    <div class="hall__center">
+      <div class="caisson" id="caisson-main">
+        <svg class="caisson__svg" viewBox="0 0 240 240" aria-hidden="true">
+          <polygon class="caisson__oct" points="230,120 197.8,197.8 120,230 42.2,197.8 10,120 42.2,42.2 120,10 197.8,42.2"/>
+          <circle class="caisson__ring" cx="120" cy="120" r="104"/>
+          <circle class="caisson__ring caisson__ring--spin" cx="120" cy="120" r="96"/>
+          <g class="caisson__spokes">
+            <line x1="120" y1="28" x2="120" y2="46"/>
+            <line x1="120" y1="194" x2="120" y2="212"/>
+            <line x1="28" y1="120" x2="46" y2="120"/>
+            <line x1="194" y1="120" x2="212" y2="120"/>
+            <line x1="55" y1="55" x2="67" y2="67"/>
+            <line x1="185" y1="55" x2="173" y2="67"/>
+            <line x1="55" y1="185" x2="67" y2="173"/>
+            <line x1="185" y1="185" x2="173" y2="173"/>
+          </g>
+          <g class="caisson__quad">
+            <circle cx="120" cy="120" r="86"/>
+            <circle cx="120" cy="120" r="86"/>
+            <circle cx="120" cy="120" r="86"/>
+            <circle cx="120" cy="120" r="86"/>
+          </g>
+          <circle class="caisson__prog-bg" cx="120" cy="120" r="66"/>
+          <circle class="caisson__prog" cx="120" cy="120" r="66"/>
+          <circle class="caisson__core-ring" cx="120" cy="120" r="52"/>
+        </svg>
+        <div class="caisson__core">
+          <div class="caisson__num">84<span>%</span></div>
+          <div class="caisson__cap">总熟练度</div>
+        </div>
+      </div>
+
+      <span class="caisson__tier">秀才 · 距举人还需 150 次固化</span>
+
+      <!-- 听说读写四个圆形组件：独立成行、整体居中（需求4） -->
+      <div class="skills-row">
+        <button class="skill-btn listen">
+          <svg viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+          <small>听力</small>
+        </button>
+        <button class="skill-btn speak">
+          <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>
+          <small>口语</small>
+        </button>
+        <button class="skill-btn read">
+          <svg viewBox="0 0 24 24"><path d="M2 5h7a3 3 0 0 1 3 3v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-7a3 3 0 0 0-3 3v11a3 3 0 0 1 3-3h7z"/></svg>
+          <small>阅读</small>
+        </button>
+        <button class="skill-btn write">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          <small>写作</small>
+        </button>
+      </div>
+    </div>
+
+    <!-- 东厢：观卷 -->
+    <div class="hall__wing">
+      <div class="wing-card" id="card-exam">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M3 4h3v16H3zM18 4h3v16h-3z"/></svg>
+          </span>
+          <span class="wing-card__title">观卷</span>
+          <span class="wing-card__meta">今日 3 卷</span>
+        </div>
+        <div class="scroll">
+          <div class="task-list">
+            <div class="task-item">
+              <span class="task-check done"></span>
+              <span class="task-text done u-truncate" title="听力精练 · 第一殿">听力精练 · 第一殿</span>
+              <span class="task-flag">已毕</span>
+            </div>
+            <div class="task-item">
+              <span class="task-check now"></span>
+              <span class="task-text u-truncate" title="口语跟读 · 第三殿：连读与弱读专项（12 分钟）">口语跟读 · 第三殿：连读与弱读专项（12 分钟）</span>
+              <span class="task-flag">进行</span>
+            </div>
+            <div class="task-item">
+              <span class="task-check"></span>
+              <span class="task-text u-truncate" title="阅读短章 · 两篇">阅读短章 · 两篇</span>
+              <span class="task-flag">待启</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary u-full u-mt-md">继续研习 →</button>
+      </div>
+    </div>
+
+  </div><!-- /hall -->
+
+  <!-- ===== 登阶（圣殿称谓五级） ===== -->
+  <section class="terrace">
+    <div class="terrace__head">
+      <h3>登阶</h3>
+      <span class="terrace__hint">圣殿称谓 · 秀才（已固化 50 / 200 次）</span>
+    </div>
+    <p class="terrace__verse">寒窗苦读，自有功名加身 —— 固化次数累计达标，即晋一级，并一次性入账 100 金桂。</p>
+    <div class="stairs">
+      <div class="stair stair--done"><span class="stair__dot"></span></div>
+      <div class="stair stair--done"><span class="stair__dot"></span></div>
+      <div class="stair stair--now"><span class="stair__dot"></span></div>
+      <div class="stair"><span class="stair__dot"></span></div>
+      <div class="stair"><span class="stair__dot"></span></div>
+    </div>
+    <div class="terrace__axis"></div>
+    <div class="terrace__legend">
+      <span>书童</span><span>秀才</span><span>举人</span><span>进士</span><span>状元</span>
+    </div>
+  </section>
+
+  <!-- ===== 留印（朱砂印墙 · 3 掌握成就 + 4 课规里程碑，独立区域不紧贴） ===== -->
+  <section class="terrace">
+    <div class="terrace__head">
+      <h3>留印</h3>
+      <span class="terrace__hint">朱砂印 · 已得 1 / 7 印</span>
+    </div>
+    <p class="terrace__verse">学至纯熟，圣殿赐印为证 —— 印章只多不少、不可兑换消耗；灰色轮廓为未解锁，留作收集动力。</p>
+    <div class="seal-wall">
+
+      <figure class="seal-item">
+        <div class="seal-stamp seal-stamp--bronze" title="初窥门径 · 累计 L5 词条 ≥ 100">入门</div>
+        <figcaption class="seal-cap">初窥门径</figcaption>
+        <figcaption class="seal-cap seal-cap--sub">L5 ≥ 100</figcaption>
+      </figure>
+
+      <figure class="seal-item">
+        <div class="seal-stamp seal-stamp--silver seal-stamp--locked" title="融会贯通 · 累计 L5 词条 ≥ 500">通明</div>
+        <figcaption class="seal-cap">融会贯通</figcaption>
+        <figcaption class="seal-cap seal-cap--sub">L5 ≥ 500</figcaption>
+      </figure>
+
+      <figure class="seal-item">
+        <div class="seal-stamp seal-stamp--gold seal-stamp--locked" title="登峰造极 · 累计 L5 词条 ≥ 1000">登峰</div>
+        <figcaption class="seal-cap">登峰造极</figcaption>
+        <figcaption class="seal-cap seal-cap--sub">L5 ≥ 1000</figcaption>
+      </figure>
+
+      <figure class="seal-item">
+        <div class="seal-stamp seal-stamp--bronze seal-stamp--locked" title="课规有成 · 首次达成本周课规">有恒</div>
+        <figcaption class="seal-cap">课规有成</figcaption>
+        <figcaption class="seal-cap seal-cap--sub">首达课规</figcaption>
+      </figure>
+
+      <figure class="seal-item">
+        <div class="seal-stamp seal-stamp--silver seal-stamp--locked" title="暖殿 · 累计达成 3 周课规">暖殿</div>
+        <figcaption class="seal-cap">暖殿</figcaption>
+        <figcaption class="seal-cap seal-cap--sub">累计 3 周</figcaption>
+      </figure>
+
+      <figure class="seal-item">
+        <div class="seal-stamp seal-stamp--gold seal-stamp--locked" title="金桂盈 · 累计达成 10 周课规">金桂盈</div>
+        <figcaption class="seal-cap">金桂盈</figcaption>
+        <figcaption class="seal-cap seal-cap--sub">累计 10 周</figcaption>
+      </figure>
+
+      <figure class="seal-item">
+        <div class="seal-stamp seal-stamp--gilt seal-stamp--locked" title="藏经楼 · 累计达成 50 周课规">藏经楼</div>
+        <figcaption class="seal-cap">藏经楼</figcaption>
+        <figcaption class="seal-cap seal-cap--sub">累计 50 周</figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <!-- ===== 组件基座 ===== -->
+  <h2 class="section-title">令牌与组件基座</h2>
+  <p class="section-sub">与方案 A / B / C 同源令牌体系，仅叙事内容与对称约束不同；新增朱砂印四色阶令牌 <code>--seal-bronze / silver / gold / gilt</code>。</p>
+
+  <div class="card">
+    <div class="card__label">四技能色 · 行业惯例值</div>
+    <div class="u-row">
+      <span class="badge badge--teal">听力 #0891b2</span>
+      <span class="badge badge--orange">口语 #ea580c</span>
+      <span class="badge badge--blue">阅读 #2563eb</span>
+      <span class="badge badge--gold">写作 #b45309</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__label">按钮 / 徽章</div>
+    <div class="u-row-sm">
+      <button class="btn btn-primary">主行动</button>
+      <button class="btn btn-secondary">次要</button>
+      <button class="btn btn-danger">注销</button>
+      <button class="btn btn-icon" title="朗读">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+      </button>
+      <button class="btn btn-primary" disabled>禁用</button>
+      <span class="badge badge--success">已固化</span>
+      <span class="badge badge--verm">待复习</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__label">六态清单</div>
+    <div class="state-grid">
+      <div class="state-card">
+        <div class="state-card__label">默认</div>
+        <div class="state-card__view"><button class="btn btn-primary u-btn-sm">开始复习</button></div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">加载</div>
+        <div class="state-card__view u-col-full">
+          <div class="skeleton skeleton--roof sk-w86"></div>
+          <div class="skeleton skeleton--text sk-w100"></div>
+          <div class="skeleton skeleton--text sk-w70"></div>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">空态</div>
+        <div class="state-card__view u-col-center">
+          <svg class="state-icon state-icon--muted" viewBox="0 0 24 24"><path d="M3 12h4l2 3h6l2-3h4"/><path d="M5 5h14l2 7v7H3v-7z"/></svg>
+          <span class="state-line">暂无数据</span>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">错误</div>
+        <div class="state-card__view u-col-center">
+          <svg class="state-icon state-icon--danger" viewBox="0 0 24 24"><path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4M12 17.2h.01"/></svg>
+          <span class="state-line state-line--danger">操作失败</span>
+          <button class="btn btn-secondary u-btn-sm">重试</button>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">成功</div>
+        <div class="state-card__view u-col-center">
+          <svg class="state-icon state-icon--success" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.6 2.6L16 9.6"/></svg>
+          <span class="state-line state-line--success">完成</span>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">边界</div>
+        <div class="state-card__view u-col-full">
+          <div class="u-truncate u-muted" title="inspections / perspectives / introspections / retrospectives —— 词根 spect（看）的全部衍生词">单行截断：inspections / perspectives / introspections / retrospectives —— 词根 spect 的全部衍生词</div>
+          <div class="u-clamp-2 u-muted" title="超长释义全文：以 spect（看）为词根，可衍生 inspect 检视、respect 尊敬、perspective 视角、introspection 内省、retrospective 回顾等十余个高频词，逐一掌握其构词规律与固定搭配。">两行折行截断：以 spect（看）为词根，可衍生 inspect 检视、respect 尊敬、perspective 视角、introspection 内省、retrospective 回顾等十余个高频词，逐一掌握其构词规律与固定搭配。</div>
+          <button class="btn btn-secondary u-btn-sm u-mt-md" title="展开或抽屉中查看完整内容">查看完整内容</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__label">抽屉浮层</div>
+    <button class="btn btn-primary" onclick="openDrawer()">打开详情抽屉</button>
+  </div>
+
+  <div class="divider-ornament">
+    <svg width="40" height="10" viewBox="0 0 40 10" fill="none" stroke="currentColor" stroke-width="1.4">
+      <path d="M0 5h14M26 5h14M20 1v8M16 5l4-4 4 4-4 4z"/>
+    </svg>
+  </div>
+
+</div><!-- /preview-light -->
+
+<div class="page u-hidden" id="preview-dark" data-theme="dark"></div>
+
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer(event)">
+  <div class="drawer-panel">
+    <div class="drawer-header">
+      <span class="drawer-title">殿内详情</span>
+      <button class="drawer-close" onclick="closeDrawer()">&times;</button>
+    </div>
+    <div class="drawer-body">
+      <p class="u-prose">
+        右侧滑入的抽屉浮层，不覆盖整屏上下文。<br>
+        用于承载圣殿账册、朱砂印详情、本周课规调整等次级内容。
+      </p>
+      <div class="divider-ornament">
+        <svg width="40" height="10" viewBox="0 0 40 10" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M0 5h14M26 5h14M20 1v8M16 5l4-4 4 4-4 4z"/>
+        </svg>
+      </div>
+      <div class="skeleton skeleton--text sk-w100"></div>
+      <div class="skeleton skeleton--text sk-w86"></div>
+      <div class="skeleton skeleton--text sk-w64"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* 暗色预览复用同一套 DOM：克隆后仅切换令牌作用域，保证两案结构完全一致 */
+function buildDarkPreview() {
+  const src = document.getElementById('preview-light');
+  const dst = document.getElementById('preview-dark');
+  if (dst.dataset.built === '1') return;
+  dst.innerHTML = src.innerHTML;
+  dst.dataset.built = '1';
+}
+function setTheme(mode, btn) {
+  buildDarkPreview();
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  if (btn && btn.classList) btn.classList.add('active');
+  const light = document.getElementById('preview-light');
+  const dark  = document.getElementById('preview-dark');
+  light.style.display = (mode === 'dark') ? 'none' : 'block';
+  dark.style.display  = (mode === 'light') ? 'none' : 'block';
+}
+function toggleTheme() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+}
+function openDrawer()  { document.getElementById('drawer-overlay').classList.add('open'); }
+function closeDrawer(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+/* 初始：亮色单预览 */
+setTheme('light');
+</script>
+
+</body>
+</html>

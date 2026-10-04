@@ -1,0 +1,41 @@
+{
+  "income": {
+    "quiz_done":     { "amount": 5,  "max_per_day": 1 },
+    "quiz_perfect":  { "amount": 10, "max_per_day": 1 },
+    "review_done":   { "amount": 5,  "max_per_day": 1 },
+    "title_up":      { "amount": 100 },
+    "goal_done":     { "amount": 30 },
+    "streak_bonus":  { "amount": 10 }
+  },
+  "weekly_goal": {
+    "goal_types": ["review_items", "new_words", "quiz_count"],
+    "suggestion_growth": 1.1,
+    "min_review_items": 10,
+    "min_new_words": 5,
+    "default_quiz_count": 2
+  },
+  "expense": {
+    "base_divisor": 2000,
+    "base_cap": 6,
+    "surcharges": {
+      "lookup_spend":  2,
+      "wordbook_spend": 20
+    }
+  },
+  "seals": [
+    { "code": "mastery_100",   "threshold": 100, "label_cn": "初窥门径", "label_sub": "已掌握 100 条" },
+    { "code": "mastery_500",   "threshold": 500, "label_cn": "融会贯通", "label_sub": "已掌握 500 条" },
+    { "code": "mastery_1000",  "threshold": 1000,"label_cn": "登峰造极", "label_sub": "已掌握 1000 条" },
+    { "code": "goal_done",     "threshold": 1,   "label_cn": "课规有成", "label_sub": "首次达成本周课规" },
+    { "code": "streak_3",      "threshold": 3,   "label_cn": "暖殿",     "label_sub": "累计达成 3 周" },
+    { "code": "streak_10",     "threshold": 10,  "label_cn": "金桂盈",   "label_sub": "累计达成 10 周" },
+    { "code": "streak_50",     "threshold": 50,  "label_cn": "藏经楼",   "label_sub": "累计达成 50 周" }
+  ],
+  "titles": [
+    { "code": "scholar_1", "threshold": 10,    "label_cn": "书童" },
+    { "code": "scholar_2", "threshold": 50,    "label_cn": "秀才" },
+    { "code": "scholar_3", "threshold": 200,   "label_cn": "举人" },
+    { "code": "scholar_4", "threshold": 500,   "label_cn": "进士" },
+    { "code": "scholar_5", "threshold": 2000,  "label_cn": "状元" }
+  ]
+}

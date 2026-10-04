@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习圣殿｜融合方案（今日所得/仪表盘/观卷 原样套用方案B）</title>
+    <style>
+        /* ====================== 全局 & 保留自【融合方案原稿】，不做改动 ====================== */
+        :root {
+            --bg-main: #f8f5f0;
+            --bg-dark: #1c1a17;
+            --text-main: #2c2822;
+            --text-light: #e8e4dd;
+            --gold: #b8862e;
+            --red-seal: #a62424;
+        }
+        * {margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft YaHei",system-ui;}
+        body {background:var(--bg-main);color:var(--text-main);transition:background 0.4s,color 0.4s;min-height:100vh;}
+        body.dark {--bg-main:var(--bg-dark);--text-main:var(--text-light);}
+
+        /* 顶部导航 - 融合原稿原样保留 */
+        .header-nav {display:flex;justify-content:space-between;align-items:center;padding:16px 40px;border-bottom:1px solid rgba(184,134,46,0.3);}
+        .nav-left {display:flex;gap:24px;align-items:center;}
+        .title-main {font-size:22px;font-weight:bold;color:var(--gold);}
+        .nav-menu {display:flex;gap:18px;}
+        .nav-menu a {color:inherit;text-decoration:none;opacity:0.85;}
+        .nav-menu a:hover {opacity:1;color:var(--gold);}
+        .nav-right {display:flex;gap:16px;align-items:center;}
+        .theme-btn {cursor:pointer;padding:6px 10px;border:1px solid var(--gold);background:transparent;color:var(--gold);border-radius:6px;}
+        .user-avatar {width:36px;height:36px;border-radius:50%;border:1px solid var(--gold);display:grid;place-items:center;}
+
+        /* 五幕叙事轴 - 融合原稿原样保留 */
+        .story-timeline {margin:24px 40px;padding:16px;border:1px solid rgba(184,134,46,0.25);border-radius:10px;display:flex;gap:12px;align-items:center;}
+        .timeline-item {flex:1;text-align:center;opacity:0.65;}
+        .timeline-item.active {opacity:1;color:var(--gold);font-weight:bold;}
+
+        /* 底部登阶、留印印章墙 - 融合原稿原样保留 */
+        .stage-area {margin:40px;border-top:1px solid rgba(184,134,46,0.3);padding-top:24px;text-align:center;}
+        .seal-wall {margin-top:16px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+        .seal-item {width:54px;height:54px;border:2px solid var(--red-seal);color:var(--red-seal);display:grid;place-items:center;font-size:12px;opacity:0.75;}
+
+        /* ====================== 【三开间区域：完全照搬方案B，无任何融合修改】 ====================== */
+        .three-room {display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin:32px 40px;}
+
+        /* 西厢｜今日所得 方案B原版样式 */
+        .west-room {background:#fffdf8;border:1px solid #e2d9c8;border-radius:12px;padding:20px;}
+        .room-title {font-size:18px;color:#7a5b28;margin-bottom:18px;font-weight:bold;}
+        .lamp-card {border:1px solid #d4c5aa;border-radius:10px;padding:16px;margin-bottom:16px;}
+        .lamp-header {display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+        .lamp-name {font-size:16px;}
+        .lamp-count {color:#b8862e;font-weight:bold;}
+        .lamp-wrap {width:100%;height:42px;background:#f3ede0;border-radius:21px;overflow:hidden;}
+        .lamp-fill {height:100%;width:100%;background:linear-gradient(90deg,#f7c859,#e6a224);border-radius:21px;box-shadow:0 0 14px #ffd04080;}
+        .study-card {border:1px solid #d4c5aa;border-radius:10px;padding:16px;}
+        .study-header {display:flex;justify-content:space-between;margin-bottom:10px;}
+        .study-bar {width:100%;height:10px;background:#f3ede0;border-radius:5px;overflow:hidden;}
+        .study-fill {width:80%;height:100%;background:#b8862e;}
+
+        /* 明间｜仪表盘藻井 方案B原版样式 */
+        .middle-room {background:#fffdf8;border:1px solid #e2d9c8;border-radius:12px;padding:20px;text-align:center;}
+        .caisson-wrap {width:240px;height:240px;margin:0 auto;position:relative;}
+        .caisson-svg {width:100%;height:100%;}
+        .caisson-text {position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+        .caisson-rank {font-size:16px;color:#444;}
+        .caisson-desc {font-size:13px;color:#777;margin-top:4px;}
+        .skill-buttons {margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+        .skill-btn {width:76px;height:76px;margin:0 auto;border-radius:8px;border:none;color:#fff;font-size:14px;cursor:pointer;transition:0.3s;}
+        .skill-btn:hover {box-shadow:0 0 18px currentColor;}
+        .skill-btn.listen {background:#4285f4;}
+        .skill-btn.speak {background:#34a853;}
+        .skill-btn.read {background:#fbbc05;}
+        .skill-btn.write {background:#ea4335;}
+
+        /* 东厢｜观卷 方案B原版样式 */
+        .east-room {background:#fffdf8;border:1px solid #e2d9c8;border-radius:12px;padding:20px;}
+        .scroll-item {border-bottom:1px solid #e2d9c8;padding:12px 0;display:flex;justify-content:space-between;align-items:center;}
+        .scroll-item:last-child {border-bottom:none;}
+        .scroll-name {font-size:15px;}
+        .scroll-status {font-size:13px;padding:3px 8px;border-radius:12px;}
+        .status-done {background:#e6f4ea;color:#1f7536;}
+        .status-doing {background:#e8f0fe;color:#20509f;}
+        .status-wait {background:#f8f8f8;color:#666;}
+        .scroll-btn {margin-top:18px;width:100%;padding:10px;background:#b8862e;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;}
+    </style>
+</head>
+<body>
+    <!-- 顶部导航【融合原稿原样保留】 -->
+    <header class="header-nav">
+        <div class="nav-left">
+            <div class="title-main">学习圣殿</div>
+            <nav class="nav-menu">
+                <a href="#">圣殿首页</a>
+                <a href="#">课业库</a>
+                <a href="#">功名榜</a>
+            </nav>
+        </div>
+        <div class="nav-right">
+            <button class="theme-btn" id="themeToggle">☀ / ☾ / ◐</button>
+            <div class="user-avatar">秀</div>
+        </div>
+    </header>
+
+    <!-- 五幕叙事轴【融合原稿原样保留】 -->
+    <div class="story-timeline">
+        <div class="timeline-item">登阶</div>
+        <div class="timeline-item">入殿</div>
+        <div class="timeline-item active">观卷</div>
+        <div class="timeline-item">研习</div>
+        <div class="timeline-item">留印</div>
+    </div>
+
+    <!-- ====================== 三开间区域【DOM完全照搬方案B】 ====================== -->
+    <section class="three-room">
+        <div class="west-room">
+            <div class="room-title">今日所得</div>
+            <div class="lamp-card">
+                <div class="lamp-header">
+                    <span class="lamp-name">点灯</span>
+                    <span class="lamp-count">连续7天 · 灯笼 7/7</span>
+                </div>
+                <div class="lamp-wrap">
+                    <div class="lamp-fill"></div>
+                </div>
+            </div>
+            <div class="study-card">
+                <div class="study-header">
+                    <span>今日学时</span>
+                    <span>已完成24分钟 / 目标30min</span>
+                </div>
+                <div class="study-bar">
+                    <div class="study-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="middle-room">
+            <div class="room-title">仪表盘</div>
+            <div class="caisson-wrap">
+                <svg class="caisson-svg" viewBox="0 0 240 240">
+                    <!-- 方案B原版四色四分弧 -->
+                    <circle cx="120" cy="120" r="90" fill="none" stroke="#4285f4" stroke-width="22" stroke-dasharray="141.37 282.74" stroke-dashoffset="0"/>
+                    <circle cx="120" cy="120" r="90" fill="none" stroke="#34a853" stroke-width="22" stroke-dasharray="141.37 282.74" stroke-dashoffset="-141.37"/>
+                    <circle cx="120" cy="120" r="90" fill="none" stroke="#fbbc05" stroke-width="22" stroke-dasharray="141.37 282.74" stroke-dashoffset="-282.74"/>
+                    <circle cx="120" cy="120" r="90" fill="none" stroke="#ea4335" stroke-width="22" stroke-dasharray="141.37 282.74" stroke-dashoffset="-424.11"/>
+                </svg>
+                <div class="caisson-text">
+                    <div class="caisson-rank">Bronze</div>
+                    <div class="caisson-desc">距 Silver 16%</div>
+                </div>
+            </div>
+            <div class="skill-buttons">
+                <button class="skill-btn listen">听</button>
+                <button class="skill-btn speak">说</button>
+                <button class="skill-btn read">读</button>
+                <button class="skill-btn write">写</button>
+            </div>
+        </div>
+
+        <div class="east-room">
+            <div class="room-title">观卷</div>
+            <div class="scroll-list">
+                <div class="scroll-item">
+                    <span class="scroll-name">听力精练·第一殿</span>
+                    <span class="scroll-status status-done">已毕</span>
+                </div>
+                <div class="scroll-item">
+                    <span class="scroll-name">口语跟读·第三殿</span>
+                    <span class="scroll-status status-doing">进行</span>
+                </div>
+                <div class="scroll-item">
+                    <span class="scroll-name">阅读短章·两篇</span>
+                    <span class="scroll-status status-wait">待启</span>
+                </div>
+            </div>
+            <button class="scroll-btn">继续研习</button>
+        </div>
+    </section>
+
+    <!-- 底部登阶、留印印章墙【融合原稿原样保留】 -->
+    <div class="stage-area">
+        <h3>圣殿功名 · 登阶留印</h3>
+        <div class="seal-wall">
+            <div class="seal-item">1</div>
+            <div class="seal-item">2</div>
+            <div class="seal-item">3</div>
+            <div class="seal-item">4</div>
+            <div class="seal-item">5</div>
+            <div class="seal-item">6</div>
+            <div class="seal-item">7</div>
+        </div>
+    </div>
+
+    <script>
+        // 主题切换JS【融合原稿原样保留】
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click',()=>{
+            document.body.classList.toggle('dark');
+        });
+    </script>
+</body>
+</html>

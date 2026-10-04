@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>学习圣殿 · 每日复习 · 设计稿</title>
+<style>
+/* ============================================================
+   T101 设计稿 - 每日复习页预览（单列卡片流 + 斗拱装饰栏）
+   ============================================================ */
+:root {
+  --ink:#1c1917;--ink-soft:#44403c;--muted:#78716c;
+  --line:rgba(28,25,23,.09);--line-strong:rgba(28,25,23,.14);
+  --paper:#faf7f2;--paper-deep:#f0ebe3;
+  --surface:rgba(255,253,248,.92);--surface-solid:#fffdf8;
+  --accent:#b45309;--accent-hover:#9a3412;
+  --accent-glow:rgba(180,83,9,.25);--accent-wash:rgba(180,83,9,.07);
+  --gold:#d4a843;--gold-light:#f5e6b8;--gold-dark:#b8860b;
+  --gold-glow:rgba(212,168,67,.30);--gold-wash:rgba(212,168,67,.08);
+  --vermillion:#c0392b;--vermillion-wash:rgba(192,57,43,.08);--vermillion-light:#e74c3c;
+  --listen:#0891b2;--speak:#ea580c;--read:#2563eb;--write:var(--accent);
+  --success:#059669;--success-wash:rgba(5,150,105,.08);
+  --danger:#9f1239;--warning:#d97706;
+  --font-display:"Fraunces","Songti SC","STSong","Noto Serif SC",Georgia,serif;
+  --font-body:"Karla",system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --r-sm:8px;--r-md:12px;--r-lg:18px;--r-xl:24px;--r-pill:999px;--r-circle:50%;
+  --sh-sm:0 1px 0 rgba(28,25,23,.06);
+  --sh-card:0 12px 40px rgba(28,25,23,.07),0 2px 8px rgba(28,25,23,.04);
+  --sh-float:0 22px 50px rgba(28,25,23,.12);
+  --sh-gold:0 8px 30px rgba(180,83,9,.18),0 2px 8px rgba(212,168,67,.10);
+  --dur-fast:120ms;--dur-mid:240ms;--dur-slow:400ms;
+  --ease-out:cubic-bezier(.22,.61,.36,1);
+  --sp-xs:4px;--sp-sm:8px;--sp-md:16px;--sp-lg:24px;--sp-xl:32px;--sp-2xl:48px;
+  --phi:1.618; /* 黄金分割比：主栏/侧栏划分 */
+  --phi-fr:1.618fr; /* grid 轨道专用 */
+}
+html[data-theme="dark"]{
+  --ink:#e8e0d4;--ink-soft:#b8afa4;--muted:#78716c;
+  --line:rgba(232,224,212,.10);--line-strong:rgba(232,224,212,.18);
+  --paper:#1a1714;--paper-deep:#12100e;
+  --surface:rgba(30,27,24,.92);--surface-solid:#1e1b18;
+  --accent-glow:rgba(212,168,67,.22);--accent-wash:rgba(212,168,67,.07);
+  --gold-glow:rgba(212,168,67,.35);--gold-wash:rgba(212,168,67,.08);
+  --vermillion-wash:rgba(192,57,43,.12);
+  --success-wash:rgba(5,150,105,.10);
+  --sh-sm:0 1px 0 rgba(0,0,0,.30);
+  --sh-card:0 12px 40px rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.20);
+  --sh-float:0 22px 50px rgba(0,0,0,.45);
+  --sh-gold:0 8px 30px rgba(212,168,67,.15),0 2px 8px rgba(0,0,0,.30);
+}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{font-family:var(--font-body);font-size:15px;line-height:1.6;color:var(--ink);background:var(--paper-deep);-webkit-font-smoothing:antialiased;min-height:100vh;transition:background var(--dur-mid) var(--ease-out),color var(--dur-mid) var(--ease-out);}
+h1,h2,h3{font-family:var(--font-display);color:var(--ink);margin:0;font-weight:600;}
+a{color:var(--accent);text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+input,textarea,select{font-family:inherit;font-size:15px;color:var(--ink);}
+
+/* ---- v6 顶部导航（下拉菜单 + 激励指标区） ---- */
+.temple-roof{height:6px;margin:10px 0 var(--sp-lg);background:linear-gradient(90deg,transparent 0%,var(--gold-dark) 15%,var(--gold) 30%,var(--gold-light) 50%,var(--gold) 70%,var(--gold-dark) 85%,transparent 100%);position:relative;}
+.temple-roof::after{content:"";position:absolute;bottom:-8px;left:0;right:0;height:8px;background:repeating-linear-gradient(90deg,transparent 0px,transparent 12px,var(--gold) 12px,var(--gold) 14px,transparent 14px,transparent 24px);opacity:.4;}
+.topnav{display:flex;align-items:center;gap:0;flex-wrap:wrap;margin-bottom:0;padding:0 var(--sp-lg);position:sticky;top:0;z-index:100;background:var(--paper-deep);max-width:1120px;margin:0 auto;}
+.topnav__brand{padding:11px 14px 11px 4px;font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--gold-dark);text-decoration:none;display:inline-flex;align-items:center;}
+.topnav__link{padding:11px 14px;border-radius:var(--r-sm);color:var(--ink-soft);font-size:14px;font-weight:500;text-decoration:none;transition:color var(--dur-fast),background var(--dur-fast);}
+.topnav__link:hover{background:var(--gold-wash);color:var(--gold-dark);}
+.topnav__link.active{background:var(--gold-wash);color:var(--gold-dark);font-weight:700;}
+.topnav-dropdown{position:relative;display:inline-flex;}
+.topnav-dropdown__trigger{display:inline-flex;align-items:center;gap:5px;padding:11px 14px;border:0;background:transparent;color:var(--ink-soft);font-size:14px;font-weight:500;border-radius:var(--r-sm);transition:color var(--dur-fast),background var(--dur-fast);cursor:pointer;}
+.topnav-dropdown__trigger svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform var(--dur-fast);}
+.topnav-dropdown:hover .topnav-dropdown__trigger,
+.topnav-dropdown:focus-within .topnav-dropdown__trigger{background:var(--gold-wash);color:var(--gold-dark);}
+.topnav-dropdown:hover .topnav-dropdown__trigger svg,
+.topnav-dropdown:focus-within .topnav-dropdown__trigger svg{transform:rotate(180deg);}
+.topnav-dropdown__menu{position:absolute;top:calc(100% + 4px);left:0;min-width:148px;padding:6px;border-radius:var(--r-md);background:var(--surface-solid);border:1px solid var(--line);box-shadow:0 22px 50px rgba(28,25,23,.12);display:flex;flex-direction:column;gap:2px;opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity var(--dur-fast),transform var(--dur-fast),visibility var(--dur-fast);z-index:100;}
+.topnav-dropdown:hover .topnav-dropdown__menu,
+.topnav-dropdown:focus-within .topnav-dropdown__menu{opacity:1;visibility:visible;transform:translateY(0);}
+.topnav-dropdown__menu a{padding:9px 12px;border-radius:var(--r-sm);color:var(--ink-soft);font-size:13.5px;font-weight:500;text-decoration:none;transition:color var(--dur-fast),background var(--dur-fast);}
+.topnav-dropdown__menu a:hover{background:var(--gold-wash);color:var(--gold-dark);}
+.topnav__incentive{display:inline-flex;align-items:center;gap:2px;padding:0 var(--sp-sm);border-left:1px solid rgba(28,25,23,.14);margin-left:auto;}
+.topnav__incentive-item{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:var(--r-sm);color:var(--ink-soft);font-size:13px;font-weight:500;transition:all var(--dur-fast);cursor:pointer;text-decoration:none;}
+.topnav__incentive-item:hover{background:var(--gold-wash);color:var(--gold-dark);}
+.topnav__incentive-item svg{width:15px;height:15px;stroke-width:1.8;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+.topnav__incentive-item--coin svg{stroke:var(--gold-dark);}
+.topnav__incentive-item--title{color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.02em;}
+.topnav__avatar{width:30px;height:30px;border-radius:var(--r-circle);background:var(--gold-wash);border:1px solid rgba(28,25,23,.14);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--gold-dark);flex-shrink:0;cursor:pointer;transition:all var(--dur-fast);}
+.topnav__avatar:hover{border-color:var(--gold);background:var(--gold-wash);}
+.theme-toggle{width:36px;height:36px;border-radius:var(--r-circle);border:1px solid rgba(28,25,23,.14);background:var(--surface-solid);color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all var(--dur-fast);}
+.theme-toggle:hover{border-color:var(--gold);color:var(--gold-dark);}
+
+/* ---- 双栏布局（今日待复习 + 复习方式侧栏）· 主:侧 = φ:1 ---- */
+.review-layout{display:grid;grid-template-columns:var(--phi-fr) 1fr;gap:var(--sp-lg);align-items:start;}
+@media(max-width:1023px){.review-layout{grid-template-columns:1fr;gap:var(--sp-md);}}
+.review-layout__main{min-width:0;}
+.review-layout__side{position:sticky;top:72px;align-self:start;}
+
+/* ---- 容器全宽 ---- */
+.page{max-width:1120px;margin:0 auto;padding:0 var(--sp-xl) var(--sp-2xl);}
+.roof-wrap{max-width:1120px;margin:0 auto;padding:0 var(--sp-xl);}
+@media(max-width:768px){.page{padding:0 var(--sp-md) var(--sp-xl);}.roof-wrap{padding:0 var(--sp-md);}}
+
+/* 斗拱栏 */
+.dougong-bar{height:32px;margin:0 calc(-1 * var(--sp-lg)) var(--sp-lg);background:var(--paper-deep);display:flex;align-items:flex-end;justify-content:center;overflow:hidden;}
+.dougong-bar svg{width:100%;height:32px;opacity:.35;}
+
+/* 卡片 */
+.card{border-radius:var(--r-lg);padding:var(--sp-lg);background:var(--surface-solid);border:1px solid var(--line);box-shadow:var(--sh-sm);margin-bottom:var(--sp-md);position:relative;}
+.card--gold{border-color:var(--gold-wash);box-shadow:var(--sh-sm);}
+.card__title{font-size:22px;margin-bottom:var(--sp-md);}
+.card__label{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:var(--sp-sm);}
+
+/* 按钮 */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:var(--r-pill);padding:11px 24px;font-size:14px;font-weight:700;transition:all var(--dur-fast) var(--ease-out);}
+.btn-primary{color:var(--surface-solid);background:linear-gradient(120deg,var(--gold-dark) 0%,var(--accent) 60%,var(--gold) 100%);box-shadow:0 6px 20px rgba(180,83,9,.25);}
+.btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 10px 28px rgba(180,83,9,.30);}
+.btn-secondary{background:var(--surface-solid);color:var(--ink);border:1px solid rgba(28,25,23,.14);box-shadow:0 1px 0 rgba(28,25,23,.06);}
+.btn-secondary:hover{border-color:var(--gold);color:var(--gold-dark);}
+.btn-block{width:100%;}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+.btn-icon{width:40px;height:40px;padding:0;border-radius:var(--r-md);border:1px solid rgba(28,25,23,.14);background:var(--surface-solid);color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;transition:all var(--dur-fast);}
+.btn-icon:hover{border-color:var(--gold);color:var(--gold-dark);}
+
+/* 表单 */
+label.field-label{display:block;font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin:14px 0 6px;}
+.input,.textarea,select.input{width:100%;padding:13px 16px;border-radius:var(--r-md);border:1px solid rgba(28,25,23,.14);background:var(--surface-solid);outline:none;transition:border-color var(--dur-fast),box-shadow var(--dur-fast);}
+.input:focus,.textarea:focus,select.input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(180,83,9,.25);}
+.textarea{resize:vertical;min-height:90px;line-height:1.6;}
+
+/* 分段控件 */
+.segmented{display:inline-flex;padding:4px;border-radius:var(--r-pill);background:var(--surface-solid);border:1px solid var(--line);box-shadow:0 1px 0 rgba(28,25,23,.06);}
+.segmented button{border:0;background:transparent;padding:8px 22px;border-radius:var(--r-pill);font-size:15px;font-weight:600;color:var(--ink-soft);transition:all var(--dur-fast);}
+.segmented button.is-active{background:var(--listen);color:#fff;}
+
+/* 技能按钮 */
+.skill-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
+.skill-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:18px 10px;border-radius:var(--r-md);background:var(--surface-solid);border:1px solid rgba(28,25,23,.14);border-left:4px solid var(--muted);font-size:17px;font-weight:700;color:var(--ink);transition:all var(--dur-fast);}
+.skill-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+.skill-btn:hover{box-shadow:0 12px 40px rgba(28,25,23,.07),0 2px 8px rgba(28,25,23,.04);transform:translateY(-1px);}
+.skill-btn--listen{border-left-color:var(--listen);}
+.skill-btn--speak{border-left-color:var(--speak);}
+.skill-btn--read{border-left-color:var(--read);}
+.skill-btn--write{border-left-color:var(--write);}
+
+/* ---- 候选列表（压缩高度） ---- */
+.candidate{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--r-md);background:var(--surface-solid);border:1px solid var(--line);border-left:3px solid var(--gold-soft);margin-bottom:6px;transition:all var(--dur-fast);cursor:pointer;}
+.candidate:hover{border-color:var(--gold);border-left-color:var(--gold);background:var(--gold-wash);}
+.candidate input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+.candidate__word{font-weight:700;font-size:15px;}
+.candidate__sub{font-size:12px;color:var(--muted);}
+.candidate__proficiency{margin-left:auto;display:flex;gap:4px;align-items:center;flex-shrink:0;}
+
+/* 进度环（压缩至 32px） */
+.ring-mini{width:32px;height:32px;position:relative;flex-shrink:0;}
+.ring-mini svg{width:100%;height:100%;transform:rotate(-90deg);}
+.ring-mini__bg{fill:none;stroke:rgba(28,25,23,.14);stroke-width:4;}
+.ring-mini__fill{fill:none;stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset .6s var(--ease-out);}
+.ring-mini__val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:9px;font-weight:700;color:var(--ink);}
+
+/* 徽章 */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:var(--r-pill);font-size:11px;font-weight:700;}
+.badge--gold{background:rgba(212,168,67,.08);color:#b8860b;}
+.badge--verm{background:rgba(192,57,43,.08);color:#c0392b;}
+.badge--teal{background:rgba(15,118,110,.10);color:#0891b2;}
+.badge--success{background:rgba(5,150,105,.08);color:#059669;}
+
+/* 分隔线 */
+.divider-ornament{display:flex;align-items:center;gap:var(--sp-sm);margin:var(--sp-lg) 0;color:var(--gold);opacity:.5;}
+.divider-ornament::before,.divider-ornament::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+
+/* 提示 */
+.notice{border-radius:var(--r-md);padding:14px 18px;font-size:14px;line-height:1.6;color:var(--ink-soft);background:linear-gradient(135deg,#fbf2ea,var(--paper));border:1px solid rgba(180,83,9,.22);margin-bottom:16px;}
+
+/* 状态文字 */
+.text-muted{color:var(--muted);}
+.msg{font-size:14px;font-weight:600;margin-top:12px;}
+.msg--ok{color:#059669;}
+.msg--err{color:#9f1239;}
+
+/* 骨架屏 */
+.skeleton{border-radius:var(--r-sm);background:linear-gradient(90deg,rgba(28,25,23,.09) 25%,rgba(28,25,23,.14) 50%,rgba(28,25,23,.09) 75%);background-size:200% 100%;animation:skeleton-shimmer 1.4s ease-in-out infinite;}
+@keyframes skeleton-shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+.skeleton--text{height:14px;margin-bottom:8px;}
+.skeleton--title{height:22px;width:60%;margin-bottom:12px;}
+
+/* 主题切换 */
+.theme-switcher{display:flex;gap:8px;margin-bottom:var(--sp-lg);}
+.theme-btn{padding:8px 18px;border-radius:var(--r-pill);border:1px solid rgba(28,25,23,.14);background:var(--surface-solid);color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer;transition:all var(--dur-fast);}
+.theme-btn.active{border-color:var(--gold);background:rgba(212,168,67,.08);color:#b8860b;}
+
+.design-note{background:rgba(212,168,67,.08);border:1px solid rgba(212,168,67,.08);border-left:3px solid var(--gold);padding:var(--sp-md);margin-bottom:var(--sp-lg);font-size:13px;color:var(--ink-soft);border-radius:0 var(--r-sm) var(--r-sm) 0;}
+.design-section-title{font-family:var(--font-display);font-size:28px;margin-bottom:var(--sp-sm);display:flex;align-items:center;gap:var(--sp-sm);}
+.design-section-title::before{content:"◆";color:var(--gold);font-size:14px;}
+.design-subtitle{font-size:14px;color:var(--muted);margin-bottom:var(--sp-lg);}
+
+.side-panel{border-radius:var(--r-lg);padding:var(--sp-lg);background:var(--paper);border:1px solid var(--line);box-shadow:none;margin-bottom:var(--sp-md);}
+.side-panel__title{font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:var(--sp-sm);}
+
+@media(max-width:560px){.skill-grid{grid-template-columns:1fr 1fr;}.review-layout{grid-template-columns:1fr;}.review-layout__side{position:static;}}
+</style>
+</head>
+<body>
+
+<!-- 顶部导航（v6：下拉菜单 + 激励指标区） -->
+<nav class="topnav">
+  <a href="/" class="topnav__brand">学习圣殿</a>
+  <!-- 学习下拉 -->
+  <div class="topnav-dropdown">
+    <button class="topnav-dropdown__trigger">学习 <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <div class="topnav-dropdown__menu">
+      <a href="/pages/kp-entry.html">知识点录入</a>
+      <a href="/pages/kp-detail.html">知识点详情</a>
+      <a href="/pages/wordbook.html">单词本</a>
+    </div>
+  </div>
+  <!-- 练习下拉 -->
+  <div class="topnav-dropdown">
+    <button class="topnav-dropdown__trigger">练习 <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <div class="topnav-dropdown__menu">
+      <a href="/pages/review.html" class="active">每日复习</a>
+      <a href="/pages/daily-quiz.html">每日小测</a>
+      <a href="/pages/articles.html">文章阅读</a>
+    </div>
+  </div>
+  <a href="/pages/learning-center.html" class="topnav__link">学情中心</a>
+  <div class="topnav__incentive">
+    <a href="#" class="topnav__incentive-item topnav__incentive-item--coin" title="金桂">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h3.5a1.5 1.5 0 0 1 0 3h-2a1.5 1.5 0 0 0 0 3h3.5"/></svg>
+      <span>1,240</span>
+    </a>
+    <span class="topnav__incentive-item topnav__incentive-item--title">学究</span>
+    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+    <div class="topnav__avatar" title="本地学习者">本</div>
+  </div>
+</nav>
+
+<!-- 金色渐变条：导航与内容的明显分界（宽度与内容对齐） -->
+<div class="roof-wrap">
+  <div class="temple-roof"></div>
+</div>
+
+<div class="page">
+
+  <div class="design-note">
+    <strong>点金圣殿 · 每日复习</strong> — 主:侧按黄金分割比 1.618 划分：主栏为今日待复习候选池（核心突出），侧栏为复习方式选择。电脑端双栏并列、移动端单列自适应；复习完成自动入账金桂 +5（晨诵）。
+  </div>
+
+  <h2 class="design-section-title">每日复习</h2>
+  <p class="design-subtitle">基于遗忘曲线的智能复习 · 晨诵完成即得金桂 · 听说读写四技能分层</p>
+
+  <div class="review-layout">
+
+    <!-- 主栏：今日待复习（核心内容，突出置顶） -->
+    <div class="review-layout__main">
+      <section class="card" id="candidate-card">
+    <div class="card__label">练习语言包</div>
+    <h3 class="card__title" style="font-size:20px;">今日待复习 · <span style="font-size:16px;color:var(--muted);font-weight:400;">5 个知识点</span></h3>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button class="btn btn-secondary" style="padding:8px 16px;font-size:13px;">全选</button>
+      <button class="btn btn-secondary" style="padding:8px 16px;font-size:13px;">全不选</button>
+      <button class="btn btn-primary" style="padding:8px 16px;font-size:13px;margin-left:auto;">开始练习</button>
+    </div>
+    <div id="candidate-list">
+      <!-- 候选项 1 -->
+      <div class="candidate">
+        <input type="checkbox" checked>
+        <div class="ring-mini">
+          <svg viewBox="0 0 40 40">
+            <circle class="ring-mini__bg" cx="20" cy="20" r="16"/>
+            <circle class="ring-mini__fill" cx="20" cy="20" r="16" stroke="var(--gold)" stroke-dasharray="100.5" stroke-dashoffset="40"/>
+          </svg>
+          <div class="ring-mini__val" style="font-size:9px;">L3</div>
+        </div>
+        <div style="flex:1;">
+          <div class="candidate__word">abandon</div>
+          <div class="candidate__sub">放弃；抛弃 · 动词</div>
+        </div>
+        <div class="candidate__proficiency">
+          <span class="badge badge--gold">L3</span>
+        </div>
+      </div>
+      <!-- 候选项 2 -->
+      <div class="candidate">
+        <input type="checkbox" checked>
+        <div class="ring-mini">
+          <svg viewBox="0 0 40 40">
+            <circle class="ring-mini__bg" cx="20" cy="20" r="16"/>
+            <circle class="ring-mini__fill" cx="20" cy="20" r="16" stroke="var(--listen)" stroke-dasharray="100.5" stroke-dashoffset="20"/>
+          </svg>
+          <div class="ring-mini__val" style="font-size:9px;">L4</div>
+        </div>
+        <div style="flex:1;">
+          <div class="candidate__word">sufficient</div>
+          <div class="candidate__sub">足够的；充分的 · 形容词</div>
+        </div>
+        <div class="candidate__proficiency">
+          <span class="badge badge--success">L4</span>
+        </div>
+      </div>
+      <!-- 候选项 3 -->
+      <div class="candidate">
+        <input type="checkbox" checked>
+        <div class="ring-mini">
+          <svg viewBox="0 0 40 40">
+            <circle class="ring-mini__bg" cx="20" cy="20" r="16"/>
+            <circle class="ring-mini__fill" cx="20" cy="20" r="16" stroke="var(--danger)" stroke-dasharray="100.5" stroke-dashoffset="80"/>
+          </svg>
+          <div class="ring-mini__val" style="font-size:9px;">L1</div>
+        </div>
+        <div style="flex:1;">
+          <div class="candidate__word">persistent</div>
+          <div class="candidate__sub">持续的；坚持的 · 形容词</div>
+        </div>
+        <div class="candidate__proficiency">
+          <span class="badge badge--verm">L1</span>
+        </div>
+      </div>
+      <!-- 骨架屏示例 -->
+      <div class="candidate" style="pointer-events:none;">
+        <div style="width:18px;height:18px;border-radius:4px;" class="skeleton"></div>
+        <div style="flex:1;">
+          <div class="skeleton skeleton--text" style="width:80px;margin-bottom:6px;"></div>
+          <div class="skeleton skeleton--text" style="width:120px;"></div>
+        </div>
+        <div style="width:40px;height:40px;border-radius:50%;" class="skeleton"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider-ornament">❖</div>
+
+  <!-- 答题区示例 -->
+  <section class="card" id="quiz-section" style="display:none;">
+    <div class="card__label">答题中</div>
+    <h3 class="card__title" style="font-size:20px;">第 <span id="q-num">1</span> / 5 题</h3>
+    <div style="margin-bottom:16px;">
+      <div style="font-family:var(--font-display);font-size:24px;font-weight:700;margin-bottom:8px;">abandon</div>
+      <div style="color:var(--muted);font-size:14px;">/əˈbændən/ · 动词</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+      <label style="display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);cursor:pointer;transition:all var(--dur-fast);">
+        <input type="radio" name="q1" style="accent-color:var(--accent);">
+        <span>放弃；抛弃</span>
+      </label>
+      <label style="display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);cursor:pointer;transition:all var(--dur-fast);">
+        <input type="radio" name="q1" style="accent-color:var(--accent);">
+        <span>充足的；足够的</span>
+      </label>
+      <label style="display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);cursor:pointer;transition:all var(--dur-fast);">
+        <input type="radio" name="q1" style="accent-color:var(--accent);">
+        <span>持久的；坚持的</span>
+      </label>
+      <label style="display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);cursor:pointer;transition:all var(--dur-fast);">
+        <input type="radio" name="q1" style="accent-color:var(--accent);">
+        <span>充分的；足够的</span>
+      </label>
+    </div>
+    <button class="btn btn-primary btn-block">提交答案</button>
+  </section>
+    </div><!-- /review-layout__main -->
+
+    <!-- 侧栏：复习方式选择（降低关注） -->
+    <aside class="review-layout__side">
+      <div class="side-panel">
+        <div class="side-panel__title">复习方式</div>
+        <div class="notice" style="margin-bottom:12px;font-size:13px;">四个模式覆盖 听·说·读·写。当前题型实际考察 <strong>读 · 写</strong>。</div>
+        <label class="field-label" style="margin-top:8px;">按时间范围</label>
+        <div class="segmented" style="margin-bottom:12px;">
+          <button class="is-active">按日复习</button>
+          <button>按周复习</button>
+        </div>
+        <label class="field-label">技能侧重</label>
+        <div class="skill-grid" style="grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">
+          <button class="skill-btn skill-btn--listen" style="padding:12px 8px;font-size:14px;"><svg viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>听力</button>
+          <button class="skill-btn skill-btn--speak" style="padding:12px 8px;font-size:14px;"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>口语</button>
+          <button class="skill-btn skill-btn--read" onclick="scrollToCandidates()" style="padding:12px 8px;font-size:14px;"><svg viewBox="0 0 24 24"><path d="M2 5h7a3 3 0 0 1 3 3v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-7a3 3 0 0 0-3 3v11a3 3 0 0 1 3-3h7z"/></svg>阅读</button>
+          <button class="skill-btn skill-btn--write" onclick="scrollToCandidates()" style="padding:12px 8px;font-size:14px;"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>写作</button>
+        </div>
+      </div>
+    </aside>
+
+  </div><!-- /review-layout -->
+
+  <div class="divider-ornament" style="margin-top:var(--sp-xl);">❖</div>
+
+  <!-- 六态展示 -->
+  <div class="divider-ornament">❖</div>
+  <h2 class="design-section-title">本页六态设计</h2>
+  <p class="design-subtitle">默认态 / 加载态 / 空态 / 错误态 / 成功态 / 边界态</p>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:var(--sp-md);margin-bottom:var(--sp-xl);">
+    <div style="border-radius:var(--r-md);padding:var(--sp-md);text-align:center;border:1px solid var(--line);background:var(--surface-solid);">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:var(--sp-sm);">默认态</div>
+      <div style="margin-bottom:4px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h7a3 3 0 0 1 3 3v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-7a3 3 0 0 0-3 3v11a3 3 0 0 1 3-3h7z"/></svg></div>
+      <div style="font-size:12px;color:var(--ink-soft);">正常候选池展示</div>
+    </div>
+    <div style="border-radius:var(--r-md);padding:var(--sp-md);text-align:center;border:1px solid var(--line);background:var(--surface-solid);">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:var(--sp-sm);">加载态</div>
+      <div style="width:80px;">
+        <div class="skeleton" style="height:14px;margin-bottom:8px;width:60%;"></div>
+        <div class="skeleton" style="height:14px;margin-bottom:8px;width:80%;"></div>
+        <div class="skeleton" style="height:14px;margin-bottom:8px;width:50%;"></div>
+      </div>
+    </div>
+    <div style="border-radius:var(--r-md);padding:var(--sp-md);text-align:center;border:1px solid var(--line);background:var(--surface-solid);">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:var(--sp-sm);">空态</div>
+      <div style="margin-bottom:4px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.6 2.6L16 9.6"/></svg></div>
+      <div style="font-size:12px;color:var(--success);font-weight:600;">今日任务已完成</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">明天再来挑战吧</div>
+    </div>
+    <div style="border-radius:var(--r-md);padding:var(--sp-md);text-align:center;border:1px solid var(--line);background:var(--surface-solid);">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:var(--sp-sm);">错误态</div>
+      <div style="margin-bottom:4px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4M12 17.2h.01"/></svg></div>
+      <div style="font-size:12px;color:var(--danger);font-weight:600;">网络异常</div>
+      <button style="margin-top:8px;padding:4px 12px;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--surface-solid);font-size:12px;cursor:pointer;">重试</button>
+    </div>
+    <div style="border-radius:var(--r-md);padding:var(--sp-md);text-align:center;border:1px solid var(--line);background:var(--surface-solid);">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:var(--sp-sm);">成功态</div>
+      <div style="margin-bottom:4px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg></div>
+      <div style="font-size:12px;color:var(--success);font-weight:600;">复习完成</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">晨诵入账 · 金桂 +5</div>
+    </div>
+    <div style="border-radius:var(--r-md);padding:var(--sp-md);text-align:center;border:1px solid var(--line);background:var(--surface-solid);">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:var(--sp-sm);">边界态</div>
+      <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;">
+        一个非常非常非常长的知识点名称测试...
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  if (html.getAttribute('data-theme') === 'dark') {
+    html.removeAttribute('data-theme');
+  } else {
+    html.setAttribute('data-theme', 'dark');
+  }
+}
+function scrollToCandidates() {}
+</script>
+</body>
+</html>

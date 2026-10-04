@@ -1,0 +1,1072 @@
+/* ============================================================
+   英语学习应用 · v1.3.0-T101 设计系统 v2 · 组件基座 components.css
+   风格：「学习圣殿」= 巴洛克仪式感 × 新古典理性秩序 × 中式建筑美学
+   来源：设计稿 01D / 02 / 03 / 04（T101-design-system-v2）
+   约定：① 本文件只承载「新增」组件与圣殿构件；
+         ② 既有组件（.btn/.card/.input/.notice/.skill-btn/.step-* 等）仍保留在
+            style.css，本文件不重复定义，避免覆盖既有页面；
+         ③ 所有颜色/间距/圆角/阴影/动效一律取自 style.css :root 令牌，无魔法值；
+         ④ 依赖 style.css（须在其后引入）。
+   ============================================================ */
+
+/* ============================================================
+   一、工具类（替代行内样式）
+   ============================================================ */
+.u-hidden { display: none; }
+.u-full { width: 100%; }
+.u-row { display: flex; gap: var(--sp-lg); flex-wrap: wrap; font-size: 13px; }
+.u-row-sm { display: flex; gap: var(--sp-sm); flex-wrap: wrap; align-items: center; }
+.u-col-full { display: flex; flex-direction: column; width: 100%; }
+.u-col-center { display: flex; flex-direction: column; gap: var(--sp-sm); align-items: center; }
+.u-prose { color: var(--ink-soft); line-height: 1.75; }
+.u-muted { font-size: 12px; color: var(--muted); }
+.u-strong { font-size: 12px; color: var(--ink); }
+.u-gold { color: var(--gold-dark); font-weight: 700; }
+.u-danger { color: var(--danger); font-weight: 700; }
+.u-mt-md { margin-top: 14px; }
+.u-btn-sm { padding: 6px 14px; font-size: 12px; }
+.u-push-end { margin-left: auto; }
+.u-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.u-clamp-2 {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; word-break: break-word;
+}
+
+/* ============================================================
+   二、六态设计清单（默认 / 加载 / 空 / 错误可重试 / 成功 / 边界）
+   ============================================================ */
+.state-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-md); }
+.state-card { border-radius: var(--r-md); padding: var(--sp-md); text-align: center; border: 1px solid var(--line); background: var(--surface-solid); }
+.state-card__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: var(--sp-sm); }
+.state-card__view { min-height: 64px; display: flex; align-items: center; justify-content: center; }
+.state-icon { width: 26px; height: 26px; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.state-icon--muted { stroke: var(--muted); }
+.state-icon--danger { stroke: var(--danger); }
+.state-icon--success { stroke: var(--success); }
+.state-line { font-size: 12px; color: var(--muted); }
+.state-line--danger { color: var(--danger); font-weight: 700; }
+.state-line--success { color: var(--success); font-weight: 700; }
+
+/* ============================================================
+   三、徽章 / 标签 / 骨架屏 / 进度条
+   ============================================================ */
+.badge { display: inline-flex; align-items: center; gap: var(--sp-xs); padding: 3px 10px; border-radius: var(--r-pill); font-size: 12px; font-weight: 700; }
+.badge--gold { background: var(--gold-wash); color: var(--gold-dark); }
+.badge--verm { background: var(--vermillion-wash); color: var(--vermillion); }
+.badge--teal { background: rgba(8, 145, 178, .10); color: var(--listen); }
+.badge--blue { background: rgba(37, 99, 235, .10); color: var(--read); }
+.badge--orange { background: rgba(234, 88, 12, .10); color: var(--speak); }
+.badge--success { background: var(--success-wash); color: var(--success); }
+
+.skeleton {
+  border-radius: var(--r-sm);
+  background: linear-gradient(90deg, var(--line) 25%, var(--line-strong) 50%, var(--line) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.skeleton--text { height: 14px; margin-bottom: var(--sp-sm); }
+.skeleton--title { height: 22px; width: 60%; margin-bottom: 12px; }
+.skeleton--circle { border-radius: var(--r-circle); }
+/* 圆形徽章 / 朱砂印占位（加载态） */
+.skeleton--badge { width: 64px; height: 64px; border-radius: var(--r-circle); }
+/* 山门飞檐轮廓：加载态图形占位（取自方案 B 的构件轮廓） */
+.skeleton--roof { height: 16px; clip-path: polygon(0 100%, 0 62%, 18% 20%, 50% 0, 82% 20%, 100% 62%, 100% 100%); }
+
+.meter { height: 6px; border-radius: 3px; background: var(--line); margin-top: 10px; overflow: hidden; }
+.meter__fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--gold-dark), var(--gold)); transition: width var(--dur-slow) var(--ease-out); }
+.meter__fill--verm { background: linear-gradient(90deg, var(--vermillion-soft), var(--vermillion)); }
+
+/* ============================================================
+   四、进度圆环 / 熟练度徽章 / 迷你环
+   ============================================================ */
+.progress-ring { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
+.progress-ring__bg { fill: none; stroke: var(--line-strong); stroke-width: 8; }
+.progress-ring__fill {
+  fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round;
+  transform: rotate(-90deg); transform-origin: 50% 50%;
+  transition: stroke-dashoffset var(--dur-slow) var(--ease-out);
+}
+.progress-ring__val {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--accent);
+}
+/* 环形光晕：虚线旋转外圈（暗色保留，速度略慢） */
+.ring-aura {
+  position: absolute; inset: -10px; border-radius: var(--r-circle);
+  border: 1px dashed var(--gold); opacity: .35;
+  animation: ring-spin 48s linear infinite;
+}
+@keyframes ring-spin { to { transform: rotate(360deg); } }
+
+.proficiency-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: var(--r-circle);
+  font-family: var(--font-display); font-size: 15px; font-weight: 700; color: #fff;
+  background: var(--muted); flex-shrink: 0;
+}
+.proficiency-badge.l0 { background: var(--muted); opacity: .45; }
+.proficiency-badge.l1 { background: var(--vermillion-soft); }
+.proficiency-badge.l2 { background: var(--gold-soft); color: var(--ink); }
+.proficiency-badge.l3 { background: var(--gold); color: var(--ink); }
+.proficiency-badge.l4 { background: var(--gold-dark); }
+.proficiency-badge.l5 { background: var(--accent); }
+
+.ring-mini { width: 32px; height: 32px; position: relative; flex-shrink: 0; }
+.ring-mini__bg { fill: none; stroke: var(--line-strong); stroke-width: 4; }
+.ring-mini__fill { fill: none; stroke-width: 4; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset var(--dur-slow) var(--ease-out); }
+.ring-mini__val { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 9px; font-weight: 700; color: var(--ink); }
+
+/* ============================================================
+   五、抽屉浮层（扩展内容优先以抽屉/浮层呈现，不整屏覆盖）
+   ============================================================ */
+.drawer-overlay {
+  position: fixed; inset: 0; background: rgba(28, 25, 23, .4);
+  z-index: var(--z-overlay); opacity: 0; pointer-events: none;
+  /* visibility 一并过渡：关闭时元素仍留在 DOM，但需移出无障碍树与 Tab 顺序 */
+  visibility: hidden;
+  transition: opacity var(--dur-mid) var(--ease-out), visibility var(--dur-mid);
+}
+.drawer-overlay.open { opacity: 1; pointer-events: auto; visibility: visible; }
+.drawer-panel {
+  position: absolute; top: 0; right: 0; bottom: 0; width: min(440px, 90vw);
+  background: var(--paper); box-shadow: var(--sh-float);
+  transform: translateX(100%); transition: transform var(--dur-mid) var(--ease-out);
+  display: flex; flex-direction: column;
+}
+.drawer-overlay.open .drawer-panel { transform: translateX(0); }
+.drawer-header { padding: var(--sp-lg); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+.drawer-title { font-family: var(--font-display); font-size: 17px; font-weight: 600; }
+.drawer-close { width: 32px; height: 32px; border-radius: var(--r-circle); border: 1px solid var(--line); background: transparent; color: var(--ink-soft); font-size: 18px; line-height: 1; }
+.drawer-body { flex: 1; overflow-y: auto; padding: var(--sp-lg); }
+
+/* ============================================================
+   六、Toast 提示
+   ============================================================ */
+.toast-container {
+  position: fixed; left: 50%; bottom: var(--sp-xl); transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: var(--sp-sm); align-items: center;
+  z-index: var(--z-toast); pointer-events: none;
+}
+.toast {
+  padding: 12px 20px; border-radius: var(--r-pill);
+  background: var(--ink); color: var(--paper);
+  font-size: 14px; font-weight: 600; box-shadow: var(--sh-float);
+  display: inline-flex; align-items: center; gap: var(--sp-sm);
+}
+
+/* ============================================================
+   七、圣殿构件 · 顶栏与鎏金屋檐条
+   ============================================================ */
+.page { width: 100%; max-width: var(--page-max); margin: 0 auto; padding: 0 var(--sp-lg) var(--sp-2xl); }
+.roof-wrap { width: 100%; max-width: var(--page-max); margin: 0 auto; padding: 0 var(--sp-lg); }
+
+/* 常驻吸顶：内含 .topnav（导航）与 .temple-roof（鎏金渐变条）
+   → 渐变条位于「导航」与「下方主体内容」之间，形成明显视觉区分 */
+.topbar {
+  position: sticky; top: 0; z-index: var(--z-nav);
+  background: var(--paper-deep);
+  padding: 0 var(--sp-lg);
+  /* 顶栏由 nav.js 注入到 body 级 #topbar-slot（不在 .page 内），
+     故不能用负外边距抵消内边距——否则会横向溢出 24px（T102 遗留缺陷）。
+     导航内容与 .page 内容的对齐改由 .topnav 限宽实现。 */
+  margin: 0 0 var(--sp-2xl);
+}
+/* 导航主容器：限宽居中，使导航内容与 .page 内容左右边界对齐 */
+.topnav {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0;
+  max-width: calc(var(--page-max) - 2 * var(--sp-lg));
+  margin: 0 auto;
+  border-bottom: 1px solid var(--line);
+}
+.topnav__brand {
+  display: inline-flex; align-items: center;
+  padding: 11px 14px 11px var(--sp-xs);
+  font-family: var(--font-display); font-size: 16px; font-weight: 700;
+  color: var(--gold-dark); letter-spacing: .02em;
+}
+.topnav__link {
+  padding: 11px 14px; border-radius: var(--r-sm);
+  color: var(--ink-soft); font-size: 14px; font-weight: 500;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.topnav__link:hover { background: var(--gold-wash); color: var(--gold-dark); }
+.topnav__link.active { background: var(--gold-wash); color: var(--gold-dark); font-weight: 700; }
+
+/* 下拉菜单（纯 CSS hover / focus-within，无需 JS） */
+.topnav-dropdown { position: relative; display: inline-flex; }
+.topnav-dropdown__trigger {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 11px 14px; border: 0; border-radius: var(--r-sm); background: transparent;
+  color: var(--ink-soft); font-size: 14px; font-weight: 500;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.topnav-dropdown__trigger svg {
+  width: 14px; height: 14px; stroke: currentColor; fill: none;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform var(--dur-fast);
+}
+.topnav-dropdown:hover .topnav-dropdown__trigger,
+.topnav-dropdown:focus-within .topnav-dropdown__trigger { background: var(--gold-wash); color: var(--gold-dark); }
+.topnav-dropdown:hover .topnav-dropdown__trigger svg,
+.topnav-dropdown:focus-within .topnav-dropdown__trigger svg { transform: rotate(180deg); }
+/* 下拉触发 active 态：JS 自动标记，表示当前页在此分组内 */
+.topnav-dropdown__trigger.active { background: var(--gold-wash); color: var(--gold-dark); font-weight: 700; }
+.topnav-dropdown__menu {
+  position: absolute; top: calc(100% + 4px); left: 0; min-width: 152px;
+  padding: 6px; border-radius: var(--r-md);
+  background: var(--surface-solid); border: 1px solid var(--line); box-shadow: var(--sh-float);
+  display: flex; flex-direction: column; gap: 2px;
+  opacity: 0; visibility: hidden; transform: translateY(-4px);
+  transition: opacity var(--dur-fast), transform var(--dur-fast), visibility var(--dur-fast);
+  z-index: var(--z-nav);
+}
+.topnav-dropdown:hover .topnav-dropdown__menu,
+.topnav-dropdown:focus-within .topnav-dropdown__menu { opacity: 1; visibility: visible; transform: translateY(0); }
+.topnav-dropdown__menu a {
+  padding: 9px 12px; border-radius: var(--r-sm);
+  color: var(--ink-soft); font-size: 13.5px; font-weight: 500;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.topnav-dropdown__menu a:hover { background: var(--gold-wash); color: var(--gold-dark); }
+
+/* 成就激励区：竖杠（border-left）分隔 + margin-left:auto 推到导航最右端 */
+.topnav__incentive {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 0 var(--sp-sm);
+  border-left: 1px solid var(--line-strong);
+  margin-left: auto;
+}
+/* 激励项自 T103 起由 <a> 改为 <button>（点击开宝库抽屉，不再跳转独立页）：清 UA 默认样式 */
+.topnav__incentive-item, .topnav__avatar {
+  border: 0; background: transparent; font-family: inherit; cursor: pointer; padding: 0;
+}
+.topnav__incentive-item {
+  display: inline-flex; align-items: center; gap: var(--sp-xs);
+  padding: 6px 10px; border-radius: var(--r-sm);
+  color: var(--ink-soft); font-size: 13px; font-weight: 600;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.topnav__incentive-item:hover { background: var(--gold-wash); color: var(--gold-dark); }
+.topnav__incentive-item svg {
+  width: 15px; height: 15px; flex-shrink: 0;
+  fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.topnav__incentive-item--coin { color: var(--gold-dark); font-weight: 700; }
+.topnav__incentive-item--title { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+.topnav__avatar {
+  width: 30px; height: 30px; flex-shrink: 0; border-radius: var(--r-circle);
+  background: var(--gold-wash); border: 1px solid var(--line-strong);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: var(--gold-dark);
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.topnav__avatar:hover { border-color: var(--gold); }
+
+/* 用户区（nav.js 合并旧 auth-nav.js 动态渲染；激励区之后、主题按钮之前） */
+.topnav__user {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 var(--sp-sm);
+}
+.topnav__user .topnav__name { font-size: 13px; color: var(--muted); }
+.topnav__user .topnav__divider { width: 1px; height: 14px; background: var(--line); }
+.topnav__user .topnav__logout,
+.topnav__user .topnav__login {
+  font-size: 13px; color: var(--ink-soft); padding: 4px 10px;
+  border-radius: var(--r-sm);
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.topnav__user .topnav__logout:hover,
+.topnav__user .topnav__login:hover { background: var(--gold-wash); color: var(--gold-dark); }
+.topnav__user .topnav__deregister {
+  font-size: 12px; color: #991b1b; padding: 4px 8px; border-radius: var(--r-sm);
+  transition: background var(--dur-fast);
+}
+.topnav__user .topnav__deregister:hover { background: rgba(153,27,27,.08); }
+
+/* 主题切换按钮（nav.js 在 HTML 模板里写占位，theme.js 挂载 click 事件 + 同步图标） */
+.theme-toggle {
+  width: 36px; height: 36px; flex-shrink: 0; border-radius: var(--r-circle);
+  border: 1px solid var(--line-strong); background: var(--surface-solid);
+  color: var(--ink-soft); display: inline-flex; align-items: center; justify-content: center;
+  transition: all var(--dur-fast);
+}
+.theme-toggle:hover { border-color: var(--gold); color: var(--gold-dark); }
+.theme-toggle svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.theme-toggle--float { position: fixed; top: var(--sp-md); right: var(--sp-md); z-index: var(--z-nav); box-shadow: var(--sh-sm); }
+
+/* 鎏金屋檐顶条：导航与下方主体内容的视觉分界带 */
+.temple-roof {
+  height: 6px; position: relative;
+  margin: 0 calc(-1 * var(--sp-lg));
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--gold-dark) 15%,
+    var(--gold) 30%,
+    var(--gold-light) 50%,
+    var(--gold) 70%,
+    var(--gold-dark) 85%,
+    transparent 100%);
+}
+/* 屋脊纹样带：紧贴渐变条下方 */
+.temple-roof::after {
+  content: ""; position: absolute; top: 100%; left: 0; right: 0; height: 8px;
+  background: repeating-linear-gradient(90deg,
+    transparent 0, transparent 12px,
+    var(--gold) 12px, var(--gold) 14px,
+    transparent 14px, transparent 24px);
+  opacity: .4;
+}
+html[data-theme="dark"] .temple-roof { opacity: .8; }
+
+/* 斗拱栏：副页顶部装饰（暗色降量） */
+.dougong-bar { height: 32px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: var(--sp-lg); overflow: hidden; }
+.dougong-bar svg { width: 100%; max-width: 320px; height: 100%; opacity: .85; }
+html[data-theme="dark"] .dougong-bar svg { opacity: .5; }
+
+/* ============================================================
+   八、圣殿构件 · 微剧情五幕叙事轴
+   ============================================================ */
+.narr {
+  display: flex; list-style: none; margin: 0 0 var(--sp-lg); padding: var(--sp-md) var(--sp-sm);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--surface), var(--paper));
+  border: 1px solid var(--line); box-shadow: var(--sh-sm);
+  position: relative; overflow: hidden;
+}
+.narr::before {
+  content: ""; position: absolute; left: 10%; right: 10%; top: calc(var(--sp-md) + 21px);
+  height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: .45;
+}
+.narr__node { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 1; }
+.narr__dot {
+  width: 42px; height: 42px; border-radius: var(--r-circle);
+  border: 1px solid var(--line-strong); background: var(--paper);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); transition: all var(--dur-mid) var(--ease-out);
+}
+.narr__dot svg { width: 21px; height: 21px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.narr__label { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+.narr__node.done .narr__dot { border-color: var(--gold-soft); background: var(--gold-wash); color: var(--gold-dark); }
+.narr__node.now .narr__dot { border-color: var(--vermillion-soft); background: var(--vermillion-wash); color: var(--vermillion); box-shadow: 0 0 0 4px var(--vermillion-wash); }
+.narr__node.now .narr__label { color: var(--vermillion); font-weight: 700; }
+
+/* ============================================================
+   九、圣殿构件 · 中轴对称三开间
+   grid-template-columns: minmax(0,1fr) var(--center-col) minmax(0,1fr)
+   ※ 必须写 minmax(0,1fr) 而非裸 1fr：裸 1fr 的隐含最小尺寸是 auto，
+     会被两厢内容的最小内容宽度撑开，导致左右两列宽度不相等。
+   ============================================================ */
+.hall { display: grid; grid-template-columns: minmax(0, 1fr) var(--center-col) minmax(0, 1fr); gap: var(--sp-lg); align-items: start; }
+.hall__wing { display: flex; flex-direction: column; gap: var(--sp-md); min-width: 0; }
+.hall__wing .wing-card { width: 100%; }
+.hall__center { display: flex; flex-direction: column; align-items: center; gap: var(--sp-md); }
+@media (max-width: 900px) {
+  .hall { grid-template-columns: 1fr; }
+  .hall__center { order: -1; }
+}
+
+/* 厢房卡片：顶部鎏金檐线 + 内侧回字细线 */
+.wing-card {
+  border-radius: var(--r-lg); padding: var(--sp-md);
+  background: linear-gradient(165deg, var(--surface-solid) 0%, var(--paper) 100%);
+  border: 1px solid var(--line); box-shadow: var(--sh-card);
+  position: relative; overflow: hidden;
+}
+.wing-card::before { content: ""; position: absolute; top: 0; left: 14%; right: 14%; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-soft), transparent); }
+.wing-card::after { content: ""; position: absolute; inset: 5px; border: 1px solid var(--gold-wash); border-radius: calc(var(--r-lg) - 3px); pointer-events: none; }
+.wing-card__cap { display: flex; align-items: center; gap: var(--sp-sm); margin-bottom: var(--sp-sm); }
+.wing-card__ico {
+  width: 26px; height: 26px; border-radius: var(--r-circle);
+  border: 1px solid var(--gold-wash); background: var(--gold-wash);
+  display: flex; align-items: center; justify-content: center; color: var(--gold-dark);
+}
+.wing-card__ico svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.wing-card__title { font-family: var(--font-display); font-size: 14px; font-weight: 600; }
+.wing-card__meta { margin-left: auto; font-size: 12px; color: var(--muted); }
+.wing-card__foot { margin-top: var(--sp-sm); padding-top: var(--sp-sm); border-top: 1px dashed var(--line); font-size: 11.5px; color: var(--muted); }
+
+/* ============================================================
+   十、圣殿构件 · 藻井（中央熟练度）
+   ============================================================ */
+.caisson { position: relative; width: 300px; height: 300px; flex-shrink: 0; }
+@media (max-width: 900px) { .caisson { width: 260px; height: 260px; } }
+.caisson__svg { width: 100%; height: 100%; overflow: visible; }
+.caisson__oct { fill: var(--gold-wash); stroke: var(--gold); stroke-width: 1.6; opacity: .5; }
+.caisson__ring { fill: none; stroke: var(--gold); stroke-width: 1.3; opacity: .45; }
+.caisson__ring--spin { stroke-dasharray: 4 8; opacity: .55; transform-origin: 120px 120px; animation: caisson-spin 48s linear infinite; }
+@keyframes caisson-spin { to { transform: rotate(360deg); } }
+html[data-theme="dark"] .caisson__ring--spin { animation-duration: 64s; }
+.caisson__spokes line { stroke: var(--gold); stroke-width: 1.3; opacity: .4; }
+/* 四分金弧：仅靠断口表达四分，统用 --gold-soft 压低对比 */
+.caisson__quad circle {
+  fill: none; stroke: var(--gold-soft); stroke-width: 5; stroke-linecap: butt; opacity: .7;
+  stroke-dasharray: 116 424.35; transform: rotate(-90deg); transform-origin: 120px 120px;
+}
+.caisson__quad circle:nth-child(1) { stroke-dashoffset: 0; }
+.caisson__quad circle:nth-child(2) { stroke-dashoffset: -135.09; }
+.caisson__quad circle:nth-child(3) { stroke-dashoffset: -270.18; }
+.caisson__quad circle:nth-child(4) { stroke-dashoffset: -405.26; }
+.caisson__prog-bg { fill: none; stroke: var(--line-strong); stroke-width: 6; }
+.caisson__prog {
+  fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; opacity: .9;
+  stroke-dasharray: 414.7; /* r=66 → 周长 414.7 */
+  stroke-dashoffset: 414.7; /* 初值 = 0%，首页 JS 按真实总熟练度写入 */
+  transform: rotate(-90deg); transform-origin: 120px 120px;
+  transition: stroke-dashoffset .8s var(--ease-out);
+}
+.caisson__core-ring { fill: none; stroke: var(--gold); stroke-width: 1; opacity: .5; }
+.caisson__core { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.caisson__num { font-family: var(--font-display); font-size: 52px; font-weight: 700; color: var(--accent); line-height: 1; }
+.caisson__num span { font-size: 20px; margin-left: 1px; }
+.caisson__cap { font-size: 11px; color: var(--muted); letter-spacing: .16em; margin-top: var(--sp-xs); }
+.caisson__tier {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: var(--sp-xs) 12px; border-radius: var(--r-pill);
+  background: var(--gold-wash); border: 1px solid var(--gold-wash);
+  font-size: 12px; font-weight: 700; color: var(--gold-dark);
+}
+.caisson__tier::before { content: ""; width: 7px; height: 7px; border-radius: var(--r-circle); background: var(--gold); }
+
+/* 听说读写四个圆形入口：独立成行，整体居中 */
+.skills-row { display: flex; gap: var(--sp-md); justify-content: center; align-items: center; flex-wrap: wrap; width: 100%; }
+/* 圆形的技能入口仅作用于 .skills-row 内，不影响 style.css 里的矩形 .skill-btn */
+.skills-row .skill-btn {
+  width: 76px; height: 76px; border-radius: var(--r-circle);
+  border: 2px solid var(--line); border-left-width: 2px; background: var(--surface-solid);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  padding: 0; color: var(--ink); position: relative; box-shadow: var(--sh-sm);
+  transition: all var(--dur-mid) var(--ease-out);
+}
+.skills-row .skill-btn::before { content: ""; position: absolute; inset: -5px; border-radius: var(--r-circle); border: 1px solid transparent; transition: border-color var(--dur-fast); }
+.skills-row .skill-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.skills-row .skill-btn small { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .06em; }
+.skills-row .skill-btn:hover { transform: translateY(-3px); box-shadow: var(--sh-card); }
+.skills-row .skill-btn:hover::before { border-color: currentColor; opacity: .28; }
+.skills-row .skill-btn--listen { color: var(--listen-soft); border-color: rgba(120, 167, 182, .35); }
+.skills-row .skill-btn--speak { color: var(--speak-soft); border-color: rgba(194, 132, 87, .35); }
+.skills-row .skill-btn--read { color: var(--read-soft); border-color: rgba(129, 148, 189, .35); }
+.skills-row .skill-btn--write { color: var(--write-soft); border-color: rgba(176, 138, 82, .35); }
+/* 四技能模块尚未开放：保持设计稿外观，但不参与交互（禁用态去掉悬浮位移与外环） */
+.skills-row .skill-btn:disabled { opacity: .55; cursor: default; }
+.skills-row .skill-btn:disabled:hover { transform: none; box-shadow: var(--sh-sm); }
+.skills-row .skill-btn:disabled:hover::before { border-color: transparent; }
+
+/* ============================================================
+   十一、圣殿构件 · 卷轴（任务清单容器）
+   ============================================================ */
+.scroll {
+  position: relative; padding: var(--sp-md) var(--sp-sm);
+  background: linear-gradient(180deg, var(--surface-solid), var(--paper));
+  border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+}
+.scroll::before, .scroll::after {
+  content: ""; position: absolute; left: -7px; right: -7px; height: 9px; border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold) 30%, var(--gold-light) 50%, var(--gold) 70%, var(--gold-dark));
+}
+.scroll::before { top: -5px; }
+.scroll::after { bottom: -5px; }
+
+.task-list { display: flex; flex-direction: column; gap: 6px; }
+.task-item {
+  display: flex; align-items: center; gap: 9px; padding: 9px 10px;
+  border-radius: var(--r-sm); background: var(--paper);
+  border: 1px solid var(--line); font-size: 13.5px; cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.task-item:hover { border-color: var(--gold); background: var(--gold-wash); }
+.task-check {
+  width: 17px; height: 17px; border-radius: var(--r-circle);
+  border: 2px solid var(--line-strong); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--dur-fast);
+}
+.task-check.done { background: var(--gold-soft); border-color: var(--gold-soft); }
+.task-check.done::after { content: ""; width: 6px; height: 6px; border-radius: var(--r-circle); background: var(--surface-solid); }
+.task-check.now { border-color: var(--vermillion-soft); box-shadow: 0 0 0 3px var(--vermillion-wash); }
+.task-text { flex: 1; min-width: 0; }
+.task-text.done { text-decoration: line-through; color: var(--muted); }
+.task-flag { font-size: 11px; color: var(--muted); white-space: nowrap; }
+/* 只读任务项（今日所得流水：仅展示不可点） */
+.task-item--static { cursor: default; }
+.task-item--static:hover { border-color: var(--line); background: var(--paper); }
+/* 可点任务项（复习队列：整行跳转复习页） */
+a.task-item { color: var(--ink); }
+
+/* ============================================================
+   十二、圣殿构件 · 登阶（圣殿称谓五级踏跺）
+   ============================================================ */
+.terrace {
+  margin-top: var(--sp-xl); padding: var(--sp-lg) var(--sp-md) 0;
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--surface), var(--paper));
+  border: 1px solid var(--line); box-shadow: var(--sh-sm);
+}
+.terrace__head { display: flex; align-items: center; gap: var(--sp-sm); margin-bottom: var(--sp-md); }
+.terrace__head h3 { font-size: 15px; }
+.terrace__hint { margin-left: auto; font-size: 12px; color: var(--muted); }
+.terrace__verse { font-size: 12px; color: var(--muted); margin: -6px 0 var(--sp-md); }
+.stairs { display: flex; align-items: flex-end; gap: var(--sp-sm); justify-content: center; height: 104px; }
+.stair {
+  flex: 1; max-width: 130px; position: relative;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  border: 1px solid var(--line); border-bottom: 0;
+  background: linear-gradient(180deg, var(--paper), var(--surface-solid));
+  transition: all var(--dur-mid) var(--ease-out);
+}
+.stair:nth-child(1) { height: 30%; }
+.stair:nth-child(2) { height: 45%; }
+.stair:nth-child(3) { height: 60%; }
+.stair:nth-child(4) { height: 78%; }
+.stair:nth-child(5) { height: 96%; }
+.stair__dot {
+  position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+  width: 18px; height: 18px; border-radius: var(--r-circle);
+  border: 2px solid var(--line-strong); background: var(--surface-solid);
+}
+.stair--done { background: linear-gradient(180deg, var(--gold-soft), var(--gold)); border-color: var(--gold-soft); }
+.stair--done .stair__dot { background: var(--gold-light); border-color: var(--gold-soft); }
+.stair--now { background: linear-gradient(180deg, #d3a294, var(--vermillion-soft)); border-color: var(--vermillion-soft); }
+.stair--now .stair__dot { background: #e2c1b6; border-color: var(--vermillion-soft); }
+.terrace__axis { height: 2px; background: linear-gradient(90deg, transparent, var(--gold-soft), transparent); opacity: .6; }
+.terrace__legend { display: flex; gap: var(--sp-sm); padding: var(--sp-sm) 0 var(--sp-md); }
+.terrace__legend span { flex: 1; max-width: 130px; text-align: center; font-size: 11px; color: var(--muted); }
+
+/* ============================================================
+   十三、圣殿构件 · 朱砂印墙（成就印章，图案含文字的唯一样式）
+   ============================================================ */
+.seal-wall { display: flex; gap: var(--sp-lg); justify-content: center; flex-wrap: wrap; }
+.seal-item { display: flex; flex-direction: column; align-items: center; gap: var(--sp-sm); margin: 0; }
+.seal-stamp {
+  width: 64px; height: 64px; border: 3px solid var(--vermillion); border-radius: var(--r-circle);
+  display: flex; align-items: center; justify-content: center; color: var(--vermillion);
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+  transform: rotate(-12deg); opacity: .9; position: relative; text-align: center; line-height: 1.2;
+}
+.seal-stamp::after { content: ""; position: absolute; inset: var(--sp-xs); border: 1px dashed currentColor; border-radius: var(--r-circle); opacity: .5; }
+.seal-stamp--bronze { border-color: var(--seal-bronze); color: var(--seal-bronze); }
+.seal-stamp--silver { border-color: var(--seal-silver); color: var(--seal-silver); }
+.seal-stamp--gold { border-color: var(--seal-gold); color: var(--gold-dark); }
+.seal-stamp--gilt { border-color: var(--seal-gilt); color: var(--seal-gilt); }
+.seal-stamp--locked { border-color: var(--line-strong); color: var(--muted); opacity: .5; }
+.seal-cap { font-size: 11.5px; color: var(--muted); letter-spacing: .04em; }
+.seal-cap--sub { font-size: 10.5px; color: var(--muted); opacity: .8; }
+
+/* ============================================================
+   十四、页面壳层 · 两栏栅格 / 侧栏 / 统计卡 / 分区标题
+   ============================================================ */
+.review-layout { display: grid; grid-template-columns: 1.618fr 1fr; gap: var(--sp-lg); align-items: start; }
+.review-layout__main { min-width: 0; }
+.review-layout__side { position: sticky; top: 72px; align-self: start; }
+.lc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-lg); align-items: start; }
+.lc-col { display: flex; flex-direction: column; gap: var(--sp-md); min-width: 0; }
+@media (max-width: 900px) {
+  .review-layout, .lc-grid { grid-template-columns: 1fr; }
+  .review-layout__side { position: static; }
+}
+
+.side-panel { border-radius: var(--r-lg); padding: var(--sp-lg); background: var(--paper); border: 1px solid var(--line); margin-bottom: var(--sp-md); }
+.side-panel__title { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; margin-bottom: var(--sp-sm); }
+.card--gold { border-color: var(--gold-wash); box-shadow: var(--sh-sm); }
+.stat-card {
+  border-radius: var(--r-lg); padding: var(--sp-lg);
+  background: var(--surface-solid); border: 1px solid var(--line);
+  border-top: 3px solid var(--gold-soft); box-shadow: var(--sh-sm);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.section-title { font-family: var(--font-display); font-size: 21px; margin: var(--sp-2xl) 0 var(--sp-md); display: flex; align-items: center; gap: var(--sp-sm); }
+.section-title::before { content: ""; width: 8px; height: 8px; border-radius: var(--r-circle); background: var(--gold); }
+.section-sub { font-size: 13px; color: var(--muted); margin: 0 0 var(--sp-lg); }
+.divider-ornament { display: flex; align-items: center; gap: var(--sp-sm); margin: var(--sp-xl) 0; color: var(--gold); opacity: .5; }
+.divider-ornament::before, .divider-ornament::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+
+/* ============================================================
+   十五、图表件（学情中心，纯 CSS/SVG，不引图表库）
+   ============================================================ */
+.chart-wrap { position: relative; margin-top: 12px; }
+.chart-wrap svg { width: 100%; height: auto; display: block; }
+.chart-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.chart-area { fill: var(--accent-wash); }
+.chart-dot { fill: var(--accent); stroke: var(--paper); stroke-width: 2; }
+.chart-grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 4, 4; }
+.chart-label { font-size: 10px; fill: var(--muted); font-family: var(--font-body); }
+.chart-value { font-size: 10px; fill: var(--ink-soft); font-weight: 600; }
+
+.dist-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 14px; }
+.forget-chart { height: 160px; display: flex; align-items: flex-end; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--line); position: relative; }
+.forget-chart::before { content: "遗忘曲线"; position: absolute; top: var(--sp-xs); left: 0; font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .08em; }
+.forget-bar { flex: 1; background: linear-gradient(to top, var(--accent), var(--gold)); border-radius: 2px 2px 0 0; min-height: var(--sp-xs); transition: height var(--dur-slow) var(--ease-out); position: relative; }
+.forget-bar:hover::after { content: attr(data-day); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--paper); font-size: 10px; padding: 2px 6px; border-radius: var(--sp-xs); white-space: nowrap; }
+
+.backup-list { display: flex; flex-direction: column; gap: var(--sp-sm); }
+.backup-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-md); background: var(--paper); border: 1px solid var(--line); font-size: 14px; }
+.backup-item__date { font-weight: 600; color: var(--ink); }
+.backup-item__size { color: var(--muted); font-size: 13px; margin-left: auto; }
+.backup-item__action { margin-left: var(--sp-sm); }
+
+/* ============================================================
+   十七、圣殿宝库抽屉（v1.3.0-T103 · 由 nav.js 全站注入）
+   配色随圣殿令牌，亮/暗主题自动跟随；其余复用
+   .drawer-* / .stat-card / .terrace__head / .scroll / .task-item*
+   ============================================================ */
+.treas-drawer-head { text-align: center; margin-bottom: var(--sp-lg); }
+.treas-badge {
+  display: inline-block; padding: 5px 14px; border-radius: var(--r-pill);
+  background: var(--gold-wash); color: var(--gold-dark);
+  font-size: 12px; font-weight: 700; letter-spacing: .12em;
+}
+.treas-balance__cap { font-size: 12px; color: var(--muted); letter-spacing: .08em; margin-top: var(--sp-sm); }
+.treas-balance__num { font-family: var(--font-display); font-size: 40px; line-height: 1.15; font-weight: 700; color: var(--gold-dark); }
+
+.treas-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-sm); margin-bottom: var(--sp-lg); text-align: left; }
+.treas-stats .stat-card { background: var(--paper); padding: var(--sp-md); gap: 2px; }
+.treas-stat__value { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--ink); }
+.treas-stat__label { font-size: 11px; color: var(--muted); }
+@media (max-width: 640px) { .treas-stats { grid-template-columns: 1fr; } }
+
+/* 账册条目：名目 + 时间双行 */
+.treas-txn__name { display: block; font-size: 14px; color: var(--ink); }
+.treas-txn__time { display: block; font-size: 11px; color: var(--muted); }
+
+/* ============================================================
+   十八、知识点详情（v1.3.0-T104 · kp-detail.html）
+   标题大字 + 子板块 + 近反义 + 扩展板块
+   ============================================================ */
+.kp-title {
+  font-family: var(--font-display); font-size: 22px; font-weight: 700;
+  color: var(--ink); letter-spacing: .02em;
+}
+.kp-sub {
+  margin: 14px 0 8px; padding-top: 10px; border-top: 1px dashed var(--line);
+  font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .04em;
+}
+.kp-synonym { margin: 4px 0; font-size: 14px; color: var(--ink-soft); }
+.kp-synonym strong { color: var(--gold-dark); font-weight: 600; margin-right: 4px; }
+.kp-extra { line-height: 1.8; color: var(--ink-soft); font-size: 14px; white-space: pre-line; }
+
+/* ============================================================
+   十九、每日复习（v1.3.0-T105 · review.html）
+   两栏栅格复用第十四分区 .review-layout 1.618fr/1fr；
+   候课池复用 .scroll + .task-list；习题区新题块组件
+   ============================================================ */
+.kp-pill {
+  display: inline-block; padding: 3px 10px; border-radius: var(--r-pill);
+  background: var(--gold-wash); color: var(--gold-dark);
+  font-size: 13px; font-weight: 700; letter-spacing: .01em;
+}
+
+/* 习题题块 */
+.question-block {
+  padding: 14px 0; border-top: 1px solid var(--line);
+}
+.question-block:first-child { border-top: 0; }
+.question-head {
+  display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;
+}
+.question-idx {
+  font-family: var(--font-display); font-size: 20px; font-weight: 700;
+  color: var(--gold-dark); opacity: .7;
+}
+.question-type {
+  font-size: 12px; color: var(--muted); font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+}
+.question-prompt {
+  margin: 8px 0 10px; color: var(--ink); font-size: 14.5px; line-height: 1.6;
+}
+.question-input { margin-bottom: 6px; }
+.question-grade { margin-top: 10px; }
+.question-grade-box { margin-top: 10px; }
+
+/* ============================================================
+   二十、每日小测（v1.3.0-T106 · daily-quiz.html）
+   复用 .grade-card / .task-* / .candidate 于 style.css；
+   小测专用：分数大数字 / 题块 / 标签 / 固化区
+   ============================================================ */
+.quiz-score-wrap {
+  display: flex; align-items: baseline; gap: var(--sp-sm);
+  padding: var(--sp-md) 0; border-bottom: 1px dashed var(--line);
+}
+.quiz-score {
+  font-family: var(--font-display); font-size: 56px; font-weight: 700;
+  color: var(--gold-dark); line-height: 1;
+}
+.quiz-score__coins { font-size: 14px; color: var(--muted); }
+
+.quiz-q {
+  padding: 14px 0; border-top: 1px solid var(--line);
+  transition: background var(--dur-fast);
+}
+.quiz-q.is-correct { background: rgba(8, 145, 178, .04); }
+.quiz-q.is-wrong   { background: rgba(220, 38, 38, .04); }
+.quiz-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.quiz-idx {
+  font-family: var(--font-display); font-size: 18px; font-weight: 700;
+  color: var(--gold-dark); opacity: .7; min-width: 28px;
+}
+.quiz-tag {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted);
+}
+.quiz-stem { margin: 4px 0 10px; color: var(--ink); font-size: 14.5px; line-height: 1.6; }
+.quiz-opts { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.quiz-opts .candidate { margin: 0; }
+.quiz-solidify {
+  margin-top: 12px; padding: var(--sp-md); border-radius: var(--r-md);
+  background: var(--gold-wash); border: 1px solid var(--gold-soft);
+}
+
+/* ============================================================
+   二十一、单词本（v1.3.0-T107 · wordbook.html）
+   列表 + 详情双视图复用 .pack / .drawer-* / .segmented；
+   新组件：.wb-entry / .kp-picker / .wb-back
+   ============================================================ */
+.wb-back { margin-bottom: var(--sp-md); display: inline-flex; align-items: center; gap: 4px; }
+
+.wb-entry {
+  padding: 12px 0; border-top: 1px solid var(--line);
+}
+.wb-entry:first-of-type { border-top: 0; }
+.wb-entry__head { display: flex; align-items: center; gap: 8px; }
+.wb-entry__word {
+  font-family: var(--font-display); font-size: 18px; font-weight: 500;
+  color: var(--ink);
+}
+.wb-entry__remove {
+  margin-left: auto; border: 0; background: none; color: var(--danger);
+  cursor: pointer; opacity: .55; padding: 4px; border-radius: var(--r-circle);
+}
+.wb-entry__remove:hover { opacity: 1; }
+.wb-entry__badges { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+
+.kp-picker {
+  max-height: 320px; overflow-y: auto; border: 1px solid var(--line);
+  border-radius: var(--r-sm); margin: 8px 0 12px;
+}
+.kp-picker__item {
+  padding: 8px 12px; display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--line); cursor: pointer;
+}
+.kp-picker__item:last-child { border-bottom: 0; }
+.kp-picker__item:hover { background: var(--gold-wash); }
+.kp-picker__item input { margin: 0; }
+
+/* ============================================================
+   二十二、学情中心（v1.3.0-T108 · learning-center.html）
+   左右两栏布局（对齐 03-设计稿-学情中心.html）：
+     左栏：学情概要（stat-card + dist-row 熟练度分布） + 数据管理（维护抽屉）
+     右栏：近 30 天学习趋势（SVG 折线图 .chart-wrap）
+   数据维护操作收进 drawer-overlay（不是设计稿内置，按用户要求）
+   ============================================================ */
+
+/* —— 左右两栏栅格（对齐设计稿 .lc-grid） —— */
+.lc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-lg);
+  align-items: start;
+}
+.lc-col { display: flex; flex-direction: column; gap: var(--sp-md); }
+@media (max-width: 900px) { .lc-grid { grid-template-columns: 1fr; } }
+
+/* —— stat-card（对齐设计稿） —— */
+.lc-stat-card {
+  border-radius: var(--r-lg);
+  padding: var(--sp-lg);
+  background: var(--surface-solid);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--gold-soft);
+  box-shadow: var(--sh-sm);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.lc-stat-card__icon {
+  font-size: 22px; color: var(--gold-dark);
+}
+.lc-stat-card__num {
+  font-family: var(--font-display);
+  font-size: 32px; font-weight: 700;
+  color: var(--accent); line-height: 1;
+}
+.lc-stat-card__label { font-size: 12px; color: var(--muted); }
+
+.lc-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--sp-md);
+}
+
+/* —— 熟练度分布（对齐设计稿 .dist-row） —— */
+.lc-dist-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  font-size: 14px;
+}
+.lc-dist-row__label { width: 80px; color: var(--ink-soft); flex-shrink: 0; }
+.lc-dist-row__bar {
+  flex: 1; height: 10px; border-radius: 999px;
+  background: var(--line-strong); overflow: hidden;
+}
+.lc-dist-row__fill {
+  height: 100%; border-radius: 999px;
+  transition: width var(--dur-slow) var(--ease-out);
+}
+.lc-dist-row__count {
+  width: 30px; text-align: right;
+  font-family: var(--font-display); font-weight: 700; color: var(--ink);
+}
+
+/* —— 近 30 天学习趋势 SVG 折线图（对齐设计稿 .chart-wrap） —— */
+.lc-chart-wrap {
+  position: relative; margin-top: 12px;
+}
+.lc-chart-wrap svg { width: 100%; height: auto; display: block; }
+.lc-chart__line {
+  fill: none; stroke: var(--accent); stroke-width: 2.5;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.lc-chart__area { fill: var(--accent-wash); }
+.lc-chart__dot {
+  fill: var(--accent); stroke: var(--paper); stroke-width: 2;
+}
+.lc-chart__grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 4,4; }
+.lc-chart__label {
+  font-size: 10px; fill: var(--muted); font-family: system-ui;
+}
+.lc-chart__value {
+  font-size: 10px; fill: var(--ink-soft); font-weight: 600;
+}
+
+/* —— 连续打卡徽章（复用） —— */
+.lc-streak {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--gold-wash), var(--vermillion-wash));
+  border: 1px solid var(--gold-soft);
+}
+.lc-streak__num {
+  font-family: var(--font-display); font-weight: 600; font-size: 16px;
+  color: var(--ink);
+}
+.lc-streak__unit { font-size: 11px; color: var(--muted); }
+
+/* —— 维护抽屉：备份条目（对齐设计稿 .backup-item） —— */
+.lc-backup {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--r-md);
+  background: var(--paper); border: 1px solid var(--line); font-size: 14px;
+}
+.lc-backup__date { font-weight: 600; color: var(--ink); }
+.lc-backup__size { color: var(--muted); font-size: 13px; margin-left: auto; }
+.lc-backup__action { margin-left: 8px; }
+
+/* —— 辅助类 —— */
+.lc-footer-actions { display:flex; gap:var(--sp-md); margin-top:var(--sp-xl); flex-wrap:wrap; justify-content:flex-end; }
+.lc-wb-icon svg { vertical-align:-2px; margin-right:6px; }
+.lc-wing-gap { margin-bottom:var(--sp-lg); }
+.lc-cap-tight { padding-bottom:8px; }
+.lc-note { margin:0 0 10px; }
+.lc-note-bold { margin:14px 0 6px; font-weight:600; }
+.lc-msg { margin-top:8px; }
+.lc-mt-sm { margin-top:8px; }
+.lc-mt-md { margin-top:10px; }
+
+/* —— 通用：drawer 宽度变体（用于阅读/报告宽抽屉） —— */
+.drawer-panel.is-wide { width: min(720px, 94vw); }
+.drawer-panel.is-med { width: min(640px, 92vw); }
+
+/* —— 通用：wing-card__cap 内工具 —— */
+.u-push-right { margin-left: auto; }
+.u-icon-offset { vertical-align: -2px; margin-right: 4px; }
+.u-muted-xs { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.u-report-title { margin: 14px 0 8px; font-family: var(--font-display); }
+.u-report-text { font-size: 13px; color: var(--muted); line-height: 1.7; }
+.u-flex-row { display: flex; gap: 16px; margin-top: 12px; font-size: 12px; flex-wrap: wrap; }
+
+/* ============================================================
+   二十三、登录注册页（v1.3.0-T109 · login.html）
+   对齐 04-设计稿-登录注册页.html：金色顶条 + 印章 + 分段 Tab
+   ============================================================ */
+.auth-wrap {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: var(--sp-lg); background: var(--paper-deep);
+}
+.auth-card {
+  width: min(420px, 94vw); padding: var(--sp-xl) var(--sp-lg);
+  background: linear-gradient(160deg, var(--surface-solid) 0%, var(--paper) 100%);
+  border: 1px solid var(--line); border-radius: var(--r-xl);
+  box-shadow: var(--sh-card); position: relative; overflow: hidden;
+}
+.auth-card::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold), var(--accent), var(--gold), var(--gold-dark));
+}
+.seal-deco {
+  position: absolute; top: 18px; right: 18px; width: 44px; height: 44px;
+  border: 2px solid var(--vermillion); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--vermillion); font-family: var(--font-display); font-size: 10px; font-weight: 700;
+  transform: rotate(-12deg); opacity: .3; text-align: center; line-height: 1.1;
+}
+.seal-deco::after {
+  content: ""; position: absolute; inset: 4px;
+  border: 1px dashed var(--vermillion); border-radius: 50%; opacity: .5;
+}
+.auth-brand { font-family: var(--font-display); font-size: 28px; text-align: center; margin-bottom: 4px; color: var(--ink); }
+.auth-sub { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: var(--sp-lg); }
+
+.auth-tabs {
+  display: flex; width: 100%; margin-bottom: var(--sp-lg);
+  background: var(--paper); border-radius: var(--r-pill); padding: 4px;
+  border: 1px solid var(--line);
+}
+.auth-tab {
+  flex: 1; padding: 10px; text-align: center; border-radius: var(--r-pill);
+  font-size: 15px; font-weight: 600; color: var(--ink-soft);
+  cursor: pointer; transition: all var(--dur-fast); border: 0; background: transparent;
+}
+.auth-tab.is-active { background: var(--surface-solid); color: var(--accent); box-shadow: var(--sh-sm); }
+
+.auth-field { margin-bottom: 14px; }
+.auth-field label {
+  display: block; font-size: 13px; font-weight: 700; letter-spacing: .06em;
+  color: var(--muted); text-transform: uppercase; margin-bottom: 6px;
+}
+.auth-field input, .auth-field select {
+  width: 100%; padding: 12px 14px; border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm); background: var(--surface-solid); font-size: 15px;
+  outline: none; transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.auth-field input:focus, .auth-field select:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.auth-field .identity-custom { margin-top: 8px; }
+
+.auth-card .btn { width: 100%; margin-top: 14px; }
+
+.auth-msg { margin-top: 12px; font-size: 14px; font-weight: 600; }
+.auth-msg--err { color: var(--danger); }
+.auth-msg--ok { color: var(--success); }
+
+.auth-back { text-align: center; margin-top: var(--sp-lg); font-size: 14px; }
+.auth-back a { color: var(--muted); text-decoration: underline; }
+
+/* ============================================================
+   二十四、文章阅读规划页（v1.3.0-T109 · articles.html）
+   无设计稿，按圣殿风格自造：筛选 chip + wing-card 列表 + 抽屉模态
+   ============================================================ */
+
+/* —— 筛选 chip —— */
+.filter-bar { margin-bottom: 14px; }
+.filter-bar__group { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.filter-chip {
+  padding: 5px 12px; border-radius: var(--r-pill); border: 1px solid var(--line-strong);
+  background: var(--surface); color: var(--ink-soft); font-size: 13px;
+  cursor: pointer; transition: all .15s; font-family: inherit;
+}
+.filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+.filter-chip.is-active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* —— 文章卡片 —— */
+.art-card {
+  background: var(--surface-solid); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 14px 16px; margin-bottom: 10px;
+  cursor: pointer; transition: all var(--dur-mid) var(--ease-out);
+}
+.art-card:hover { border-color: var(--accent); box-shadow: var(--sh-sm); }
+.art-card__top { display: flex; align-items: flex-start; gap: 10px; }
+.art-card__title {
+  font-family: var(--font-display); font-size: 18px; font-weight: 600;
+  line-height: 1.35; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.art-card__meta {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin-top: 8px; font-size: 13px; color: var(--muted);
+}
+.art-card__cefr {
+  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+  background: var(--accent-wash); color: var(--accent); letter-spacing: .5px; flex-shrink: 0;
+}
+.art-card__cefr.level-a1 { background: #ecfdf5; color: #047857; }
+.art-card__cefr.level-a2 { background: #fef9c3; color: #854d0e; }
+.art-card__cefr.level-b1 { background: #dbeafe; color: #1d4ed8; }
+.art-card__cefr.level-b2 { background: #e0e7ff; color: #4338ca; }
+.art-card__cefr.level-c1 { background: #fce7f3; color: #9d174d; }
+.art-card__cat {
+  font-size: 12px; padding: 2px 8px; border-radius: 4px;
+  background: var(--paper-deep); color: var(--ink-soft);
+}
+.art-card__actions {
+  display: flex; gap: 6px; margin-top: 10px; padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+.art-card__btn {
+  font-size: 13px; padding: 4px 10px; border-radius: var(--r-sm);
+  background: none; border: 1px solid var(--line-strong); color: var(--ink-soft);
+  cursor: pointer; transition: all var(--dur-fast); font-family: inherit;
+}
+.art-card__btn:hover { border-color: var(--accent); color: var(--accent); }
+.art-card__btn.is-danger { border-color: var(--danger); color: var(--danger); }
+.art-card__btn.is-danger:hover { background: var(--danger); color: #fff; }
+
+/* —— 空状态 —— */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+.empty-state__icon { font-size: 48px; margin-bottom: 10px; opacity: .5; }
+
+/* —— 分页 —— */
+.pagination { display: flex; justify-content: center; gap: 6px; margin-top: 16px; }
+.pagination button {
+  padding: 6px 12px; border-radius: var(--r-sm); border: 1px solid var(--line-strong);
+  background: var(--surface); color: var(--ink-soft); font-size: 13px; cursor: pointer;
+  font-family: inherit;
+}
+.pagination button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.pagination button:disabled { opacity: .4; cursor: not-allowed; }
+.pagination .page-info { font-size: 13px; color: var(--muted); padding: 6px 8px; }
+
+/* —— toast —— */
+.toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: var(--paper); padding: 10px 20px;
+  border-radius: var(--r-sm); z-index: 200; font-size: 14px;
+  animation: fadeInOut 2s ease forwards;
+}
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, 20px); }
+  15% { opacity: 1; transform: translateX(-50%); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%, -10px); }
+}
+
+/* —— 录入表单（在 drawer 内用） —— */
+.art-form label {
+  display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; margin-top: 10px;
+}
+.art-form input, .art-form textarea, .art-form select {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm); background: var(--paper); font-family: inherit;
+}
+.art-form textarea { min-height: 140px; resize: vertical; line-height: 1.6; }
+.art-form__btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+
+/* —— 文章阅读抽屉内容 —— */
+.art-read__title {
+  font-family: var(--font-display); font-size: 22px; font-weight: 600;
+  margin-bottom: 8px; line-height: 1.35;
+}
+.art-read__meta { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+.art-read__body {
+  font-size: 15px; line-height: 1.75; color: var(--ink);
+  white-space: pre-wrap; word-wrap: break-word;
+}
+.art-report__row {
+  display: flex; justify-content: space-between; padding: 8px 0;
+  border-bottom: 1px solid var(--line); font-size: 14px;
+}
+.art-report__row:last-child { border-bottom: 0; }
+.art-report__key { color: var(--muted); }
+.art-report__val { font-family: var(--font-display); font-weight: 600; color: var(--ink); }
+
+/* —— 加载提示 —— */
+.loading { text-align: center; padding: 30px; color: var(--muted); font-size: 14px; }

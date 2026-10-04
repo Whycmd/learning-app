@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>学习圣殿 · 仪表盘 · 融合方案「圣殿叙事 · 素雅版」 · v1.3.0-T101</title>
+<style>
+/* ============================================================
+   T101 设计稿 融合方案「圣殿叙事 · 素雅版」
+   骨架取自方案 B：微剧情五幕 + 山门飞檐 / 藻井 / 卷轴 / 踏跺
+   密度与用色取自方案 A：低对比、薄线条、弱光晕、留白充足
+   并存资产：方案 A（01）、方案 B（01B）保留作后期参考
+   ============================================================ */
+
+/* ---- 令牌 v2 ---- */
+:root {
+  --ink:#1c1917; --ink-soft:#44403c; --muted:#78716c;
+  --line:rgba(28,25,23,.09); --line-strong:rgba(28,25,23,.14);
+  --paper:#faf7f2; --paper-deep:#f0ebe3;
+  --surface:rgba(255,253,248,.92); --surface-solid:#fffdf8;
+  --accent:#b45309; --accent-hover:#9a3412;
+  --accent-glow:rgba(180,83,9,.25); --accent-wash:rgba(180,83,9,.07);
+  --gold:#d4a843; --gold-light:#f5e6b8; --gold-dark:#b8860b;
+  --gold-glow:rgba(212,168,67,.30); --gold-wash:rgba(212,168,67,.08);
+  --vermillion:#c0392b; --vermillion-wash:rgba(192,57,43,.08); --vermillion-light:#e74c3c;
+  /* 柔和变体：用于大面积着色，压低对比度（标识仍用原色相） */
+  --vermillion-soft:#b06a5e;
+  --gold-soft:#d8bd7e;
+  --listen:#0891b2; --speak:#ea580c; --read:#2563eb; --write:var(--accent);
+  --listen-soft:#78a7b6; --speak-soft:#c28457; --read-soft:#8194bd; --write-soft:#b08a52;
+  --success:#059669; --success-wash:rgba(5,150,105,.08);
+  --danger:#9f1239; --warning:#d97706;
+  --font-display:"Fraunces","Songti SC","STSong","Noto Serif SC",Georgia,serif;
+  --font-body:"Karla",system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px; --r-circle:50%; --r-pill:999px;
+  --sh-sm:0 1px 0 rgba(28,25,23,.06);
+  --sh-card:0 12px 40px rgba(28,25,23,.07),0 2px 8px rgba(28,25,23,.04);
+  --sh-float:0 22px 50px rgba(28,25,23,.12);
+  --sh-gold:0 8px 30px rgba(180,83,9,.18),0 2px 8px rgba(212,168,67,.10);
+  --dur-fast:120ms; --dur-mid:240ms; --dur-slow:400ms;
+  --ease-out:cubic-bezier(.22,.61,.36,1);
+  --z-nav:100; --z-drawer:200; --z-overlay:300;
+  --sp-xs:4px; --sp-sm:8px; --sp-md:16px; --sp-lg:24px; --sp-xl:32px; --sp-2xl:48px;
+  --page-max:1040px;
+}
+
+/* 暗色主题层 — 圣殿夜间模式：装饰降量，文字优先 */
+html[data-theme="dark"], [data-theme="dark"] {
+  --ink:#e8e0d4; --ink-soft:#b8afa4; --muted:#78716c;
+  --line:rgba(232,224,212,.10); --line-strong:rgba(232,224,212,.18);
+  --paper:#1a1714; --paper-deep:#12100e;
+  --surface:rgba(30,27,24,.92); --surface-solid:#1e1b18;
+  --accent-glow:rgba(212,168,67,.22); --accent-wash:rgba(212,168,67,.07);
+  --gold-glow:rgba(212,168,67,.35); --gold-wash:rgba(212,168,67,.08);
+  --vermillion-wash:rgba(192,57,43,.12);
+  --success-wash:rgba(5,150,105,.10);
+  /* 暗色下柔和变体提亮，避免糊进底色 */
+  --vermillion-soft:#c98a7d;
+  --gold-soft:#c8ab6c;
+  --listen-soft:#8bb6c4; --speak-soft:#cf9a6e; --read-soft:#95a6c9; --write-soft:#c09c66;
+  --sh-sm:0 1px 0 rgba(0,0,0,.30);
+  --sh-card:0 12px 40px rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.20);
+  --sh-float:0 22px 50px rgba(0,0,0,.45);
+  --sh-gold:0 8px 30px rgba(212,168,67,.15),0 2px 8px rgba(0,0,0,.30);
+}
+
+/* ---- Reset ---- */
+*,*::before,*::after{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--font-body); font-size:15px; line-height:1.6;
+  color:var(--ink); background:var(--paper-deep);
+  -webkit-font-smoothing:antialiased; min-height:100vh;
+}
+h1,h2,h3{font-family:var(--font-display);color:var(--ink);margin:0;font-weight:600;}
+a{color:var(--accent);text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+input,textarea,select{font-family:inherit;font-size:15px;color:var(--ink);}
+[data-theme="dark"]{background:var(--paper-deep);color:var(--ink);}
+
+.page{width:100%;max-width:var(--page-max);margin:0 auto;padding:0 var(--sp-lg) var(--sp-2xl);}
+
+/* ============================================================
+   一、圣殿门廊 — 金色屋檐顶条（顶部设计取自方案 A）
+   原山门飞檐的 clip-path 轮廓已转用于加载态图形占位（见 .skeleton--roof）
+   ============================================================ */
+.temple-roof{
+  height:6px; margin:0 calc(-1 * var(--sp-lg));
+  background:linear-gradient(90deg,
+    transparent 0%,
+    var(--gold-dark) 15%,
+    var(--gold) 30%,
+    var(--gold-light) 50%,
+    var(--gold) 70%,
+    var(--gold-dark) 85%,
+    transparent 100%
+  );
+  position:relative;
+}
+/* 屋脊装饰纹样 */
+.temple-roof::after{
+  content:""; position:absolute; bottom:-8px; left:0; right:0; height:8px;
+  background:repeating-linear-gradient(90deg,
+    transparent 0px, transparent 12px,
+    var(--gold) 12px, var(--gold) 14px,
+    transparent 14px, transparent 24px
+  );
+  opacity:.4;
+}
+[data-theme="dark"] .temple-roof{opacity:.8;}
+
+/* ============================================================
+   二、门额导航
+   ============================================================ */
+.topnav{
+  display:flex; flex-wrap:wrap; gap:0;
+  margin-bottom:var(--sp-lg); padding:0 var(--sp-sm);
+  position:sticky; top:0; z-index:var(--z-nav);
+  background:var(--paper-deep);
+  border-bottom:1px solid var(--line);
+}
+.topnav-group{display:flex;gap:2px;align-items:center;}
+.topnav-sep{width:1px;height:18px;background:var(--line-strong);margin:0 var(--sp-sm);}
+.topnav a{
+  padding:11px 14px; border-radius:var(--r-sm);
+  color:var(--ink-soft); font-size:14px; font-weight:500;
+  transition:color var(--dur-fast), background var(--dur-fast);
+}
+.topnav a:hover{background:var(--gold-wash);color:var(--gold-dark);}
+.topnav a.active{background:var(--gold-wash);color:var(--gold-dark);font-weight:700;}
+.topnav__user{margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:0 var(--sp-sm);}
+.topnav__name{font-size:13px;color:var(--muted);}
+.theme-toggle{
+  width:36px;height:36px;border-radius:var(--r-circle);
+  border:1px solid var(--line-strong);background:var(--surface-solid);
+  color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all var(--dur-fast);
+}
+.theme-toggle:hover{border-color:var(--gold);color:var(--gold-dark);}
+
+/* ============================================================
+   三、微剧情五幕叙事轴
+   ============================================================ */
+.narr{
+  display:flex; list-style:none; margin:0 0 var(--sp-lg); padding:var(--sp-md) var(--sp-sm);
+  border-radius:var(--r-lg);
+  background:linear-gradient(180deg,var(--surface),var(--paper));
+  border:1px solid var(--line); box-shadow:var(--sh-sm);
+  position:relative; overflow:hidden;
+}
+.narr::before{
+  content:""; position:absolute; left:10%; right:10%; top:calc(var(--sp-md) + 21px);
+  height:1px; background:linear-gradient(90deg,transparent,var(--gold),transparent); opacity:.45;
+}
+.narr__node{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:1;}
+.narr__dot{
+  width:42px;height:42px;border-radius:var(--r-circle);
+  border:1px solid var(--line-strong); background:var(--paper);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted); transition:all var(--dur-mid) var(--ease-out);
+}
+.narr__dot svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+.narr__label{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;}
+.narr__node.done .narr__dot{border-color:var(--gold-soft);background:var(--gold-wash);color:var(--gold-dark);}
+.narr__node.now  .narr__dot{
+  border-color:var(--vermillion-soft);background:var(--vermillion-wash);color:#9c5b50;
+  box-shadow:0 0 0 4px var(--vermillion-wash);
+}
+.narr__node.now .narr__label{color:#9c5b50;font-weight:700;}
+
+/* ============================================================
+   四、圣殿主屏 — 中轴对称三开间
+   ============================================================ */
+.hall{
+  display:grid; grid-template-columns:1fr auto 1fr;
+  gap:var(--sp-md); align-items:stretch;
+}
+@media(max-width:900px){
+  .hall{grid-template-columns:1fr;}
+  .hall__center{order:-1;}
+}
+.hall__wing{display:flex;flex-direction:column;gap:var(--sp-md);justify-content:center;}
+.hall__center{display:flex;flex-direction:column;align-items:center;gap:var(--sp-md);}
+
+/* --- 厢房卡片 --- */
+.wing-card{
+  border-radius:var(--r-lg); padding:var(--sp-md);
+  background:linear-gradient(165deg,var(--surface-solid) 0%,var(--paper) 100%);
+  border:1px solid var(--line); box-shadow:var(--sh-card);
+  position:relative; overflow:hidden;
+}
+/* 顶部鎏金檐线 */
+.wing-card::before{
+  content:""; position:absolute; top:0; left:14%; right:14%; height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold-soft),transparent);
+}
+/* 内侧回字细线 */
+.wing-card::after{
+  content:""; position:absolute; inset:5px; border:1px solid var(--gold-wash);
+  border-radius:calc(var(--r-lg) - 3px); pointer-events:none;
+}
+.wing-card__cap{display:flex;align-items:center;gap:8px;margin-bottom:var(--sp-sm);}
+.wing-card__ico{
+  width:26px;height:26px;border-radius:var(--r-circle);
+  border:1px solid var(--gold-wash); background:var(--gold-wash);
+  display:flex;align-items:center;justify-content:center;color:var(--gold-dark);
+}
+.wing-card__ico svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.wing-card__title{font-family:var(--font-display);font-size:14px;font-weight:600;}
+.wing-card__meta{margin-left:auto;font-size:12px;color:var(--muted);}
+
+/* --- 第二幕 点灯：灯笼墙 --- */
+.lantern-wall{display:flex;gap:7px;align-items:flex-start;padding:var(--sp-md) 2px var(--sp-xs);}
+.lantern{
+  flex:1; height:34px; border-radius:var(--r-circle);
+  background:linear-gradient(180deg,var(--line),var(--line-strong));
+  position:relative; opacity:.5;
+  transition:all var(--dur-slow) var(--ease-out);
+}
+.lantern::before{ /* 上箍 */
+  content:""; position:absolute; top:-4px; left:50%; transform:translateX(-50%);
+  width:12px;height:4px;border-radius:2px;background:var(--line-strong);
+}
+.lantern::after{ /* 流苏 */
+  content:""; position:absolute; bottom:-8px; left:50%; transform:translateX(-50%);
+  width:2px;height:8px;background:var(--line-strong);
+}
+.lantern.on{
+  opacity:.82;
+  background:radial-gradient(circle at 50% 38%,#e6bfb0 0%,var(--vermillion-soft) 55%,#9c5b50 100%);
+}
+.lantern.on::before,.lantern.on::after{background:var(--gold-soft);}
+.lantern.today{
+  animation:lantern-breathe 4s var(--ease-out) infinite;
+}
+@keyframes lantern-breathe{
+  0%,100%{opacity:.82;}
+  50%{opacity:1;}
+}
+.lantern-legend{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);letter-spacing:.04em;}
+
+/* --- 第三幕 观卷：卷轴任务 --- */
+.scroll{
+  position:relative; padding:var(--sp-md) var(--sp-sm);
+  background:linear-gradient(180deg,var(--surface-solid),var(--paper));
+  border-left:1px solid var(--line); border-right:1px solid var(--line);
+}
+.scroll::before,.scroll::after{
+  content:""; position:absolute; left:-7px; right:-7px; height:9px;
+  border-radius:var(--r-pill);
+  background:linear-gradient(90deg,var(--gold-dark),var(--gold) 30%,var(--gold-light) 50%,var(--gold) 70%,var(--gold-dark));
+}
+.scroll::before{top:-5px;} .scroll::after{bottom:-5px;}
+.task-list{display:flex;flex-direction:column;gap:6px;}
+.task-item{
+  display:flex;align-items:center;gap:9px;padding:9px 10px;
+  border-radius:var(--r-sm); background:var(--paper);
+  border:1px solid var(--line); font-size:13.5px; cursor:pointer;
+  transition:all var(--dur-fast);
+}
+.task-item:hover{border-color:var(--gold);background:var(--gold-wash);}
+.task-check{
+  width:17px;height:17px;border-radius:var(--r-circle);
+  border:2px solid var(--line-strong); flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:all var(--dur-fast);
+}
+.task-check.done{background:var(--gold-soft);border-color:var(--gold-soft);}
+.task-check.done::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--surface-solid);}
+.task-check.now{border-color:var(--vermillion-soft);box-shadow:0 0 0 3px var(--vermillion-wash);}
+.task-text{flex:1;}
+.task-text.done{text-decoration:line-through;color:var(--muted);}
+.task-flag{font-size:11px;color:var(--muted);white-space:nowrap;}
+
+/* ============================================================
+   五、藻井 — 中央熟练度（圆形 + 建筑）
+   ============================================================ */
+.caisson{position:relative;width:300px;height:300px;flex-shrink:0;}
+@media(max-width:900px){.caisson{width:260px;height:260px;}}
+.caisson__svg{width:100%;height:100%;overflow:visible;}
+.caisson__oct{fill:var(--gold-wash);stroke:var(--gold);stroke-width:1.6;opacity:.5;}
+.caisson__ring{fill:none;stroke:var(--gold);stroke-width:1.3;opacity:.45;}
+.caisson__ring--spin{
+  stroke-dasharray:4 8;opacity:.55;
+  transform-origin:120px 120px;
+  animation:caisson-spin 48s linear infinite;
+}
+@keyframes caisson-spin{to{transform:rotate(360deg);}}
+.caisson__spokes line{stroke:var(--gold);stroke-width:1.3;opacity:.4;}
+/* 四分弧：统一鎏金细线，仅靠断口表达「四分」结构，避免四色相跳跃的突兀感；
+   四技能的身份色改由下方圆形技能入口承载 */
+.caisson__quad circle{
+  fill:none; stroke:var(--gold-soft); stroke-width:5; stroke-linecap:butt; opacity:.7;
+  stroke-dasharray:116 424.35;
+  transform:rotate(-90deg); transform-origin:120px 120px;
+}
+.caisson__quad circle:nth-child(1){stroke-dashoffset:0;}
+.caisson__quad circle:nth-child(2){stroke-dashoffset:-135.09;}
+.caisson__quad circle:nth-child(3){stroke-dashoffset:-270.18;}
+.caisson__quad circle:nth-child(4){stroke-dashoffset:-405.26;}
+.caisson__prog-bg{fill:none;stroke:var(--line-strong);stroke-width:6;}
+.caisson__prog{
+  fill:none;stroke:var(--accent);stroke-width:6;stroke-linecap:round;opacity:.9;
+  stroke-dasharray:414.7; stroke-dashoffset:66.4; /* 84% */
+  transform:rotate(-90deg); transform-origin:120px 120px;
+  transition:stroke-dashoffset .8s var(--ease-out);
+}
+.caisson__core-ring{fill:none;stroke:var(--gold);stroke-width:1;opacity:.5;}
+.caisson__core{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;pointer-events:none;
+}
+.caisson__num{font-family:var(--font-display);font-size:52px;font-weight:700;color:var(--accent);line-height:1;}
+.caisson__num span{font-size:20px;margin-left:1px;}
+.caisson__cap{font-size:11px;color:var(--muted);letter-spacing:.16em;margin-top:4px;}
+.caisson__tier{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 12px;border-radius:var(--r-pill);
+  background:var(--gold-wash);border:1px solid var(--gold-wash);
+  font-size:12px;font-weight:700;color:var(--gold-dark);
+}
+.caisson__tier::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--gold);}
+
+/* --- 第四幕 技能圆形入口 --- */
+.skills-row{display:flex;gap:var(--sp-md);justify-content:center;flex-wrap:wrap;}
+.skill-btn{
+  width:76px;height:76px;border-radius:var(--r-circle);
+  border:2px solid var(--line); background:var(--surface-solid);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  cursor:pointer;color:var(--ink);position:relative;
+  transition:all var(--dur-mid) var(--ease-out);
+  box-shadow:var(--sh-sm);
+}
+.skill-btn::before{
+  content:"";position:absolute;inset:-5px;border-radius:var(--r-circle);
+  border:1px solid transparent;transition:border-color var(--dur-fast);
+}
+.skill-btn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.skill-btn small{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;}
+.skill-btn:hover{transform:translateY(-3px);}
+.skill-btn:hover::before{border-color:currentColor;opacity:.28;}
+.skill-btn.listen{color:var(--listen-soft);border-color:rgba(120,167,182,.35);}
+.skill-btn.speak{color:var(--speak-soft);border-color:rgba(194,132,87,.35);}
+.skill-btn.read{color:var(--read-soft);border-color:rgba(129,148,189,.35);}
+.skill-btn.write{color:var(--write-soft);border-color:rgba(176,138,82,.35);}
+
+/* ============================================================
+   六、登阶 — 五级踏跺（熟练度 0-5）
+   ============================================================ */
+.terrace{
+  margin-top:var(--sp-xl); padding:var(--sp-lg) var(--sp-md) 0;
+  border-radius:var(--r-lg);
+  background:linear-gradient(180deg,var(--surface),var(--paper));
+  border:1px solid var(--line); box-shadow:var(--sh-sm);
+}
+.terrace__head{display:flex;align-items:center;gap:8px;margin-bottom:var(--sp-md);}
+.terrace__head h3{font-size:15px;}
+.terrace__hint{margin-left:auto;font-size:12px;color:var(--muted);}
+.stairs{display:flex;align-items:flex-end;gap:8px;justify-content:center;height:104px;}
+.stair{
+  flex:1;max-width:130px;position:relative;
+  border-radius:var(--r-sm) var(--r-sm) 0 0;
+  border:1px solid var(--line); border-bottom:0;
+  background:linear-gradient(180deg,var(--paper),var(--surface-solid));
+  transition:all var(--dur-mid) var(--ease-out);
+}
+.stair:nth-child(1){height:30%;} .stair:nth-child(2){height:45%;}
+.stair:nth-child(3){height:60%;} .stair:nth-child(4){height:78%;}
+.stair:nth-child(5){height:96%;}
+.stair__dot{
+  position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+  width:18px;height:18px;border-radius:var(--r-circle);
+  border:2px solid var(--line-strong);background:var(--surface-solid);
+}
+.stair--done{background:linear-gradient(180deg,var(--gold-soft),var(--gold));border-color:var(--gold-soft);}
+.stair--done .stair__dot{background:var(--gold-light);border-color:var(--gold-soft);}
+.stair--now{
+  background:linear-gradient(180deg,#d3a294,var(--vermillion-soft));
+  border-color:var(--vermillion-soft);
+}
+.stair--now .stair__dot{background:#e2c1b6;border-color:var(--vermillion-soft);}
+.terrace__axis{height:2px;background:linear-gradient(90deg,transparent,var(--gold-soft),transparent);opacity:.6;}
+.terrace__legend{display:flex;gap:8px;padding:var(--sp-sm) 0 var(--sp-md);}
+.terrace__legend span{flex:1;max-width:130px;text-align:center;font-size:11px;color:var(--muted);}
+
+/* ============================================================
+   七、留印 — 成就印章（照搬方案 A，含印面文字）
+   ============================================================ */
+.seal-wall{display:flex;gap:var(--sp-lg);justify-content:center;flex-wrap:wrap;}
+.seal-item{display:flex;flex-direction:column;align-items:center;gap:8px;margin:0;}
+.seal-stamp{
+  width:64px;height:64px;
+  border:3px solid var(--vermillion); border-radius:var(--r-circle);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--vermillion);
+  font-family:var(--font-display);font-size:13px;font-weight:700;
+  transform:rotate(-12deg);
+  opacity:.85;position:relative;text-align:center;line-height:1.2;
+}
+.seal-stamp::after{
+  content:"";position:absolute;inset:4px;
+  border:1px dashed var(--vermillion);border-radius:var(--r-circle);opacity:.5;
+}
+.seal-stamp--gold{border-color:var(--gold);color:var(--gold-dark);}
+.seal-stamp--gold::after{border-color:var(--gold);}
+.seal-stamp--listen{border-color:var(--listen);color:var(--listen);}
+.seal-stamp--listen::after{border-color:var(--listen);}
+.seal-cap{font-size:11.5px;color:var(--muted);letter-spacing:.04em;}
+
+/* ============================================================
+   八、组件基座
+   ============================================================ */
+.section-title{font-family:var(--font-display);font-size:21px;margin:var(--sp-2xl) 0 var(--sp-md);display:flex;align-items:center;gap:var(--sp-sm);}
+.section-title::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--gold);}
+.section-sub{font-size:13px;color:var(--muted);margin-top:calc(-1 * var(--sp-sm) + 2px);margin-bottom:var(--sp-lg);}
+
+.card{
+  border-radius:var(--r-lg); padding:var(--sp-lg);
+  background:linear-gradient(165deg,var(--surface-solid) 0%,var(--paper) 100%);
+  border:1px solid var(--line); box-shadow:var(--sh-card);
+  margin-bottom:var(--sp-md); position:relative; overflow:hidden;
+}
+.card__label{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:var(--sp-md);}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:var(--r-pill);padding:11px 24px;font-size:14px;font-weight:700;transition:all var(--dur-fast) var(--ease-out);}
+.btn-primary{color:var(--surface-solid);background:linear-gradient(120deg,#bb8730 0%,var(--accent) 65%,#c1902f 100%);box-shadow:0 4px 14px rgba(180,83,9,.18);}
+.btn-primary:hover{filter:brightness(1.05);transform:translateY(-1px);box-shadow:0 8px 20px rgba(180,83,9,.22);}
+.btn-secondary{background:var(--surface-solid);color:var(--ink);border:1px solid var(--line-strong);box-shadow:var(--sh-sm);}
+.btn-secondary:hover{border-color:var(--gold);color:var(--gold-dark);}
+.btn-danger{background:var(--vermillion);color:#fff;}
+.btn-icon{width:40px;height:40px;padding:0;border-radius:var(--r-circle);border:1px solid var(--line);background:var(--surface-solid);color:var(--ink-soft);}
+.btn-icon:hover{border-color:var(--gold);color:var(--gold-dark);}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:var(--r-pill);font-size:12px;font-weight:700;}
+.badge--gold{background:var(--gold-wash);color:var(--gold-dark);}
+.badge--verm{background:var(--vermillion-wash);color:var(--vermillion);}
+.badge--teal{background:rgba(8,145,178,.10);color:var(--listen);}
+.badge--blue{background:rgba(37,99,235,.10);color:var(--read);}
+.badge--orange{background:rgba(234,88,12,.10);color:var(--speak);}
+.badge--success{background:var(--success-wash);color:var(--success);}
+
+.skeleton{border-radius:var(--r-sm);background:linear-gradient(90deg,var(--line) 25%,var(--line-strong) 50%,var(--line) 75%);background-size:200% 100%;animation:sk 1.4s ease-in-out infinite;}
+@keyframes sk{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+.skeleton--circle{border-radius:var(--r-circle);}
+.skeleton--text{height:14px;margin-bottom:8px;}
+
+.state-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--sp-md);}
+.state-card{border-radius:var(--r-md);padding:var(--sp-md);text-align:center;border:1px solid var(--line);background:var(--surface-solid);}
+.state-card__label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:var(--sp-sm);}
+.state-card__view{min-height:64px;display:flex;align-items:center;justify-content:center;}
+/* 六态线性图标（结构取自方案 A，emoji 改为统一线性图标） */
+.state-icon{width:26px;height:26px;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.state-icon--muted{stroke:var(--muted);}
+.state-icon--danger{stroke:var(--danger);}
+.state-icon--success{stroke:var(--success);}
+.state-line{font-size:12px;color:var(--muted);}
+.state-line--danger{color:var(--danger);font-weight:700;}
+.state-line--success{color:var(--success);font-weight:700;}
+
+.divider-ornament{display:flex;align-items:center;gap:var(--sp-sm);margin:var(--sp-xl) 0;color:var(--gold);opacity:.5;}
+.divider-ornament::before,.divider-ornament::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+
+.toast{padding:12px 20px;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);font-size:14px;font-weight:600;box-shadow:var(--sh-float);display:inline-flex;align-items:center;gap:8px;}
+
+/* 抽屉浮层 */
+.drawer-overlay{position:fixed;inset:0;background:rgba(28,25,23,.4);z-index:var(--z-overlay);opacity:0;pointer-events:none;transition:opacity var(--dur-mid) var(--ease-out);}
+.drawer-overlay.open{opacity:1;pointer-events:auto;}
+.drawer-panel{
+  position:absolute;top:0;right:0;bottom:0;width:min(440px,90vw);
+  background:var(--paper);box-shadow:var(--sh-float);
+  transform:translateX(100%);transition:transform var(--dur-mid) var(--ease-out);
+  display:flex;flex-direction:column;
+}
+.drawer-overlay.open .drawer-panel{transform:translateX(0);}
+.drawer-header{padding:var(--sp-lg);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+.drawer-title{font-family:var(--font-display);font-size:17px;font-weight:600;}
+.drawer-close{width:32px;height:32px;border-radius:var(--r-circle);border:1px solid var(--line);background:transparent;color:var(--ink-soft);font-size:18px;line-height:1;}
+.drawer-body{flex:1;overflow-y:auto;padding:var(--sp-lg);}
+
+/* 主题切换器 / 标注 */
+.theme-switcher{position:fixed;top:16px;right:16px;z-index:999;display:flex;gap:6px;}
+.theme-btn{padding:8px 16px;border-radius:var(--r-pill);border:1px solid var(--line-strong);background:var(--surface-solid);color:var(--ink-soft);font-size:13px;font-weight:600;transition:all var(--dur-fast);}
+.theme-btn.active{border-color:var(--gold);background:var(--gold-wash);color:var(--gold-dark);}
+.design-note{background:var(--gold-wash);border-left:3px solid var(--gold);padding:var(--sp-md);margin-bottom:var(--sp-lg);font-size:13px;color:var(--ink-soft);border-radius:0 var(--r-sm) var(--r-sm) 0;}
+
+/* ============================================================
+   九、工具类（避免行内样式）
+   ============================================================ */
+.u-hidden{display:none;}
+.u-full{width:100%;}
+.u-row{display:flex;gap:var(--sp-lg);flex-wrap:wrap;font-size:13px;}
+.u-row-sm{display:flex;gap:var(--sp-sm);flex-wrap:wrap;align-items:center;}
+.u-row-mid{display:flex;gap:var(--sp-md);width:100%;}
+.u-col-full{display:flex;flex-direction:column;width:100%;}
+.u-col-center{display:flex;flex-direction:column;gap:8px;align-items:center;}
+.u-prose{color:var(--ink-soft);line-height:1.75;}
+.u-muted{font-size:12px;color:var(--muted);}
+.u-strong{font-size:12px;color:var(--ink);}
+.u-gold{color:var(--gold-dark);font-weight:700;}
+.u-mt-md{margin-top:14px;}
+.u-btn-sm{padding:6px 14px;font-size:12px;}
+.meter{height:6px;border-radius:3px;background:var(--line);margin-top:10px;overflow:hidden;}
+.meter__fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold-dark),var(--gold));}
+.sk-w100{width:100%;} .sk-w86{width:86%;} .sk-w70{width:70%;} .sk-w64{width:64%;}
+/* 超长文本截断：无法放入的部分以省略号示意，完整内容通过 title 悬浮查看，
+   或由外层按钮/抽屉承载（保留查看完整内容的入口） */
+.u-truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.u-clamp-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;}
+</style>
+</head>
+<body>
+
+<div class="theme-switcher">
+  <button class="theme-btn active" onclick="setTheme('light',this)">☀ 亮色</button>
+  <button class="theme-btn" onclick="setTheme('dark',this)">☾ 暗色</button>
+  <button class="theme-btn" onclick="setTheme('both',this)">◐ 双预览</button>
+</div>
+
+<div class="page" id="preview-light">
+
+  <!-- ===== 金色屋檐顶条（取自方案 A） ===== -->
+  <div class="temple-roof"></div>
+
+  <div class="design-note">
+    <strong>融合方案「圣殿叙事 · 素雅版」</strong> — 骨架沿用微剧情五幕（入殿·点灯·观卷·留印·登阶）与建筑构件（藻井·卷轴·踏跺）；顶部采用方案 A 的鎏金屋檐顶条。
+    密度与用色向方案 A 靠拢：细线替代色块、去掉强光晕、大面积着色改用柔和变体（<code>--*-soft</code>），保留灯笼墙与卷轴。
+  </div>
+
+  <!-- ===== 门额导航 ===== -->
+  <nav class="topnav">
+    <div class="topnav-group">
+      <a href="#" class="active">中枢圣殿</a>
+      <a href="#">知识点录入</a>
+      <a href="#">知识点详情</a>
+    </div>
+    <div class="topnav-sep"></div>
+    <div class="topnav-group">
+      <a href="#">单词本</a>
+      <a href="#">每日复习</a>
+      <a href="#">每日小测</a>
+    </div>
+    <div class="topnav-sep"></div>
+    <div class="topnav-group">
+      <a href="#">文章阅读</a>
+      <a href="#">学情中心</a>
+    </div>
+    <div class="topnav__user">
+      <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <span class="topnav__name">本地学习者</span>
+    </div>
+  </nav>
+
+  <!-- ===== 微剧情五幕 ===== -->
+  <ol class="narr">
+    <li class="narr__node done">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><path d="M4 21V11.5C4 7 7.6 4 12 4s8 3 8 7.5V21"/><path d="M9 21v-7h6v7"/></svg>
+      </span>
+      <span class="narr__label">入殿</span>
+    </li>
+    <li class="narr__node done">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="6.5" ry="8"/><path d="M12 4V2M12 22v-2M5.5 12h13"/></svg>
+      </span>
+      <span class="narr__label">点灯</span>
+    </li>
+    <li class="narr__node now">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M3 4h3v16H3zM18 4h3v16h-3z"/><path d="M10 9h4M10 13h4"/></svg>
+      </span>
+      <span class="narr__label">观卷</span>
+    </li>
+    <li class="narr__node">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><rect x="8" y="8" width="8" height="8"/></svg>
+      </span>
+      <span class="narr__label">留印</span>
+    </li>
+    <li class="narr__node">
+      <span class="narr__dot">
+        <svg viewBox="0 0 24 24"><path d="M4 20h5v-5h5v-5h5V5"/><path d="M2 22h20"/></svg>
+      </span>
+      <span class="narr__label">登阶</span>
+    </li>
+  </ol>
+
+  <!-- ===== 圣殿主屏（中轴对称三开间） ===== -->
+  <div class="hall">
+
+    <!-- 西厢 -->
+    <div class="hall__wing">
+      <div class="wing-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="5" ry="7"/><path d="M12 5V3M12 21v-2"/></svg>
+          </span>
+          <span class="wing-card__title">点灯</span>
+          <span class="wing-card__meta">连续 7 天</span>
+        </div>
+        <div class="lantern-wall">
+          <span class="lantern on"></span>
+          <span class="lantern on"></span>
+          <span class="lantern on"></span>
+          <span class="lantern on"></span>
+          <span class="lantern on"></span>
+          <span class="lantern on"></span>
+          <span class="lantern on today"></span>
+        </div>
+        <div class="lantern-legend"><span>本周点灯</span><span>7 / 7</span></div>
+      </div>
+
+      <div class="wing-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          </span>
+          <span class="wing-card__title">今日学时</span>
+          <span class="wing-card__meta">目标 30 min</span>
+        </div>
+        <div class="lantern-legend u-strong">
+          <span>已完成 24 分钟</span><span class="u-gold">80%</span>
+        </div>
+        <div class="meter">
+          <div class="meter__fill" style="width:80%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 明间 · 藻井 -->
+    <div class="hall__center">
+      <div class="caisson">
+        <svg class="caisson__svg" viewBox="0 0 240 240" aria-hidden="true">
+          <polygon class="caisson__oct" points="230,120 197.8,197.8 120,230 42.2,197.8 10,120 42.2,42.2 120,10 197.8,42.2"/>
+          <circle class="caisson__ring" cx="120" cy="120" r="104"/>
+          <circle class="caisson__ring caisson__ring--spin" cx="120" cy="120" r="96"/>
+          <g class="caisson__spokes">
+            <line x1="120" y1="28" x2="120" y2="46"/>
+            <line x1="120" y1="194" x2="120" y2="212"/>
+            <line x1="28" y1="120" x2="46" y2="120"/>
+            <line x1="194" y1="120" x2="212" y2="120"/>
+            <line x1="55" y1="55" x2="67" y2="67"/>
+            <line x1="185" y1="55" x2="173" y2="67"/>
+            <line x1="55" y1="185" x2="67" y2="173"/>
+            <line x1="185" y1="185" x2="173" y2="173"/>
+          </g>
+          <g class="caisson__quad">
+            <circle cx="120" cy="120" r="86"/>
+            <circle cx="120" cy="120" r="86"/>
+            <circle cx="120" cy="120" r="86"/>
+            <circle cx="120" cy="120" r="86"/>
+          </g>
+          <circle class="caisson__prog-bg" cx="120" cy="120" r="66"/>
+          <circle class="caisson__prog" cx="120" cy="120" r="66"/>
+          <circle class="caisson__core-ring" cx="120" cy="120" r="52"/>
+        </svg>
+        <div class="caisson__core">
+          <div class="caisson__num">84<span>%</span></div>
+          <div class="caisson__cap">总熟练度</div>
+        </div>
+      </div>
+      <span class="caisson__tier">Bronze · 距 Silver 16%</span>
+      <div class="skills-row">
+        <button class="skill-btn listen">
+          <svg viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+          <small>听力</small>
+        </button>
+        <button class="skill-btn speak">
+          <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>
+          <small>口语</small>
+        </button>
+        <button class="skill-btn read">
+          <svg viewBox="0 0 24 24"><path d="M2 5h7a3 3 0 0 1 3 3v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-7a3 3 0 0 0-3 3v11a3 3 0 0 1 3-3h7z"/></svg>
+          <small>阅读</small>
+        </button>
+        <button class="skill-btn write">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          <small>写作</small>
+        </button>
+      </div>
+    </div>
+
+    <!-- 东厢 -->
+    <div class="hall__wing">
+      <div class="wing-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M3 4h3v16H3zM18 4h3v16h-3z"/></svg>
+          </span>
+          <span class="wing-card__title">观卷</span>
+          <span class="wing-card__meta">今日 3 卷</span>
+        </div>
+        <div class="scroll">
+          <div class="task-list">
+            <div class="task-item">
+              <span class="task-check done"></span>
+              <span class="task-text done u-truncate" title="听力精练 · 第一殿">听力精练 · 第一殿</span>
+              <span class="task-flag">已毕</span>
+            </div>
+            <div class="task-item">
+              <span class="task-check now"></span>
+              <span class="task-text u-truncate" title="口语跟读 · 第三殿：连读与弱读专项（12 分钟）">口语跟读 · 第三殿：连读与弱读专项（12 分钟）</span>
+              <span class="task-flag">进行</span>
+            </div>
+            <div class="task-item">
+              <span class="task-check"></span>
+              <span class="task-text u-truncate" title="阅读短章 · 两篇">阅读短章 · 两篇</span>
+              <span class="task-flag">待启</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary u-full u-mt-md">继续研习 →</button>
+      </div>
+    </div>
+
+  </div><!-- /hall -->
+
+  <!-- ===== 登阶（五级踏跺） ===== -->
+  <section class="terrace">
+    <div class="terrace__head">
+      <h3>登阶</h3>
+      <span class="terrace__hint">熟练度阶位 2 / 5</span>
+    </div>
+    <div class="stairs">
+      <div class="stair stair--done"><span class="stair__dot"></span></div>
+      <div class="stair stair--done"><span class="stair__dot"></span></div>
+      <div class="stair stair--now"><span class="stair__dot"></span></div>
+      <div class="stair"><span class="stair__dot"></span></div>
+      <div class="stair"><span class="stair__dot"></span></div>
+    </div>
+    <div class="terrace__axis"></div>
+    <div class="terrace__legend">
+      <span>初识</span><span>略通</span><span>渐明</span><span>贯通</span><span>登顶</span>
+    </div>
+  </section>
+
+  <!-- ===== 留印（成就印章 · 照搬方案 A） ===== -->
+  <section class="terrace">
+    <div class="terrace__head">
+      <h3>留印</h3>
+      <span class="terrace__hint">已得 3 印</span>
+    </div>
+    <div class="seal-wall">
+
+      <figure class="seal-item">
+        <div class="seal-stamp">打卡<br>7天</div>
+        <figcaption class="seal-cap">连续打卡</figcaption>
+      </figure>
+
+      <figure class="seal-item">
+        <div class="seal-stamp seal-stamp--gold">mastery<br>L5</div>
+        <figcaption class="seal-cap">熟练度满级</figcaption>
+      </figure>
+
+      <figure class="seal-item">
+        <div class="seal-stamp seal-stamp--listen">全通</div>
+        <figcaption class="seal-cap">小测满分</figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <!-- ===== 组件基座 ===== -->
+  <h2 class="section-title">令牌与组件基座</h2>
+  <p class="section-sub">与方案 A / B 同源令牌体系，仅装饰构件与叙事结构不同；新增 <code>--*-soft</code> 柔和变体专供大面积着色。</p>
+
+  <div class="card">
+    <div class="card__label">四技能色 · 行业惯例值</div>
+    <div class="u-row">
+      <span class="badge badge--teal">听力 #0891b2</span>
+      <span class="badge badge--orange">口语 #ea580c</span>
+      <span class="badge badge--blue">阅读 #2563eb</span>
+      <span class="badge badge--gold">写作 #b45309</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__label">按钮 / 徽章</div>
+    <div class="u-row-sm">
+      <button class="btn btn-primary">主行动</button>
+      <button class="btn btn-secondary">次要</button>
+      <button class="btn btn-danger">注销</button>
+      <button class="btn btn-icon" title="朗读">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+      </button>
+      <button class="btn btn-primary" disabled>禁用</button>
+      <span class="badge badge--success">已固化</span>
+      <span class="badge badge--verm">待复习</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__label">六态清单</div>
+    <div class="state-grid">
+      <div class="state-card">
+        <div class="state-card__label">默认</div>
+        <div class="state-card__view"><button class="btn btn-primary u-btn-sm">开始复习</button></div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">加载</div>
+        <div class="state-card__view u-col-full">
+          <div class="skeleton skeleton--roof sk-w86"></div>
+          <div class="skeleton skeleton--text sk-w100"></div>
+          <div class="skeleton skeleton--text sk-w70"></div>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">空态</div>
+        <div class="state-card__view u-col-center">
+          <svg class="state-icon state-icon--muted" viewBox="0 0 24 24"><path d="M3 12h4l2 3h6l2-3h4"/><path d="M5 5h14l2 7v7H3v-7z"/></svg>
+          <span class="state-line">暂无数据</span>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">错误</div>
+        <div class="state-card__view u-col-center">
+          <svg class="state-icon state-icon--danger" viewBox="0 0 24 24"><path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4M12 17.2h.01"/></svg>
+          <span class="state-line state-line--danger">操作失败</span>
+          <button class="btn btn-secondary u-btn-sm">重试</button>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">成功</div>
+        <div class="state-card__view u-col-center">
+          <svg class="state-icon state-icon--success" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.6 2.6L16 9.6"/></svg>
+          <span class="state-line state-line--success">完成！</span>
+        </div>
+      </div>
+      <div class="state-card">
+        <div class="state-card__label">边界</div>
+        <div class="state-card__view u-col-full">
+          <div class="u-truncate u-muted" title="inspections / perspectives / introspections / retrospectives —— 词根 spect（看）的全部衍生词">单行截断：inspections / perspectives / introspections / retrospectives —— 词根 spect 的全部衍生词</div>
+          <div class="u-clamp-2 u-muted" title="超长释义全文：以 spect（看）为词根，可衍生 inspect 检视、respect 尊敬、perspective 视角、introspection 内省、retrospective 回顾等十余个高频词，逐一掌握其构词规律与固定搭配。">两行折行截断：以 spect（看）为词根，可衍生 inspect 检视、respect 尊敬、perspective 视角、introspection 内省、retrospective 回顾等十余个高频词，逐一掌握其构词规律与固定搭配。</div>
+          <button class="btn btn-secondary u-btn-sm u-mt-md" title="展开或抽屉中查看完整内容">查看完整内容</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__label">抽屉浮层</div>
+    <button class="btn btn-primary" onclick="openDrawer()">打开详情抽屉</button>
+  </div>
+
+  <div class="divider-ornament">
+    <svg width="40" height="10" viewBox="0 0 40 10" fill="none" stroke="currentColor" stroke-width="1.4">
+      <path d="M0 5h14M26 5h14M20 1v8M16 5l4-4 4 4-4 4z"/>
+    </svg>
+  </div>
+
+</div><!-- /preview-light -->
+
+<div class="page u-hidden" id="preview-dark" data-theme="dark"></div>
+
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer(event)">
+  <div class="drawer-panel">
+    <div class="drawer-header">
+      <span class="drawer-title">殿内详情</span>
+      <button class="drawer-close" onclick="closeDrawer()">&times;</button>
+    </div>
+    <div class="drawer-body">
+      <p class="u-prose">
+        右侧滑入的抽屉浮层，不覆盖整屏上下文。<br>
+        用于承载知识点详情、单词释义、学情明细等次级内容。
+      </p>
+      <div class="divider-ornament">
+        <svg width="40" height="10" viewBox="0 0 40 10" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M0 5h14M26 5h14M20 1v8M16 5l4-4 4 4-4 4z"/>
+        </svg>
+      </div>
+      <div class="skeleton skeleton--text sk-w100"></div>
+      <div class="skeleton skeleton--text sk-w86"></div>
+      <div class="skeleton skeleton--text sk-w64"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* 暗色预览复用同一套 DOM：克隆后仅切换令牌作用域，保证两案结构完全一致 */
+function buildDarkPreview() {
+  const src = document.getElementById('preview-light');
+  const dst = document.getElementById('preview-dark');
+  if (dst.dataset.built === '1') return;
+  dst.innerHTML = src.innerHTML;
+  dst.dataset.built = '1';
+}
+function setTheme(mode, btn) {
+  buildDarkPreview();
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  if (btn && btn.classList) btn.classList.add('active');
+  const light = document.getElementById('preview-light');
+  const dark  = document.getElementById('preview-dark');
+  light.style.display = (mode === 'dark') ? 'none' : 'block';
+  dark.style.display  = (mode === 'light') ? 'none' : 'block';
+}
+function toggleTheme() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+}
+function openDrawer()  { document.getElementById('drawer-overlay').classList.add('open'); }
+function closeDrawer(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+/* 初始：亮色单预览 */
+setTheme('light');
+</script>
+
+</body>
+</html>

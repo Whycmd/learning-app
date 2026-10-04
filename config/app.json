@@ -1,0 +1,13 @@
+{
+  "app_name": "轻量化本地英语学习软件",
+  "version": "1.4.0",
+  "backend_host": "127.0.0.1",
+  "backend_port": 8088,
+  "frontend_port": 8089,
+  "word_tmp_dir": "../word_tmp",
+  "word_lifetime_minutes": 60,
+  "log_dir": "../logs",
+  "default_review_mode": "daily",
+  "max_concurrent_ai_tasks": 1,
+  "task_timeout_sec": 60
+}

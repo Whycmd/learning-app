@@ -1,0 +1,15 @@
+{
+  "name": "english-learning-app",
+  "version": "1.0.0",
+  "description": "Local English learning software with spaced repetition",
+  "private": true,
+  "type": "commonjs",
+  "main": "scripts/main.js",
+  "scripts": {
+    "test": "node tests/run_all.js",
+    "start": "node scripts/main.js"
+  },
+  "dependencies": {
+    "docx": "^8.5.0"
+  }
+}

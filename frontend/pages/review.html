@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>每日复习 · 学习圣殿</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/components.css">
+<script src="/static/theme.js"></script>
+<script src="/static/nav.js"></script>
+</head>
+<body>
+<div id="topbar-slot"></div>
+
+<!-- T105：每日复习 · 套用圣殿设计系统 v2 -->
+<div class="page">
+
+  <div class="dougong-bar">
+    <svg viewBox="0 0 400 32"><path d="M0 32 L40 18 L60 28 L80 12 L100 24 L120 8 L140 20 L160 4 L180 16 L200 0 L220 16 L240 4 L260 20 L280 8 L300 24 L320 12 L340 28 L360 18 L400 32Z" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/></svg>
+  </div>
+
+  <h1 class="section-title">每日复习</h1>
+  <p class="section-sub">基于遗忘曲线推送到期知识点 · 候选池 → AI 出题 → 答题批改 → 完成复习</p>
+
+  <div class="review-layout">
+
+    <!-- 左主栏：习题区 / 引导空态 -->
+    <main class="review-layout__main" id="review-main">
+      <!-- 空态：候选池为空时 -->
+      <section class="wing-card" id="empty-state">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 17h.01"/></svg>
+          </span>
+          <span class="wing-card__title">候课池空</span>
+        </div>
+        <p class="u-prose">暂无到期知识点。录入并固化新单词，或等待复习到期后自动进入候选。</p>
+        <a class="btn btn-primary u-mt-md" href="/pages/kp-entry.html">去录入知识点 →</a>
+      </section>
+
+      <!-- 模式 + 技能说明 -->
+      <section class="wing-card" id="mode-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+          </span>
+          <span class="wing-card__title">练习模式</span>
+          <span class="wing-card__meta">决定下次复习间隔</span>
+        </div>
+        <div class="segmented" id="mode-switch">
+          <button type="button" data-mode="daily" class="is-active">按日复习</button>
+          <button type="button" data-mode="weekly">按周复习</button>
+        </div>
+        <p class="u-muted u-mt-md text-sm">四个模式覆盖 听·说·读·写。当前题型实际考察 <strong>读 · 写</strong>（词义辨析、词性转换、翻译、仿写）。</p>
+        <div class="skill-grid">
+          <button class="skill-btn skill-btn--listen" type="button" data-skill="listen">听力</button>
+          <button class="skill-btn skill-btn--speak" type="button" data-skill="speak">口语</button>
+          <button class="skill-btn skill-btn--read" type="button" data-skill="read">阅读</button>
+          <button class="skill-btn skill-btn--write" type="button" data-skill="write">写作</button>
+        </div>
+      </section>
+
+      <!-- 习题区（默认隐藏，出题成功后显示） -->
+      <section class="wing-card" id="exercise-card" hidden>
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M3 4h3v16H3zM18 4h3v16h-3z"/></svg>
+          </span>
+          <span class="wing-card__title">习题</span>
+          <span class="wing-card__meta" id="q-count">–</span>
+        </div>
+        <a class="btn btn-secondary u-mt-md" id="word-dl" download>下载习题 Word 文档</a>
+        <div id="questions"></div>
+        <button class="btn btn-primary u-full u-mt-md" id="btn-finish" type="button">
+          完成本次复习 · 计算下次复习时间
+        </button>
+        <p class="state-line" id="finish-msg"></p>
+      </section>
+
+    </main>
+
+    <!-- 右副栏：候选池 -->
+    <aside class="review-layout__side">
+      <section class="wing-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><path d="M9 11l3-3 3 3"/><path d="M9 13l3 3 3-3"/></svg>
+          </span>
+          <span class="wing-card__title">候课池</span>
+          <span class="wing-card__meta" id="pool-count">加载中…</span>
+        </div>
+        <div class="u-row-sm u-mt-md">
+          <button class="btn btn-secondary u-btn-sm" type="button" id="btn-all">全选</button>
+          <button class="btn btn-secondary u-btn-sm" type="button" id="btn-none">全不选</button>
+        </div>
+        <div class="scroll">
+          <div class="task-list" id="candidate-list">
+            <div class="skeleton skeleton--text"></div>
+            <div class="skeleton skeleton--text"></div>
+            <div class="skeleton skeleton--text"></div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block u-mt-md" id="btn-gen" type="button">AI 生成习题</button>
+        <p class="state-line" id="gen-msg"></p>
+      </section>
+    </aside>
+
+  </div>
+
+</div>
+
+<script>
+(function ()
+{
+  'use strict';
+
+  let candidates = [];
+  let selectedIds = [];
+  let exerciseData = null;
+  const graded = {};
+
+  const TYPE_LABEL = {
+    word_match: '词义匹配',
+    word_form_fill: '词性转换填空',
+    context_blank_fill: '语境选词填空',
+    cn_to_en_translation: '中译英翻译',
+    cloze_choice: '词汇辨析完形选择',
+    sentence_imitation: '例句仿写'
+  };
+
+  function setMsg(id, cls, t)
+  {
+    const e = document.getElementById(id);
+    if (!e) return;
+    e.className = 'state-line' + (cls ? ' ' + cls : '');
+    e.textContent = t || '';
+  }
+
+  function esc(s)
+  {
+    return String(s || '').replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function currentMode()
+  {
+    const btn = document.querySelector('#mode-switch .is-active');
+    return btn ? btn.dataset.mode : 'daily';
+  }
+
+  // ---------- 模式切换 ----------
+
+  document.getElementById('mode-switch').addEventListener('click', async e =>
+  {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    document.querySelectorAll('#mode-switch button').forEach(b => b.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    const mode = btn.dataset.mode;
+    // 批量更新所有候选知识点的复习模式
+    for (const c of candidates)
+    {
+      try
+      {
+        await fetch('/api/learn/' + c.knowledge_id + '/mode', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ review_mode: mode })
+        });
+      }
+      catch (e) {}
+    }
+    loadCandidates();
+  });
+
+  // 技能按钮（提示语）
+  document.querySelectorAll('.skill-btn').forEach(btn =>
+  {
+    btn.addEventListener('click', () =>
+    {
+      const skill = btn.dataset.skill;
+      const map = {
+        listen: '听力功能为预留，当前以读写题型为主',
+        speak:  '口语功能为预留，翻译/仿写训练即口语输出',
+        read:   '阅读训练：词义匹配、完形选择（点击右侧候课池勾选后出题）',
+        write:  '写作训练：中译英、例句仿写（点击右侧候课池勾选后出题）'
+      };
+      setMsg('gen-msg', '', map[skill] || '');
+    });
+  });
+
+  // ---------- 候课池 ----------
+
+  async function loadCandidates()
+  {
+    let r;
+    try { r = await (await fetch('/api/learn/candidates', { cache: 'no-store' })).json(); }
+    catch (e) { r = { data: [] }; }
+    candidates = r.data || [];
+    selectedIds = candidates.map(c => c.knowledge_id); // 默认全选
+
+    const pool = document.getElementById('candidate-list');
+    const countEl = document.getElementById('pool-count');
+    const emptyState = document.getElementById('empty-state');
+
+    countEl.textContent = '共 ' + candidates.length + ' 条';
+
+    if (!candidates.length)
+    {
+      pool.innerHTML = '<p class="state-line">暂无到期知识点。</p>';
+      document.getElementById('mode-card').hidden = true;
+      document.getElementById('exercise-card').hidden = true;
+      emptyState.hidden = false;
+      return;
+    }
+
+    emptyState.hidden = true;
+    document.getElementById('mode-card').hidden = false;
+
+    pool.innerHTML = candidates.map(c =>
+    {
+      const word = esc(c.standard_content || c.user_input_content);
+      return `
+      <label class="task-item task-item--static">
+        <input type="checkbox" value="${c.knowledge_id}" checked data-cand>
+        <div class="task-text">
+          <span class="kp-pill">${word}</span>
+          <span class="state-line">L${c.proficiency_level} · ${c.proficiency_name} · ${c.review_mode === 'weekly' ? '按周' : '按日'}</span>
+        </div>
+      </label>`;
+    }).join('');
+  }
+
+  document.getElementById('btn-all').addEventListener('click', () =>
+  {
+    document.querySelectorAll('#candidate-list input[data-cand]').forEach(c => c.checked = true);
+    onCheck();
+  });
+  document.getElementById('btn-none').addEventListener('click', () =>
+  {
+    document.querySelectorAll('#candidate-list input[data-cand]').forEach(c => c.checked = false);
+    onCheck();
+  });
+  document.getElementById('candidate-list').addEventListener('change', e =>
+  {
+    if (e.target.matches('input[data-cand]')) onCheck();
+  });
+
+  function onCheck()
+  {
+    selectedIds = [...document.querySelectorAll('#candidate-list input[data-cand]:checked')]
+      .map(i => parseInt(i.value));
+  }
+
+  // ---------- 生成习题 ----------
+
+  document.getElementById('btn-gen').addEventListener('click', async () =>
+  {
+    onCheck();
+    if (!selectedIds.length) { setMsg('gen-msg', 'state-line--danger', '请至少勾选一个候课'); return; }
+    const btn = document.getElementById('btn-gen');
+    btn.disabled = true;
+    setMsg('gen-msg', '', 'AI 出题中，整段提示词一次发送…');
+    try
+    {
+      const r = await fetch('/api/exercise/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ knowledge_ids: selectedIds, mode: currentMode() })
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok)
+      {
+        setMsg('gen-msg', 'state-line--danger', j.error || '出题失败');
+        btn.disabled = false;
+        return;
+      }
+      setMsg('gen-msg', 'state-line--success', '习题生成成功');
+      exerciseData = j.exercises || {};
+      document.getElementById('exercise-card').hidden = false;
+      document.getElementById('word-dl').href = '/api/word/download?path=' + encodeURIComponent(j.word_path || '');
+      renderQuestions();
+      document.getElementById('exercise-card').scrollIntoView({ behavior: 'smooth' });
+    }
+    catch (e) { setMsg('gen-msg', 'state-line--danger', '网络异常'); }
+    btn.disabled = false;
+  });
+
+  // ---------- 渲染习题 ----------
+
+  function renderQuestions()
+  {
+    const qs = exerciseData.exercises || [];
+    document.getElementById('q-count').textContent = '共 ' + qs.length + ' 题';
+    const host = document.getElementById('questions');
+    host.innerHTML = qs.map((q, i) =>
+    {
+      const label = TYPE_LABEL[q.type] || q.type;
+      return `<section class="question-block" data-q="${i}">
+        <div class="question-head">
+          <span class="question-idx">#${i + 1}</span>
+          <span class="question-type">${esc(label)}</span>
+        </div>
+        ${renderQuestionBody(q, i)}
+        <button class="btn btn-secondary u-btn-sm question-grade" type="button">批改</button>
+        <div class="question-grade-box"></div>
+      </section>`;
+    }).join('');
+  }
+
+  function renderQuestionBody(q, i)
+  {
+    if (q.type === 'word_match' || q.type === 'cloze_choice')
+    {
+      const opts = (q.options || []).map((o, j) =>
+        `<label class="candidate"><input type="radio" name="q${i}" value="${String.fromCharCode(65 + j)}"><span>${String.fromCharCode(65 + j)}. ${esc(o)}</span></label>`
+      ).join('');
+      return (q.passage ? `<p class="state-line">${esc(q.passage)}</p>` : '')
+        + `<p class="question-prompt">${esc(q.question || '')}</p>${opts}`;
+    }
+    if (q.type === 'word_form_fill' || q.type === 'context_blank_fill')
+    {
+      return `<p class="question-prompt">${esc(q.question || q.passage || '')}</p>`
+        + `<input class="input question-input" id="ans-${i}" placeholder="输入答案">`;
+    }
+    if (q.type === 'cn_to_en_translation')
+    {
+      return `<p class="question-prompt">【中译英】${esc(q.prompt || q.question || '')}</p>`
+        + `<textarea class="textarea question-input" id="ans-${i}" placeholder="输入英文翻译"></textarea>`;
+    }
+    if (q.type === 'sentence_imitation')
+    {
+      return (q.sample ? `<p class="state-line">范例：${esc(q.sample)}</p>` : '')
+        + `<p class="question-prompt">${esc(q.prompt || '')}</p>`
+        + `<textarea class="textarea question-input" id="ans-${i}" placeholder="仿写句子"></textarea>`;
+    }
+    return `<p class="question-prompt">${esc(q.question || '')}</p><input class="input question-input" id="ans-${i}">`;
+  }
+
+  // 批改（事件委托）
+  document.getElementById('questions').addEventListener('click', async e =>
+  {
+    const btn = e.target.closest('.question-grade');
+    if (!btn) return;
+    const block = btn.closest('.question-block');
+    const i = parseInt(block.dataset.q);
+    const box = block.querySelector('.question-grade-box');
+    const q = exerciseData.exercises[i];
+    const ans = readAnswer(i, q);
+    if (!ans) { box.innerHTML = '<p class="state-line state-line--danger">请先作答</p>'; return; }
+    box.innerHTML = '<p class="state-line">批改中…</p>';
+    try
+    {
+      const r = await fetch('/api/exercise/grade', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: q.type, user_answer: ans,
+          correct_answer: q.answer || '', reference_answer: q.reference_answer || ''
+        })
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) { box.innerHTML = '<p class="state-line state-line--danger">批改失败</p>'; return; }
+      const correct = !!j.correct;
+      if (q.knowledge_id) graded[q.knowledge_id] = correct;
+      box.innerHTML = `<div class="grade-card ${correct ? 'is-correct' : 'is-wrong'}">
+        <strong>${correct ? '✓ 正确' : '✗ 待改进'}</strong> · 得分 ${j.score}
+        ${j.error_analysis ? `<p>${esc(j.error_analysis)}</p>` : ''}
+        ${j.reference_answer ? `<p class="state-line">参考答案：${esc(j.reference_answer)}</p>` : ''}
+      </div>`;
+    }
+    catch (err) { box.innerHTML = '<p class="state-line state-line--danger">网络异常</p>'; }
+  });
+
+  function readAnswer(i, q)
+  {
+    const el = document.getElementById('ans-' + i);
+    if (el) return el.value.trim();
+    const sel = document.querySelector(`input[name=q${i}]:checked`);
+    return sel ? sel.value : '';
+  }
+
+  // ---------- 完成复习 ----------
+
+  document.getElementById('btn-finish').addEventListener('click', async () =>
+  {
+    const btn = document.getElementById('btn-finish');
+    btn.disabled = true;
+    setMsg('finish-msg', '', '正在记录答题结果并计算下次复习时间…');
+    const lines = [];
+    try
+    {
+      for (const id of selectedIds)
+      {
+        const correct = graded[id] === true;
+        await fetch('/api/learn/' + id + '/answer', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_correct: correct })
+        });
+      }
+      for (const id of selectedIds)
+      {
+        try
+        {
+          const r = await fetch('/api/learn/' + id + '/complete-review', { method: 'POST' });
+          const j = await r.json();
+          if (j.ok || j.next_review_time)
+            lines.push(`知识点 #${id}：下次复习 ${j.next_review_time}`);
+        }
+        catch (e) {}
+      }
+      setMsg('finish-msg', 'state-line--success', '本次复习完成，学情与下次复习时间已更新');
+      if (lines.length)
+      {
+        const wrap = document.createElement('div');
+        wrap.className = 'notice';
+        wrap.innerHTML = lines.map(l => `<p class="state-line">${esc(l)}</p>`).join('');
+        document.getElementById('finish-msg').after(wrap);
+      }
+    }
+    catch (e) { setMsg('finish-msg', 'state-line--danger', '网络异常'); }
+    btn.disabled = false;
+  });
+
+  loadCandidates();
+})();
+</script>
+</body>
+</html>

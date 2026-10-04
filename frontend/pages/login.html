@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>登录 · 英语学习</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/components.css">
+<script src="/static/theme.js"></script>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="seal-deco">学习<br>圣殿</div>
+
+    <div class="auth-brand">英语学习</div>
+    <div class="auth-sub">本地学习 · 数据保存在本机</div>
+
+    <div class="auth-tabs" role="tablist">
+      <button class="auth-tab is-active" data-tab="login" role="tab" aria-selected="true">登录</button>
+      <button class="auth-tab" data-tab="register" role="tab" aria-selected="false">注册</button>
+    </div>
+
+    <!-- 登录 -->
+    <form id="form-login" class="auth-form" data-panel="login" role="tabpanel">
+      <div class="auth-field">
+        <label for="login-username">用户名</label>
+        <input id="login-username" autocomplete="username" required maxlength="20">
+      </div>
+      <div class="auth-field">
+        <label for="login-password">密码</label>
+        <input id="login-password" type="password" autocomplete="current-password" required maxlength="100">
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" id="login-btn">登录</button>
+    </form>
+
+    <!-- 注册 -->
+    <form id="form-register" class="auth-form" data-panel="register" hidden role="tabpanel">
+      <div class="auth-field">
+        <label for="reg-username">用户名（3-20 字符，支持中英文/数字/下划线/点）</label>
+        <input id="reg-username" autocomplete="username" required minlength="3" maxlength="20">
+      </div>
+      <div class="auth-field">
+        <label for="reg-display">显示名（可选）</label>
+        <input id="reg-display" autocomplete="nickname" maxlength="20">
+      </div>
+      <div class="auth-field">
+        <label for="reg-password">密码（至少 6 位）</label>
+        <input id="reg-password" type="password" autocomplete="new-password" required minlength="6" maxlength="100">
+      </div>
+      <div class="auth-field">
+        <label for="reg-identity">你主要学英语的方向（可选，默认"高中生"）</label>
+        <select id="reg-identity"></select>
+        <input id="reg-identity-custom" class="identity-custom" maxlength="30" hidden placeholder="自定义学习者身份">
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" id="register-btn">注册并登录</button>
+    </form>
+
+    <div class="auth-msg" id="auth-msg"></div>
+    <div class="auth-back"><a href="/">← 返回首页（游客身份继续使用）</a></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // —— 已登录访问：提示并回首页 ——
+  async function checkAlreadyLogin() {
+    try {
+      const me = await (await fetch('/api/auth/me', { cache: 'no-store' })).json();
+      if (me && !me.guest) location.replace('/');
+    } catch (e) {}
+  }
+
+  // —— 加载学习者身份建议清单 ——
+  async function loadLearnerIdentities() {
+    try {
+      const r = await fetch('/api/learner-identities', { cache: 'no-store' });
+      const data = await r.json();
+      const sel = document.getElementById('reg-identity');
+      const list = (data && data.data) || [];
+      let defaultSelected = false;
+      for (const name of list) {
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        if (name === '高中生') { opt.selected = true; defaultSelected = true; }
+        sel.appendChild(opt);
+      }
+      const other = document.createElement('option');
+      other.value = '__custom__'; other.textContent = '其他（自定义）';
+      sel.appendChild(other);
+      if (!defaultSelected) sel.value = '__custom__';
+    } catch (e) {}
+  }
+
+  // —— 辅助 ——
+  function showMsg(cls, text) {
+    const el = document.getElementById('auth-msg');
+    el.className = 'auth-msg ' + cls;
+    el.textContent = text;
+  }
+  function switchTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach(b => {
+      const is = b.dataset.tab === tab;
+      b.classList.toggle('is-active', is);
+      b.setAttribute('aria-selected', String(is));
+    });
+    document.querySelectorAll('.auth-form').forEach(f => {
+      f.hidden = f.dataset.panel !== tab;
+    });
+    showMsg('', '');
+  }
+
+  // —— 事件委托：Tab + form submit + identity change ——
+  document.addEventListener('click', (e) => {
+    const tab = e.target.closest('.auth-tab');
+    if (tab) switchTab(tab.dataset.tab);
+  });
+  document.getElementById('reg-identity').addEventListener('change', (e) => {
+    const custom = document.getElementById('reg-identity-custom');
+    custom.hidden = (e.target.value !== '__custom__');
+    if (e.target.value !== '__custom__') custom.value = '';
+  });
+  document.getElementById('form-login').addEventListener('submit', doLogin);
+  document.getElementById('form-register').addEventListener('submit', doRegister);
+
+  // —— 登录 ——
+  async function doLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true;
+    showMsg('', '登录中…');
+    const body = {
+      username: document.getElementById('login-username').value.trim(),
+      password: document.getElementById('login-password').value
+    };
+    try {
+      const r = await fetch('/api/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.ok && data.ok) {
+        showMsg('auth-msg--ok', '登录成功，正在进入…');
+        setTimeout(() => location.replace('/'), 500);
+      } else {
+        showMsg('auth-msg--err', data.error || '登录失败');
+      }
+    } catch (err) {
+      showMsg('auth-msg--err', '网络错误：' + err.message);
+    }
+    btn.disabled = false;
+  }
+
+  // —— 注册（成功后自动登录） ——
+  async function doRegister(e) {
+    e.preventDefault();
+    const btn = document.getElementById('register-btn');
+    btn.disabled = true;
+    showMsg('', '注册中…');
+    const username = document.getElementById('reg-username').value.trim();
+    const displayName = document.getElementById('reg-display').value.trim();
+    const password = document.getElementById('reg-password').value;
+    let identityVal = document.getElementById('reg-identity').value.trim();
+    if (identityVal === '__custom__') identityVal = document.getElementById('reg-identity-custom').value.trim();
+    try {
+      const rr = await fetch('/api/auth/register', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, display_name: displayName, learner_identity: identityVal })
+      });
+      const regData = await rr.json().catch(() => ({}));
+      if (!rr.ok || !regData.ok) {
+        showMsg('auth-msg--err', regData.error || '注册失败');
+        btn.disabled = false;
+        return;
+      }
+      showMsg('auth-msg--ok', '注册成功，正在自动登录…');
+      const lr = await fetch('/api/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const loginData = await lr.json().catch(() => ({}));
+      if (lr.ok && loginData.ok) setTimeout(() => location.replace('/'), 500);
+      else {
+        showMsg('auth-msg--err', '注册成功，但自动登录失败：' + (loginData.error || '请手动登录'));
+        switchTab('login');
+        document.getElementById('login-username').value = username;
+      }
+    } catch (err) {
+      showMsg('auth-msg--err', '网络错误：' + err.message);
+    }
+    btn.disabled = false;
+  }
+
+  // 启动
+  checkAlreadyLogin();
+  loadLearnerIdentities();
+})();
+</script>
+</body>
+</html>

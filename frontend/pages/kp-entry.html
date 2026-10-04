@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>知识点录入 · 学习圣殿</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/components.css">
+<script src="/static/theme.js"></script>
+<script src="/static/nav.js"></script>
+</head>
+<body>
+<div id="topbar-slot"></div>
+
+<!-- T104：知识点录入页 · 套用圣殿设计系统 v2 -->
+<div class="page">
+
+  <div class="dougong-bar">
+    <svg viewBox="0 0 400 32"><path d="M0 32 L40 18 L60 28 L80 12 L100 24 L120 8 L140 20 L160 4 L180 16 L200 0 L220 16 L240 4 L260 20 L280 8 L300 24 L320 12 L340 28 L360 18 L400 32Z" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/></svg>
+  </div>
+
+  <h1 class="section-title">录入知识点</h1>
+  <p class="section-sub">单条录入 · 批量 AI 固化 · 实时查重</p>
+
+  <!-- 一、录入表单 -->
+  <div class="wing-card">
+    <div class="wing-card__cap">
+      <span class="wing-card__ico">
+        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+      </span>
+      <span class="wing-card__title">新建词条</span>
+      <span class="wing-card__meta" id="entry-meta">支持单词 / 短语</span>
+    </div>
+    <div class="u-prose">
+      <label class="field-label">单词或短语</label>
+      <input class="input" id="content" placeholder="例如：abandon / keep ... off">
+      <label class="field-label">备注（可选）</label>
+      <input class="input" id="remark" placeholder="例如：重点考察被动语态">
+      <div class="u-row-sm u-mt-md">
+        <button class="btn btn-primary" id="btn-add">录入知识点</button>
+        <button class="btn btn-secondary" id="btn-clear" type="button">清空</button>
+      </div>
+      <p class="state-line" id="add-msg"></p>
+    </div>
+  </div>
+
+  <!-- 二、AI 固化 -->
+  <div class="wing-card">
+    <div class="wing-card__cap">
+      <span class="wing-card__ico">
+        <svg viewBox="0 0 24 24"><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/><circle cx="12" cy="12" r="4"/></svg>
+      </span>
+      <span class="wing-card__title">AI 一键固化</span>
+      <span class="wing-card__meta">整段一次发送，不切割拼接</span>
+    </div>
+    <p class="notice text-sm">
+      点击后将<strong>整段提示词一次发送</strong>给 AI 模型，批量处理所有待固化知识点，返回完整结构化结果入库。
+    </p>
+    <div class="u-row-sm">
+      <button class="btn btn-primary" id="btn-solidify">一键 AI 固化</button>
+      <button class="btn btn-secondary" id="btn-export-batch" type="button">批量导出 Word</button>
+    </div>
+    <p class="state-line" id="op-msg"></p>
+  </div>
+
+  <!-- 三、知识点列表 -->
+  <div class="wing-card">
+    <div class="wing-card__cap">
+      <span class="wing-card__ico">
+        <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M3 4h3v16H3zM18 4h3v16h-3z"/></svg>
+      </span>
+      <span class="wing-card__title">语言包 · 知识点</span>
+      <span class="wing-card__meta" id="kp-count">–</span>
+    </div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#78716c" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="filter" placeholder="搜索知识点">
+    </div>
+    <div id="kp-list"></div>
+  </div>
+
+</div>
+
+<script>
+(function ()
+{
+  'use strict';
+
+  let kps = [];
+
+  function setMsg(id, cls, t)
+  {
+    const e = document.getElementById(id);
+    if (!e) return;
+    e.className = 'state-line' + (cls ? ' ' + cls : '');
+    e.textContent = t || '';
+  }
+
+  async function load()
+  {
+    try
+    {
+      const r = await fetch('/api/kp?limit=1000', { cache: 'no-store' });
+      const j = await r.json();
+      kps = j.data || [];
+    }
+    catch (e) { kps = []; }
+    document.getElementById('kp-count').textContent = '共 ' + kps.length + ' 条';
+    render();
+  }
+
+  function render()
+  {
+    const q = (document.getElementById('filter').value || '').toLowerCase();
+    const list = kps.filter(k =>
+      (k.standard_content || k.user_input_content || '').toLowerCase().includes(q));
+    const el = document.getElementById('kp-list');
+    if (!list.length) { el.innerHTML = '<p class="state-line">暂无匹配知识点。</p>'; return; }
+
+    el.innerHTML = list.map(k =>
+    {
+      const solid = k.is_solidified === 1;
+      const word = k.standard_content || k.user_input_content;
+      const detailUrl = '/pages/kp-detail.html?id=' + k.id;
+      return `
+      <div class="pack">
+        <div class="pack__head">
+          <a class="pack__title" href="${detailUrl}">${word}</a>
+          <button class="pack__icon-btn" title="查看详情" data-act="detail" data-id="${k.id}">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          </button>
+          <button class="pack__icon-btn" title="单个固化" data-act="solidify" data-id="${k.id}">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/><circle cx="12" cy="12" r="4"/></svg>
+          </button>
+          <button class="pack__icon-btn" title="导出 Word" data-act="export" data-id="${k.id}">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+          </button>
+        </div>
+        <div class="pack__badges">
+          <span class="pill pill--ai">${solid ? '已固化' : '待固化'}</span>
+          ${solid
+            ? `<span class="pill pill--ai">AI · ${k.master_require || ''}</span><span class="pill">难度 ${k.difficulty || '-'}</span>`
+            : `<span class="pill">未 AI 固化</span>`}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function attachHandlers()
+  {
+    document.getElementById('btn-add').addEventListener('click', addKp);
+    document.getElementById('btn-clear').addEventListener('click', () =>
+    {
+      document.getElementById('content').value = '';
+      document.getElementById('remark').value = '';
+      document.getElementById('content').focus();
+    });
+    document.getElementById('btn-solidify').addEventListener('click', solidifyAll);
+    document.getElementById('btn-export-batch').addEventListener('click', exportBatch);
+    document.getElementById('filter').addEventListener('input', render);
+
+    document.getElementById('kp-list').addEventListener('click', e =>
+    {
+      const btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const act = btn.dataset.act;
+      if (act === 'solidify') solidifyOne(id);
+      else if (act === 'export') exportOne(id);
+      else if (act === 'detail') location.assign('/pages/kp-detail.html?id=' + id);
+    });
+  }
+
+  async function addKp()
+  {
+    const content = document.getElementById('content').value.trim();
+    const remark = document.getElementById('remark').value.trim();
+    if (!content) { setMsg('add-msg', 'state-line--danger', '请输入单词或短语'); return; }
+    setMsg('add-msg', '', '录入中…');
+    try
+    {
+      const r = await fetch('/api/kp', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_input_content: content, remark })
+      });
+      const j = await r.json();
+      if (r.ok && (j.ok || j.id))
+      {
+        setMsg('add-msg', 'state-line--success', '录入成功（#' + (j.id || '') + '）');
+        document.getElementById('content').value = '';
+        document.getElementById('remark').value = '';
+        load();
+      }
+      else
+      {
+        setMsg('add-msg', 'state-line--danger', j.error || '录入失败');
+      }
+    }
+    catch (e) { setMsg('add-msg', 'state-line--danger', '网络异常'); }
+  }
+
+  async function solidifyAll()
+  {
+    const btn = document.getElementById('btn-solidify');
+    btn.disabled = true;
+    setMsg('op-msg', '', 'AI 固化中，请稍候…');
+    try
+    {
+      const r = await fetch('/api/kp/solidify', { method: 'POST' });
+      const j = await r.json();
+      if (j.success !== undefined)
+      {
+        const suffix = j.error ? '（' + j.error + '）' : '';
+        setMsg('op-msg', 'state-line--success',
+          `固化完成：成功 ${j.success}，失败 ${j.failed}${suffix}`);
+        load();
+      }
+      else
+      {
+        setMsg('op-msg', 'state-line--danger', j.error || '固化失败');
+      }
+    }
+    catch (e) { setMsg('op-msg', 'state-line--danger', '网络异常'); }
+    btn.disabled = false;
+  }
+
+  async function solidifyOne(id)
+  {
+    setMsg('op-msg', '', '固化中…');
+    try
+    {
+      const r = await fetch('/api/kp/' + id + '/solidify', { method: 'POST' });
+      const j = await r.json();
+      if (r.ok && j.ok)
+      {
+        setMsg('op-msg', 'state-line--success', '固化成功');
+        load();
+      }
+      else
+      {
+        setMsg('op-msg', 'state-line--danger', j.error || '固化失败');
+      }
+    }
+    catch (e) { setMsg('op-msg', 'state-line--danger', '网络异常'); }
+  }
+
+  function download(path)
+  {
+    window.open('/api/word/download?path=' + encodeURIComponent(path), '_blank');
+  }
+
+  async function exportOne(id)
+  {
+    setMsg('op-msg', '', '生成 Word 中…');
+    try
+    {
+      const r = await fetch('/api/kp/' + id + '/export-word', { method: 'POST' });
+      const j = await r.json();
+      if (j.word_path)
+      {
+        setMsg('op-msg', 'state-line--success', '已生成，开始下载');
+        download(j.word_path);
+      }
+      else
+      {
+        setMsg('op-msg', 'state-line--danger', j.error || '生成失败');
+      }
+    }
+    catch (e) { setMsg('op-msg', 'state-line--danger', '网络异常'); }
+  }
+
+  async function exportBatch()
+  {
+    setMsg('op-msg', '', '批量生成合并 Word 中…');
+    try
+    {
+      const r = await fetch('/api/kp/export-batch-word', { method: 'POST' });
+      const j = await r.json();
+      if (j.word_path)
+      {
+        setMsg('op-msg', 'state-line--success',
+          `已合并 ${j.count} 个知识点，开始下载`);
+        download(j.word_path);
+      }
+      else
+      {
+        setMsg('op-msg', 'state-line--danger', j.error || '生成失败');
+      }
+    }
+    catch (e) { setMsg('op-msg', 'state-line--danger', '网络异常'); }
+  }
+
+  attachHandlers();
+  load();
+})();
+</script>
+</body>
+</html>

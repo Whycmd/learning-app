@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>每日小测 · 学习圣殿</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/components.css">
+<script src="/static/theme.js"></script>
+<script src="/static/nav.js"></script>
+</head>
+<body>
+<div id="topbar-slot"></div>
+
+<!-- T106：每日小测 · 套用圣殿设计系统 v2 -->
+<div class="page">
+
+  <div class="dougong-bar">
+    <svg viewBox="0 0 400 32"><path d="M0 32 L40 18 L60 28 L80 12 L100 24 L120 8 L140 20 L160 4 L180 16 L200 0 L220 16 L240 4 L260 20 L280 8 L300 24 L320 12 L340 28 L360 18 L400 32Z" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/></svg>
+  </div>
+
+  <h1 class="section-title">每日小测</h1>
+  <p class="section-sub">AI 实时出 5 题 · 全客观题即时出分 · 难度略低于正式练习</p>
+
+  <!-- 入口：今日统计 + 开始按钮 -->
+  <section class="wing-card" id="entry-card">
+    <div class="wing-card__cap">
+      <span class="wing-card__ico">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg>
+      </span>
+      <span class="wing-card__title">今日小测</span>
+      <span class="wing-card__meta" id="quiz-date">–</span>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span class="treas-stat__value" id="q-count">0</span>
+        <span class="treas-stat__label">今日已测</span>
+      </div>
+      <div class="stat-card">
+        <span class="treas-stat__value" id="q-finished">0</span>
+        <span class="treas-stat__label">已完成</span>
+      </div>
+      <div class="stat-card">
+        <span class="treas-stat__value" id="q-last">–</span>
+        <span class="treas-stat__label">最近一次得分</span>
+      </div>
+    </div>
+    <div class="u-row-sm u-mt-md">
+      <button class="btn btn-primary u-full" id="btn-start" type="button">开始今日第 1 次小测</button>
+      <button class="btn btn-secondary u-full" id="btn-resume" type="button" hidden>继续未完成的小测</button>
+    </div>
+    <p class="state-line" id="start-msg"></p>
+  </section>
+
+  <!-- 答题区（出题后显示） -->
+  <section class="wing-card" id="quiz-card" hidden>
+    <div class="wing-card__cap">
+      <span class="wing-card__ico">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+      </span>
+      <span class="wing-card__title">答题中</span>
+      <span class="wing-card__meta" id="quiz-sub">–</span>
+    </div>
+    <div id="quiz-questions"></div>
+    <button class="btn btn-primary u-full u-mt-md" id="btn-submit" type="button">
+      提交答卷 · 即时出分
+    </button>
+    <p class="state-line" id="submit-msg"></p>
+  </section>
+
+  <!-- 成绩区（提交后显示） -->
+  <section class="wing-card" id="result-card" hidden>
+    <div class="wing-card__cap">
+      <span class="wing-card__ico">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+      </span>
+      <span class="wing-card__title">本次成绩</span>
+      <span class="wing-card__meta" id="res-correct">答对 0 / 5 题</span>
+    </div>
+    <div class="quiz-score-wrap">
+      <span class="quiz-score" id="res-score">0</span>
+      <span class="quiz-score__coins" id="res-coins"></span>
+    </div>
+    <div id="result-questions"></div>
+    <div class="u-row-sm u-mt-md">
+      <button class="btn btn-primary" id="btn-again" type="button">再来一次（新一套）</button>
+      <button class="btn btn-secondary" id="btn-to-history" type="button">查看历史</button>
+    </div>
+  </section>
+
+  <!-- 历史记录 -->
+  <section class="wing-card" id="history-card">
+    <div class="wing-card__cap">
+      <span class="wing-card__ico">
+        <svg viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+      </span>
+      <span class="wing-card__title">历史记录</span>
+    </div>
+    <div class="scroll">
+      <div class="task-list" id="history-list">
+        <div class="skeleton skeleton--text"></div>
+        <div class="skeleton skeleton--text"></div>
+        <div class="skeleton skeleton--text"></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function ()
+{
+  'use strict';
+
+  const CATEGORY_LABEL = { solidified: '已学巩固', familiar_meaning: '熟词生义', new_kp: '新知拓展' };
+  const TYPE_LABEL = { cloze_choice: '四选一', word_form_fill: '单词填空' };
+
+  let currentQuiz = null;
+  let historyData = [];
+  let ongoingQuiz = null;
+
+  function esc(s)
+  {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function setMsg(id, cls, t)
+  {
+    const e = document.getElementById(id);
+    if (!e) return;
+    e.className = 'state-line' + (cls ? ' ' + cls : '');
+    e.textContent = t || '';
+  }
+  function todayStr()
+  {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // ---------- 入口状态 ----------
+  async function loadHistory()
+  {
+    let r;
+    try { r = await (await fetch('/api/quiz/daily/history', { cache: 'no-store' })).json(); }
+    catch (e) { r = { data: [] }; }
+    historyData = r.data || [];
+
+    document.getElementById('quiz-date').textContent = todayStr();
+    document.getElementById('q-count').textContent = r.today_count || 0;
+    document.getElementById('q-finished').textContent = r.today_finished || 0;
+
+    const todayRows = historyData.filter(h => h.quiz_date === todayStr());
+    const lastDone = todayRows.find(h => h.status === 'done') || historyData.find(h => h.status === 'done');
+    document.getElementById('q-last').textContent = lastDone ? lastDone.score + ' 分' : '暂无';
+
+    const nextNo = (r.today_count || 0) + 1;
+    document.getElementById('btn-start').textContent = '开始今日第 ' + nextNo + ' 次小测';
+
+    ongoingQuiz = todayRows.find(h => h.status === 'ongoing') || null;
+    document.getElementById('btn-resume').hidden = !ongoingQuiz;
+
+    renderHistory();
+  }
+
+  function renderHistory()
+  {
+    const el = document.getElementById('history-list');
+    if (!historyData.length)
+    {
+      el.innerHTML = '<p class="state-line">还没有小测记录，开始今日第一次小测吧。</p>';
+      return;
+    }
+    el.innerHTML = historyData.map(h =>
+    {
+      const done = h.status === 'done';
+      return `
+      <div class="task-item task-item--static">
+        <div class="task-check ${done ? 'done' : 'now'}"></div>
+        <div class="task-text ${done ? 'done' : ''}">
+          <span>${h.quiz_date} · 第 ${h.attempt_no} 测</span>
+          <span class="state-line">${done ? '已完成' : '未完成'}</span>
+        </div>
+        <span class="task-flag">${done ? h.score + ' 分' : '—'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ---------- 开测 ----------
+  document.getElementById('btn-start').addEventListener('click', startQuiz);
+  document.getElementById('btn-resume').addEventListener('click', resumeQuiz);
+  document.getElementById('btn-again').addEventListener('click', () =>
+  {
+    document.getElementById('result-card').hidden = true;
+    document.getElementById('entry-card').scrollIntoView({ behavior: 'smooth' });
+  });
+  document.getElementById('btn-to-history').addEventListener('click', () =>
+  {
+    document.getElementById('history-card').scrollIntoView({ behavior: 'smooth' });
+  });
+
+  async function startQuiz()
+  {
+    const btn = document.getElementById('btn-start');
+    btn.disabled = true;
+    setMsg('start-msg', '', 'AI 出卷中，整段一次请求…');
+    let r;
+    try { r = await fetch('/api/quiz/daily', { method: 'POST' }).then(x => x.json()); }
+    catch (e) { r = {}; }
+    btn.disabled = false;
+    if (!r.quiz_id)
+    {
+      setMsg('start-msg', 'state-line--danger', r.error || '开测失败，请重试');
+      return;
+    }
+    setMsg('start-msg', '', '');
+    currentQuiz = { quiz_id: r.quiz_id, attempt_no: r.attempt_no, questions: r.questions };
+    renderQuiz();
+  }
+
+  function resumeQuiz()
+  {
+    if (!ongoingQuiz) return;
+    currentQuiz = { quiz_id: ongoingQuiz.id, attempt_no: ongoingQuiz.attempt_no, questions: ongoingQuiz.questions };
+    renderQuiz();
+  }
+
+  // ---------- 渲染答题区 ----------
+  function renderQuiz()
+  {
+    document.getElementById('result-card').hidden = true;
+    document.getElementById('quiz-sub').textContent = '今日第 ' + currentQuiz.attempt_no + ' 测';
+    const host = document.getElementById('quiz-questions');
+    host.innerHTML = currentQuiz.questions.map((q, i) =>
+    {
+      const catLabel = CATEGORY_LABEL[q.category] || q.category;
+      const typeLabel = TYPE_LABEL[q.type] || q.type;
+      let body = '';
+      if (q.type === 'cloze_choice')
+      {
+        body = '<div class="quiz-opts">' + q.options.map((o, j) =>
+        {
+          const letter = String.fromCharCode(65 + j);
+          return `<label class="candidate"><input type="radio" name="q${i}" value="${letter}"><span>${letter}. ${esc(o)}</span></label>`;
+        }).join('') + '</div>';
+      }
+      else
+      {
+        body = '<input class="input" id="ans-' + i + '" placeholder="输入一个单词" autocomplete="off">';
+      }
+      return `<div class="quiz-q" data-idx="${i}">
+        <div class="quiz-head">
+          <span class="quiz-idx">${i + 1}</span>
+          <span class="quiz-tag">${esc(catLabel)} · ${esc(typeLabel)}</span>
+        </div>
+        <div class="quiz-stem">${esc(q.question)}</div>
+        ${body}
+      </div>`;
+    }).join('');
+    document.getElementById('quiz-card').hidden = false;
+    document.getElementById('submit-msg').textContent = '';
+    document.getElementById('quiz-card').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function readAnswers()
+  {
+    return currentQuiz.questions.map((q, i) =>
+    {
+      if (q.type === 'cloze_choice')
+      {
+        const sel = document.querySelector(`input[name=q${i}]:checked`);
+        return { no: q.no, user_answer: sel ? sel.value : '' };
+      }
+      const el = document.getElementById('ans-' + i);
+      return { no: q.no, user_answer: el ? el.value.trim() : '' };
+    });
+  }
+
+  // ---------- 提交 ----------
+  document.getElementById('btn-submit').addEventListener('click', submitQuiz);
+
+  async function submitQuiz()
+  {
+    const answers = readAnswers();
+    const unanswered = answers.filter(a => !a.user_answer).length;
+    if (unanswered > 0 && !confirm('有 ' + unanswered + ' 题未作答，将按错误处理，确认提交？')) return;
+
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true;
+    setMsg('submit-msg', '', '批改中…');
+    let r;
+    try
+    {
+      r = await fetch('/api/quiz/daily/submit', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quiz_id: currentQuiz.quiz_id, answers })
+      }).then(x => x.json());
+    }
+    catch (e) { r = {}; }
+    btn.disabled = false;
+    if (r.score === undefined)
+    {
+      setMsg('submit-msg', 'state-line--danger', r.error || '提交失败，请重试');
+      return;
+    }
+    setMsg('submit-msg', 'state-line--success', '批改完成');
+    renderResult(r, answers);
+    loadHistory();
+  }
+
+  // ---------- 成绩 ----------
+  function renderResult(r, answers)
+  {
+    document.getElementById('res-score').textContent = r.score;
+    document.getElementById('res-correct').textContent = '答对 ' + r.correct_count + ' / 5 题';
+    document.getElementById('res-coins').textContent = r.coins_note || '';
+
+    const resultByNo = {};
+    (r.results || []).forEach(x => resultByNo[x.no] = x);
+    const candidateByNo = {};
+    (r.solidify_candidates || []).forEach(x => candidateByNo[x.no] = x);
+
+    const host = document.getElementById('result-questions');
+    host.innerHTML = currentQuiz.questions.map(q =>
+    {
+      const res = resultByNo[q.no] || {};
+      const cand = candidateByNo[q.no];
+      const catLabel = CATEGORY_LABEL[q.category] || q.category;
+      const typeLabel = TYPE_LABEL[q.type] || q.type;
+
+      let detail = `<div class="quiz-answer grade-card ${res.correct ? 'is-correct' : 'is-wrong'}">
+        <strong>${res.correct ? '✓ 正确' : '✗ ' + esc(res.analysis || '未作答')}</strong>
+        ${!res.correct ? '<div class="state-line">正确答案：' + esc(res.correct_answer) + '</div>' : ''}
+      </div>`;
+
+      if (cand)
+      {
+        detail += `<div class="quiz-solidify" data-no="${q.no}">
+          <div class="kp-pill">${esc(cand.word)}</div>
+          <div class="state-line u-mt-md">${esc(cand.meaning)}</div>
+          ${cand.example ? '<div class="state-line">' + esc(cand.example) + '</div>' : ''}
+          ${cand.already_solidified
+            ? `<a class="btn btn-secondary u-btn-sm u-mt-md" href="/pages/kp-detail.html?id=${cand.knowledge_id}">已固化 · 查看知识点</a>`
+            : `<button class="btn btn-primary u-btn-sm u-mt-md" type="button">固化该知识点</button>`}
+        </div>`;
+      }
+
+      return `<div class="quiz-q ${res.correct ? 'is-correct' : 'is-wrong'}">
+        <div class="quiz-head">
+          <span class="quiz-idx">${q.no}</span>
+          <span class="quiz-tag">${esc(catLabel)} · ${esc(typeLabel)}</span>
+        </div>
+        <div class="quiz-stem">${esc(q.question)}</div>
+        ${detail}
+      </div>`;
+    }).join('');
+
+    document.getElementById('result-card').hidden = false;
+    document.getElementById('result-card').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // 固化按钮事件委托
+  document.getElementById('result-questions').addEventListener('click', async e =>
+  {
+    const btn = e.target.closest('.quiz-solidify button');
+    if (!btn) return;
+    const box = btn.closest('.quiz-solidify');
+    const no = parseInt(box.dataset.no);
+    btn.disabled = true;
+    btn.textContent = '固化中…';
+    let r;
+    try
+    {
+      r = await fetch('/api/quiz/solidify-item', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quiz_id: currentQuiz.quiz_id, no })
+      }).then(x => x.json());
+    }
+    catch (e) { r = {}; }
+    if (!r.ok)
+    {
+      btn.disabled = false;
+      btn.textContent = '固化失败，点击重试';
+      return;
+    }
+    box.innerHTML = `<a class="btn btn-secondary u-btn-sm u-mt-md" href="/pages/kp-detail.html?id=${r.knowledge_id}">
+      ${r.duplicated ? '该词已固化 · 查看知识点' : '固化完成 · 查看知识点'}</a>`;
+  });
+
+  loadHistory();
+})();
+</script>
+</body>
+</html>

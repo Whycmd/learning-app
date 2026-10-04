@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>学习圣殿 · 登录注册 · 设计稿</title>
+<style>
+:root {
+  --ink:#1c1917;--ink-soft:#44403c;--muted:#78716c;
+  --line:rgba(28,25,23,.09);--line-strong:rgba(28,25,23,.14);
+  --paper:#faf7f2;--paper-deep:#f0ebe3;
+  --surface:rgba(255,253,248,.92);--surface-solid:#fffdf8;
+  --accent:#b45309;--accent-hover:#9a3412;
+  --accent-glow:rgba(180,83,9,.25);--accent-wash:rgba(180,83,9,.07);
+  --gold:#d4a843;--gold-light:#f5e6b8;--gold-dark:#b8860b;
+  --gold-glow:rgba(212,168,67,.30);--gold-wash:rgba(212,168,67,.08);
+  --vermillion:#c0392b;--vermillion-wash:rgba(192,57,43,.08);--vermillion-light:#e74c3c;
+  --listen:#0891b2;--speak:#ea580c;--read:#2563eb;--write:var(--accent);
+  --success:#059669;--success-wash:rgba(5,150,105,.08);
+  --danger:#9f1239;--warning:#d97706;
+  --font-display:"Fraunces","Songti SC","STSong","Noto Serif SC",Georgia,serif;
+  --font-body:"Karla",system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --r-sm:8px;--r-md:12px;--r-lg:18px;--r-xl:24px;--r-pill:999px;
+  --sh-sm:0 1px 0 rgba(28,25,23,.06);
+  --sh-card:0 12px 40px rgba(28,25,23,.07),0 2px 8px rgba(28,25,23,.04);
+  --sh-float:0 22px 50px rgba(28,25,23,.12);
+  --sh-gold:0 8px 30px rgba(180,83,9,.18),0 2px 8px rgba(212,168,67,.10);
+  --dur-fast:120ms;--dur-mid:240ms;--dur-slow:400ms;
+  --ease-out:cubic-bezier(.22,.61,.36,1);
+  --sp-xs:4px;--sp-sm:8px;--sp-md:16px;--sp-lg:24px;--sp-xl:32px;--sp-2xl:48px;
+}
+html[data-theme="dark"]{
+  --ink:#e8e0d4;--ink-soft:#b8afa4;--muted:#78716c;
+  --line:rgba(232,224,212,.10);--line-strong:rgba(232,224,212,.18);
+  --paper:#1a1714;--paper-deep:#12100e;
+  --surface:rgba(30,27,24,.92);--surface-solid:#1e1b18;
+  --accent-glow:rgba(212,168,67,.22);--accent-wash:rgba(212,168,67,.07);
+  --gold-glow:rgba(212,168,67,.35);--gold-wash:rgba(212,168,67,.08);
+  --vermillion-wash:rgba(192,57,43,.12);
+  --success-wash:rgba(5,150,105,.10);
+  --sh-sm:0 1px 0 rgba(0,0,0,.30);
+  --sh-card:0 12px 40px rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.20);
+  --sh-float:0 22px 50px rgba(0,0,0,.45);
+  --sh-gold:0 8px 30px rgba(212,168,67,.15),0 2px 8px rgba(0,0,0,.30);
+}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{font-family:var(--font-body);font-size:15px;line-height:1.6;color:var(--ink);background:var(--paper-deep);-webkit-font-smoothing:antialiased;min-height:100vh;transition:background var(--dur-mid) var(--ease-out),color var(--dur-mid) var(--ease-out);}
+h1,h2,h3{font-family:var(--font-display);color:var(--ink);margin:0;font-weight:600;}
+a{color:var(--accent);text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+input,textarea,select{font-family:inherit;font-size:15px;color:var(--ink);}
+
+.design-note{background:var(--gold-wash);border:1px solid var(--gold-wash);border-left:3px solid var(--gold);padding:var(--sp-md);margin:var(--sp-lg);font-size:13px;color:var(--ink-soft);border-radius:0 var(--r-sm) var(--r-sm) 0;}
+.design-section-title{font-family:var(--font-display);font-size:24px;margin:var(--sp-lg);margin-bottom:var(--sp-sm);display:flex;align-items:center;gap:var(--sp-sm);}
+.design-section-title::before{content:"◆";color:var(--gold);font-size:14px;}
+
+.theme-toggle{position:fixed;top:16px;right:16px;z-index:999;width:36px;height:36px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface-solid);color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all var(--dur-fast);}
+.theme-toggle:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ---- 登录注册页 ---- */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:var(--sp-lg);background:var(--paper-deep);}
+.auth-card{width:min(420px,94vw);padding:var(--sp-xl) var(--sp-lg);background:linear-gradient(160deg,var(--surface-solid) 0%,var(--paper) 100%);border:1px solid var(--line);border-radius:var(--r-xl);box-shadow:var(--sh-card);position:relative;overflow:hidden;}
+/* 顶部金色装饰条 */
+.auth-card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--gold-dark),var(--gold),var(--accent),var(--gold),var(--gold-dark));}
+
+.auth-brand{font-family:var(--font-display);font-size:28px;text-align:center;margin-bottom:4px;color:var(--ink);}
+.auth-sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:var(--sp-lg);}
+
+.auth-tabs{display:flex;width:100%;margin-bottom:var(--sp-lg);background:var(--paper);border-radius:var(--r-pill);padding:4px;border:1px solid var(--line);}
+.auth-tab{flex:1;padding:10px;text-align:center;border-radius:var(--r-pill);font-size:15px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:all var(--dur-fast);border:0;background:transparent;}
+.auth-tab.active{background:var(--surface-solid);color:var(--accent);box-shadow:var(--sh-sm);}
+
+.auth-field{margin-bottom:14px;}
+.auth-field label{display:block;font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;}
+.auth-field input{width:100%;padding:12px 14px;border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--surface-solid);font-size:15px;outline:none;transition:border-color var(--dur-fast),box-shadow var(--dur-fast);}
+.auth-field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:var(--r-pill);padding:12px 24px;font-size:15px;font-weight:700;transition:all var(--dur-fast) var(--ease-out);}
+.btn-primary{color:var(--surface-solid);background:linear-gradient(120deg,var(--gold-dark) 0%,var(--accent) 60%,var(--gold) 100%);box-shadow:0 6px 20px rgba(180,83,9,.25);}
+.btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 10px 28px rgba(180,83,9,.30);}
+.btn-block{width:100%;}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+
+.auth-msg{margin-top:12px;font-size:14px;font-weight:600;}
+.auth-msg--err{color:var(--danger);}
+.auth-msg--ok{color:var(--success);}
+.auth-back{text-align:center;margin-top:var(--sp-lg);font-size:14px;}
+.auth-back a{color:var(--muted);text-decoration:underline;}
+
+/* 印章装饰 */
+.seal-deco{position:absolute;top:20px;right:20px;width:48px;height:48px;border:2px solid var(--vermillion);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--vermillion);font-family:var(--font-display);font-size:11px;font-weight:700;transform:rotate(-12deg);opacity:.3;}
+.seal-deco::after{content:"";position:absolute;inset:4px;border:1px dashed var(--vermillion);border-radius:50%;opacity:.5;}
+
+.form-section{margin-bottom:var(--sp-lg);}
+.form-section h4{font-size:16px;margin-bottom:var(--sp-md);color:var(--ink);}
+
+.divider-ornament{display:flex;align-items:center;gap:var(--sp-sm);margin:var(--sp-lg) 0;color:var(--gold);opacity:.5;}
+.divider-ornament::before,.divider-ornament::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+</button>
+
+<div class="design-note"><strong>T101 设计稿预览</strong> — 登录注册页 · 品牌化卡片 + 金色顶条 + 印章装饰</div>
+<h2 class="design-section-title">登录 / 注册</h2>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="seal-deco">学习<br>圣殿</div>
+
+    <div class="auth-brand">英语学习</div>
+    <div class="auth-sub">本地学习 · 数据保存在本机</div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">登录</button>
+      <button class="auth-tab" onclick="switchTab('register')">注册</button>
+    </div>
+
+    <!-- 登录表单 -->
+    <div id="form-login" class="form-section">
+      <div class="auth-field">
+        <label>用户名</label>
+        <input type="text" placeholder="输入用户名" autocomplete="username">
+      </div>
+      <div class="auth-field">
+        <label>密码</label>
+        <input type="password" placeholder="输入密码" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary btn-block" style="margin-top:8px;">登录</button>
+      <div class="auth-msg auth-msg--err" style="display:none;">用户名或密码错误</div>
+    </div>
+
+    <!-- 注册表单 -->
+    <div id="form-register" class="form-section" style="display:none;">
+      <div class="auth-field">
+        <label>用户名</label>
+        <input type="text" placeholder="2-20个字符" autocomplete="username">
+      </div>
+      <div class="auth-field">
+        <label>密码</label>
+        <input type="password" placeholder="至少6个字符" autocomplete="new-password">
+      </div>
+      <div class="auth-field">
+        <label>确认密码</label>
+        <input type="password" placeholder="再次输入密码" autocomplete="new-password">
+      </div>
+      <button class="btn btn-primary btn-block" style="margin-top:8px;">注册</button>
+    </div>
+
+    <div class="auth-back"><a href="/">返回首页</a></div>
+  </div>
+</div>
+
+<div class="divider-ornament" style="max-width:420px;margin:var(--sp-xl) auto;">❖</div>
+
+<div style="max-width:420px;margin:0 auto;padding:0 var(--sp-lg);">
+  <h3 style="font-size:18px;margin-bottom:var(--sp-md);">设计要点</h3>
+  <ul style="font-size:14px;color:var(--ink-soft);line-height:2;padding-left:20px;">
+    <li>顶部金色渐变装饰条，象征「圣殿」入口</li>
+    <li>红色印章装饰，增加中式仪式感</li>
+    <li>分段控件 Tab，登录/注册一目了然</li>
+    <li>输入框焦点状态：琥珀色光晕</li>
+    <li>按钮琥珀金渐变，悬停微上浮 + 阴影加深</li>
+    <li>全页面支持暗色主题切换</li>
+  </ul>
+</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  if (html.getAttribute('data-theme') === 'dark') {
+    html.removeAttribute('data-theme');
+  } else {
+    html.setAttribute('data-theme', 'dark');
+  }
+}
+function switchTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((b,i) => {
+    b.classList.toggle('active', (tab==='login'&&i===0)||(tab==='register'&&i===1));
+  });
+  document.getElementById('form-login').style.display = tab==='login'?'block':'none';
+  document.getElementById('form-register').style.display = tab==='register'?'block':'none';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>单词本 · 学习圣殿</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/components.css">
+<script src="/static/theme.js"></script>
+<script src="/static/nav.js"></script>
+</head>
+<body>
+<div id="topbar-slot"></div>
+
+<!-- T107：单词本 · 套用圣殿设计系统 v2 -->
+<div class="page">
+
+  <div class="dougong-bar">
+    <svg viewBox="0 0 400 32"><path d="M0 32 L40 18 L60 28 L80 12 L100 24 L120 8 L140 20 L160 4 L180 16 L200 0 L220 16 L240 4 L260 20 L280 8 L300 24 L320 12 L340 28 L360 18 L400 32Z" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/></svg>
+  </div>
+
+  <!-- 列表视图 -->
+  <div id="view-list">
+    <h1 class="section-title">我的单词本</h1>
+    <p class="section-sub">创建 · 导入导出 · 按知识点关联</p>
+
+    <section class="wing-card">
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </span>
+        <span class="wing-card__title">入口操作</span>
+      </div>
+      <div class="u-row-sm">
+        <button class="btn btn-primary" id="btn-create" type="button">+ 新建单词本</button>
+        <button class="btn btn-secondary" id="btn-import" type="button">📥 从 JSON 导入</button>
+      </div>
+    </section>
+
+    <section class="wing-card">
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </span>
+        <span class="wing-card__title">全部单词本</span>
+        <span class="wing-card__meta" id="wb-count">共 0 本</span>
+      </div>
+      <div id="wb-list"></div>
+    </section>
+  </div>
+
+  <!-- 详情视图（默认隐藏） -->
+  <div id="view-detail" hidden>
+    <a class="btn btn-secondary u-btn-sm wb-back" id="btn-back" href="javascript:void(0)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="m15 18-6-6 6-6"/></svg>
+      返回列表
+    </a>
+
+    <h1 class="section-title" id="detail-title">–</h1>
+    <p class="section-sub" id="detail-desc">–</p>
+
+    <section class="wing-card">
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </span>
+        <span class="wing-card__title">操作</span>
+      </div>
+      <div class="u-row-sm">
+        <button class="btn btn-primary" id="btn-add-entry" type="button">+ 添加词条</button>
+        <button class="btn btn-secondary" id="btn-export-json" type="button">📤 导出 JSON</button>
+        <button class="btn btn-secondary" id="btn-export-word" type="button">📄 导出 Word</button>
+        <button class="btn btn-secondary" id="btn-edit" type="button">✏️ 编辑</button>
+      </div>
+    </section>
+
+    <section class="wing-card">
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><path d="m21 21-4.3-4.3"/><circle cx="11" cy="11" r="8"/></svg>
+        </span>
+        <span class="wing-card__title">词条</span>
+      </div>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#78716c" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="entry-filter" placeholder="搜索词条">
+      </div>
+      <div id="entry-list"></div>
+    </section>
+  </div>
+
+</div>
+
+<!-- 抽屉：新建单词本 -->
+<div class="drawer-overlay" id="modal-create">
+  <aside class="drawer-panel" role="dialog" aria-modal="true">
+    <div class="drawer-header">
+      <h3 class="drawer-title">新建单词本</h3>
+      <button class="drawer-close" type="button" data-close="modal-create">×</button>
+    </div>
+    <div class="drawer-body">
+      <label class="field-label">单词本名称</label>
+      <input class="input" id="create-name" placeholder="例如：高考 3500" maxlength="100">
+      <label class="field-label">描述（可选）</label>
+      <textarea class="textarea" id="create-desc" placeholder="目标 / 备注" maxlength="500"></textarea>
+      <div class="u-row-sm u-mt-md">
+        <button class="btn btn-secondary" type="button" data-close="modal-create">取消</button>
+        <button class="btn btn-primary u-push-end" id="act-create" type="button">创建</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- 抽屉：添加词条 -->
+<div class="drawer-overlay" id="modal-add-entry">
+  <aside class="drawer-panel" role="dialog" aria-modal="true">
+    <div class="drawer-header">
+      <h3 class="drawer-title">添加词条</h3>
+      <button class="drawer-close" type="button" data-close="modal-add-entry">×</button>
+    </div>
+    <div class="drawer-body">
+      <div class="segmented">
+        <button type="button" data-tab="existing" class="is-active">从现有知识点选择</button>
+        <button type="button" data-tab="new">手动输入新词</button>
+      </div>
+
+      <div data-panel="existing">
+        <input class="input" id="kp-search" placeholder="搜索现有知识点">
+        <div class="kp-picker" id="kp-picker"></div>
+        <button class="btn btn-primary btn-block" id="act-add-existing" type="button">添加选中</button>
+      </div>
+      <div data-panel="new" hidden>
+        <textarea class="textarea" id="new-words" placeholder="每行一个新词"></textarea>
+        <button class="btn btn-primary btn-block" id="act-add-new" type="button">录入并添加</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- 抽屉：导入 JSON -->
+<div class="drawer-overlay" id="modal-import">
+  <aside class="drawer-panel" role="dialog" aria-modal="true">
+    <div class="drawer-header">
+      <h3 class="drawer-title">导入单词本</h3>
+      <button class="drawer-close" type="button" data-close="modal-import">×</button>
+    </div>
+    <div class="drawer-body">
+      <div class="segmented">
+        <button type="button" data-import-tab="paste" class="is-active">粘贴 JSON</button>
+        <button type="button" data-import-tab="file">本地 JSON 文件</button>
+      </div>
+      <div data-import-panel="paste">
+        <textarea class="textarea" id="import-json" placeholder="粘贴导出的 JSON 内容…"></textarea>
+      </div>
+      <div data-import-panel="file" hidden>
+        <input class="input" id="import-file-path" placeholder="JSON 文件绝对路径">
+      </div>
+      <p class="state-line" id="import-msg"></p>
+      <div class="u-row-sm u-mt-md">
+        <button class="btn btn-secondary" type="button" data-close="modal-import">取消</button>
+        <button class="btn btn-primary u-push-end" id="act-import" type="button">开始导入</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- 抽屉：编辑单词本 -->
+<div class="drawer-overlay" id="modal-edit">
+  <aside class="drawer-panel" role="dialog" aria-modal="true">
+    <div class="drawer-header">
+      <h3 class="drawer-title">编辑单词本</h3>
+      <button class="drawer-close" type="button" data-close="modal-edit">×</button>
+    </div>
+    <div class="drawer-body">
+      <label class="field-label">名称</label>
+      <input class="input" id="edit-name" maxlength="100">
+      <label class="field-label">描述</label>
+      <textarea class="textarea" id="edit-desc" maxlength="500"></textarea>
+      <label class="u-row-sm u-mt-md">
+        <input type="checkbox" id="edit-public"> 设为公开（生成识别码）
+      </label>
+      <div class="u-row-sm u-mt-md">
+        <button class="btn btn-secondary" type="button" data-close="modal-edit">取消</button>
+        <button class="btn btn-primary u-push-end" id="act-save-edit" type="button">保存</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script src="/static/tts.js"></script>
+<script>
+(function ()
+{
+  'use strict';
+
+  let wordbooks = [];
+  let currentWbId = null;
+  let currentEntries = [];
+  let allKps = [];
+  let kpSelected = new Set();
+
+  function esc(s)
+  {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // ---------- 抽屉开关（事件委托） ----------
+
+  function openDrawer(id) { document.getElementById(id).classList.add('open'); }
+  function closeDrawer(id) { document.getElementById(id).classList.remove('open'); }
+
+  document.querySelectorAll('[data-close]').forEach(btn =>
+  {
+    btn.addEventListener('click', () => closeDrawer(btn.dataset.close));
+  });
+  document.addEventListener('keydown', e =>
+  {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('.drawer-overlay.open').forEach(d => d.classList.remove('open'));
+  });
+  document.querySelectorAll('.drawer-overlay').forEach(mask =>
+  {
+    mask.addEventListener('click', e =>
+    {
+      if (e.target === mask) mask.classList.remove('open');
+    });
+  });
+
+  // ---------- 列表视图 ----------
+
+  async function loadList()
+  {
+    let r;
+    try { r = await (await fetch('/api/wordbook', { cache: 'no-store' })).json(); }
+    catch (e) { r = { data: [] }; }
+    wordbooks = r.data || [];
+    document.getElementById('wb-count').textContent = '共 ' + wordbooks.length + ' 本';
+    const el = document.getElementById('wb-list');
+    if (!wordbooks.length)
+    {
+      el.innerHTML = '<p class="state-line">还没有单词本。点击上方按钮创建第一个吧。</p>';
+      return;
+    }
+    el.innerHTML = wordbooks.map(w =>
+    {
+      const name = esc(w.name);
+      const desc = w.description ? esc(w.description) : '';
+      const status = w.is_public ? '公开' : '私有';
+      const share = w.share_code ? esc('码: ' + w.share_code) : '';
+      return `
+      <div class="pack">
+        <div class="pack__head">
+          <span class="pack__title" data-open="${w.id}">${name}</span>
+          <button class="pack__icon-btn" title="查看详情" data-open="${w.id}">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button class="pack__icon-btn" title="删除" data-del="${w.id}">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+          </button>
+        </div>
+        <div class="pack__badges">
+          <span class="pill pill--ai">${w.entry_count || 0} 词条</span>
+          <span class="pill">${status}</span>
+          ${share ? `<span class="pill pill--teal">${share}</span>` : ''}
+        </div>
+        ${desc ? `<p class="state-line u-mt-md">${desc}</p>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('wb-list').addEventListener('click', async e =>
+  {
+    const openBtn = e.target.closest('[data-open]');
+    const delBtn = e.target.closest('[data-del]');
+    if (openBtn) openWordbook(parseInt(openBtn.dataset.open));
+    if (delBtn)
+    {
+      const id = parseInt(delBtn.dataset.del);
+      if (!confirm('确定删除此单词本？词条关联将一并移除（原知识点不会删除）')) return;
+      try
+      {
+        const r = await fetch('/api/wordbook/' + id, { method: 'DELETE' }).then(x => x.json());
+        if (r.ok) loadList();
+      }
+      catch (e) {}
+    }
+  });
+
+  // ---------- 新建 ----------
+
+  document.getElementById('btn-create').addEventListener('click', () =>
+  {
+    document.getElementById('create-name').value = '';
+    document.getElementById('create-desc').value = '';
+    openDrawer('modal-create');
+  });
+
+  document.getElementById('act-create').addEventListener('click', async () =>
+  {
+    const name = document.getElementById('create-name').value.trim();
+    const desc = document.getElementById('create-desc').value.trim();
+    if (!name) return alert('请输入单词本名称');
+    const r = await fetch('/api/wordbook', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description: desc })
+    }).then(x => x.json()).catch(() => ({}));
+    if (r.ok)
+    {
+      closeDrawer('modal-create');
+      loadList();
+    }
+    else alert(r.error || '创建失败');
+  });
+
+  // ---------- 详情视图 ----------
+
+  document.getElementById('btn-back').addEventListener('click', () =>
+  {
+    document.getElementById('view-list').hidden = false;
+    document.getElementById('view-detail').hidden = true;
+    currentWbId = null;
+  });
+
+  async function openWordbook(id)
+  {
+    currentWbId = id;
+    let r;
+    try { r = await (await fetch('/api/wordbook/' + id)).json(); }
+    catch (e) { r = null; }
+    if (!r || r.error) { alert('加载失败'); return; }
+
+    document.getElementById('view-list').hidden = true;
+    document.getElementById('view-detail').hidden = false;
+    document.getElementById('detail-title').textContent = r.name;
+
+    const desc = (r.description || '') + ' · ' + (r.entry_count || 0) + ' 词条';
+    const share = r.share_code ? ' · 识别码: ' + r.share_code : '';
+    const pub = r.is_public ? ' · 公开' : '';
+    document.getElementById('detail-desc').textContent = desc + share + pub;
+
+    currentEntries = r.entries || [];
+    renderEntries();
+  }
+
+  document.getElementById('entry-filter').addEventListener('input', renderEntries);
+
+  function renderEntries()
+  {
+    const q = (document.getElementById('entry-filter').value || '').toLowerCase();
+    const list = currentEntries.filter(e => !q || (e.standard_content || '').toLowerCase().includes(q));
+    const el = document.getElementById('entry-list');
+    if (!list.length)
+    {
+      el.innerHTML = '<p class="state-line">暂无词条，点击「添加词条」开始。</p>';
+      return;
+    }
+    el.innerHTML = list.map(e =>
+    {
+      const word = esc(e.standard_content);
+      const solid = e.is_solidified === 1;
+      const prof = e.proficiency_level || 0;
+      const diff = e.difficulty ? '难度 ' + e.difficulty : '–';
+      const kpUrl = '/pages/kp-detail.html?id=' + e.knowledge_id;
+      return `
+      <div class="wb-entry">
+        <div class="wb-entry__head">
+          <a class="wb-entry__word" href="${kpUrl}">${word}</a>
+          <button class="wb-entry__remove" data-entry="${e.entry_id}" title="移除">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="wb-entry__badges">
+          <span class="pill pill--ai">${solid ? '已固化' : '待固化'}</span>
+          ${prof > 0 ? `<span class="pill pill--teal">熟练度 L${prof}</span>` : ''}
+          <span class="pill">${esc(diff)}</span>
+          <span class="pill">${esc(e.master_require || '–')}</span>
+          <a class="pill" href="${kpUrl}">查看详情 →</a>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('entry-list').addEventListener('click', async e =>
+  {
+    const btn = e.target.closest('[data-entry]');
+    if (!btn) return;
+    const entryId = parseInt(btn.dataset.entry);
+    if (!confirm('从单词本中移除此词条？（原知识点不会删除）')) return;
+    try
+    {
+      const r = await fetch('/api/wordbook/entries/' + entryId, { method: 'DELETE' }).then(x => x.json());
+      if (r.ok)
+      {
+        currentEntries = currentEntries.filter(x => x.entry_id !== entryId);
+        renderEntries();
+      }
+    }
+    catch (err) {}
+  });
+
+  // ---------- 添加词条（抽屉 + Tab） ----------
+
+  document.getElementById('btn-add-entry').addEventListener('click', async () =>
+  {
+    kpSelected = new Set();
+    document.getElementById('kp-search').value = '';
+    document.getElementById('new-words').value = '';
+    openDrawer('modal-add-entry');
+    await loadAllKps();
+    renderKpPicker();
+  });
+
+  document.querySelectorAll('[data-tab]').forEach(btn =>
+  {
+    btn.addEventListener('click', () =>
+    {
+      const tab = btn.dataset.tab;
+      document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('is-active', b === btn));
+      document.querySelectorAll('[data-panel]').forEach(p => p.hidden = (p.dataset.panel !== tab));
+    });
+  });
+
+  document.getElementById('kp-search').addEventListener('input', renderKpPicker);
+
+  async function loadAllKps()
+  {
+    try
+    {
+      const r = await (await fetch('/api/kp?page=1&size=1000', { cache: 'no-store' })).json();
+      allKps = r.data || [];
+    }
+    catch (e) { allKps = []; }
+  }
+
+  function renderKpPicker()
+  {
+    const q = (document.getElementById('kp-search').value || '').toLowerCase();
+    const list = allKps.filter(k => !q || (k.standard_content || k.user_input_content || '').toLowerCase().includes(q));
+    const el = document.getElementById('kp-picker');
+    if (!list.length) { el.innerHTML = '<p class="state-line">没有匹配的知识点</p>'; return; }
+    el.innerHTML = list.map(k =>
+    {
+      const word = esc(k.standard_content || k.user_input_content);
+      const checked = kpSelected.has(k.id) ? 'checked' : '';
+      const solid = k.is_solidified === 1;
+      return `
+      <label class="kp-picker__item">
+        <input type="checkbox" data-kp="${k.id}" ${checked}>
+        <span>${word}</span>
+        ${solid ? '<span class="pill pill--teal">已固化</span>' : '<span class="pill">待固化</span>'}
+      </label>`;
+    }).join('');
+  }
+
+  document.getElementById('kp-picker').addEventListener('change', e =>
+  {
+    const cb = e.target.closest('[data-kp]');
+    if (!cb) return;
+    const id = parseInt(cb.dataset.kp);
+    if (cb.checked) kpSelected.add(id); else kpSelected.delete(id);
+  });
+
+  document.getElementById('act-add-existing').addEventListener('click', async () =>
+  {
+    if (!kpSelected.size) return alert('请选择至少一个知识点');
+    const r = await fetch('/api/wordbook/' + currentWbId + '/entries', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ knowledge_ids: Array.from(kpSelected) })
+    }).then(x => x.json()).catch(() => ({}));
+    if (r.ok || r.added !== undefined)
+    {
+      closeDrawer('modal-add-entry');
+      alert('添加成功：' + (r.added || 0) + ' 个（跳过 ' + (r.skipped || 0) + '，失败 ' + (r.failed || 0) + '）');
+      openWordbook(currentWbId);
+    }
+    else alert(r.error || '添加失败');
+  });
+
+  document.getElementById('act-add-new').addEventListener('click', async () =>
+  {
+    const text = document.getElementById('new-words').value.trim();
+    if (!text) return alert('请输入至少一个新词');
+    const words = text.split('\n').map(w => w.trim()).filter(w => w);
+    const r = await fetch('/api/wordbook/' + currentWbId + '/entries', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ new_words: words })
+    }).then(x => x.json()).catch(() => ({}));
+    if (r.ok || r.added !== undefined)
+    {
+      closeDrawer('modal-add-entry');
+      alert('录入成功：' + (r.added || 0) + ' 个（跳过 ' + (r.skipped || 0) + '，失败 ' + (r.failed || 0) + '）');
+      openWordbook(currentWbId);
+    }
+    else alert(r.error || '添加失败');
+  });
+
+  // ---------- 导出 ----------
+
+  document.getElementById('btn-export-json').addEventListener('click', async () =>
+  {
+    const r = await fetch('/api/wordbook/' + currentWbId + '/export-json', { method: 'POST' }).then(x => x.json()).catch(() => ({}));
+    if (r.json_path)
+    {
+      alert('JSON 已生成，将自动下载。分享识别码: ' + (r.share_code || '自动生成'));
+      const a = document.createElement('a');
+      a.href = '/api/word/download?path=' + encodeURIComponent(r.json_path);
+      a.download = 'wordbook_' + currentWbId + '.json';
+      a.click();
+    }
+    else alert(r.error || '导出失败');
+  });
+
+  document.getElementById('btn-export-word').addEventListener('click', async () =>
+  {
+    const r = await fetch('/api/wordbook/' + currentWbId + '/export-word', { method: 'POST' }).then(x => x.json()).catch(() => ({}));
+    if (r.word_path)
+    {
+      alert('Word 已生成，开始下载');
+      window.open('/api/word/download?path=' + encodeURIComponent(r.word_path), '_blank');
+    }
+    else alert(r.error || '导出失败（请确保有已固化的词条）');
+  });
+
+  // ---------- 编辑 ----------
+
+  document.getElementById('btn-edit').addEventListener('click', async () =>
+  {
+    let r;
+    try { r = await (await fetch('/api/wordbook/' + currentWbId)).json(); }
+    catch (e) { r = null; }
+    if (!r) return;
+    document.getElementById('edit-name').value = r.name;
+    document.getElementById('edit-desc').value = r.description || '';
+    document.getElementById('edit-public').checked = (r.is_public === 1);
+    openDrawer('modal-edit');
+  });
+
+  document.getElementById('act-save-edit').addEventListener('click', async () =>
+  {
+    const name = document.getElementById('edit-name').value.trim();
+    const desc = document.getElementById('edit-desc').value.trim();
+    const isPublic = document.getElementById('edit-public').checked ? 1 : 0;
+    if (!name) return alert('名称不能为空');
+    const r = await fetch('/api/wordbook/' + currentWbId, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description: desc, is_public: isPublic })
+    }).then(x => x.json()).catch(() => ({}));
+    if (r.ok)
+    {
+      closeDrawer('modal-edit');
+      openWordbook(currentWbId);
+      loadList();
+    }
+    else alert(r.error || '保存失败');
+  });
+
+  // ---------- 导入 ----------
+
+  document.getElementById('btn-import').addEventListener('click', () =>
+  {
+    document.getElementById('import-json').value = '';
+    document.getElementById('import-file-path').value = '';
+    document.getElementById('import-msg').textContent = '';
+    document.querySelectorAll('[data-import-tab]').forEach(b => b.classList.toggle('is-active', b === document.querySelector('[data-import-tab]')));
+    document.querySelectorAll('[data-import-panel]').forEach(p => p.hidden = (p.dataset.importPanel !== 'paste'));
+    openDrawer('modal-import');
+  });
+
+  document.querySelectorAll('[data-import-tab]').forEach(btn =>
+  {
+    btn.addEventListener('click', () =>
+    {
+      const tab = btn.dataset.importTab;
+      document.querySelectorAll('[data-import-tab]').forEach(b => b.classList.toggle('is-active', b === btn));
+      document.querySelectorAll('[data-import-panel]').forEach(p => p.hidden = (p.dataset.importPanel !== tab));
+    });
+  });
+
+  document.getElementById('act-import').addEventListener('click', async () =>
+  {
+    const paste = document.querySelector('[data-import-panel="paste"]').hidden === false;
+    let body = {};
+    if (paste)
+    {
+      const raw = document.getElementById('import-json').value.trim();
+      if (!raw) return showImportMsg('state-line--danger', '请粘贴 JSON 内容');
+      let parsed;
+      try { parsed = JSON.parse(raw); } catch (e) { return showImportMsg('state-line--danger', 'JSON 格式错误: ' + e.message); }
+      body.json_data = parsed;
+    }
+    else
+    {
+      const fp = document.getElementById('import-file-path').value.trim();
+      if (!fp) return showImportMsg('state-line--danger', '请输入文件路径');
+      body.file_path = fp;
+    }
+    showImportMsg('', '导入中…');
+    let r;
+    try
+    {
+      r = await fetch('/api/wordbook/import', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(x => x.json());
+    }
+    catch (e) { r = {}; }
+
+    if (r.ok)
+    {
+      showImportMsg('state-line--success', '导入成功！单词本 #' + r.wordbook_id + ' · 新增 ' + r.imported + ' · 合并 ' + r.merged);
+      setTimeout(() =>
+      {
+        closeDrawer('modal-import');
+        loadList();
+      }, 1500);
+    }
+    else showImportMsg('state-line--danger', r.error || '导入失败');
+  });
+
+  function showImportMsg(cls, t)
+  {
+    const el = document.getElementById('import-msg');
+    el.className = 'state-line' + (cls ? ' ' + cls : '');
+    el.textContent = t;
+  }
+
+  loadList();
+})();
+</script>
+</body>
+</html>
