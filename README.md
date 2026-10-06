@@ -1,8 +1,20 @@
 # 轻量化本地英语学习软件
 
+> GitHub: [Whycmd/learning-app](https://github.com/Whycmd/learning-app)
+> 贡献指南：见 [CONTRIBUTING.md](CONTRIBUTING.md)
+
 ## 项目说明
 基于遗忘曲线的智能化英语知识点复习、AI 资源固化拓展、自动答题批改、学情数据统计。
 学习数据 100% 本地存储于 MySQL，AI 能力在线调用中国国产免费大模型，极低 Token 消耗。
+
+## 团队协作
+本项目已转为团队项目。新成员加入方式详见 [CONTRIBUTING.md](CONTRIBUTING.md)，核心流程：
+
+1. **获取权限**：Owner 在 GitHub → Settings → Collaborators 中添加你的 GitHub 用户名
+2. **克隆仓库**：`git clone https://github.com/Whycmd/learning-app.git`
+3. **配置身份**：`git config user.name "你的名字" && git config user.email "你的邮箱"`
+4. **开分支开发**：`git checkout -b feature/v1.5.0-T001-任务简述`
+5. **推送并提 PR**：`git push -u origin feature/v1.5.0-T001-任务简述`，然后在 GitHub 创建 Pull Request
 
 ## 技术栈
 - 后端: C++ (Apple clang 14) + 手写 HTTP 服务器（嵌入 Crow 源码）+ mysql-8.0 客户端库
