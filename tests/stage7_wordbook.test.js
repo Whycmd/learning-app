@@ -243,7 +243,8 @@ async function main() {
   for (const kid of kpIds) {
     try {
       const solidify = await api('POST', `/api/kp/${kid}/solidify`);
-      if (solidify.json?.ok) { solidifiedKpId = kid; break; }
+      // 固化可能合并到已有词条：接口返回 effective id，原始 kid 可能已被删除
+      if (solidify.json?.ok) { solidifiedKpId = solidify.json.id || kid; break; }
     } catch(e) {}
   }
 

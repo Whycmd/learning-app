@@ -174,7 +174,7 @@ async function main() {
 
   // 用户A录入知识点
   const kpA = await api('POST', '/api/kp',
-    { user_input_content: 't9cacheword' }, cookieA);
+    { user_input_content: 'diligent' }, cookieA);
   const kpAId = kpA.json?.id;
   if (kpAId) ok('用户A录入知识点', `id=${kpAId}`);
   else { ko('用户A录入知识点', kpA.text); process.exit(1); }
@@ -215,7 +215,7 @@ async function main() {
   // ---- 6. 跨用户固化复用（核心：零AI调用）----
   console.log('\n[6] 用户B固化同词条 → 跨用户复用（零AI调用）');
   const kpB = await api('POST', '/api/kp',
-    { user_input_content: 't9cacheword' }, cookieB);
+    { user_input_content: 'diligent' }, cookieB);
   const kpBId = kpB.json?.id;
   if (kpBId && kpBId !== kpAId) ok('用户B录入同词获得独立知识点', `id=${kpBId}`);
   else ko('用户B录入同词获得独立知识点', kpB.text);
@@ -234,7 +234,7 @@ async function main() {
 
   // 用户B的知识点仍归属自己且已固化
   const bKpInfo = await api('GET', `/api/kp/${kpBId}`, null, cookieB);
-  if (bKpInfo.json?.is_solidified === 1 && bKpInfo.json.standard_content === 't9cacheword')
+  if (bKpInfo.json?.is_solidified === 1 && bKpInfo.json.standard_content === 'diligent')
     ok('用户B知识点已固化且归属不变');
   else ko('用户B知识点归属', JSON.stringify(bKpInfo.json));
 
@@ -285,19 +285,19 @@ async function main() {
     ok('login.html 可访问且含注册逻辑');
   else ko('login.html 可访问', `status=${loginPage.status}`);
 
-  const navJs = await api('GET', '/static/auth-nav.js');
-  if (navJs.status === 200 && navJs.text.includes('/api/auth/me')) ok('auth-nav.js 可访问');
-  else ko('auth-nav.js 可访问', `status=${navJs.status}`);
+  const navJs = await api('GET', '/static/nav.js');
+  if (navJs.status === 200 && navJs.text.includes('/api/auth/me')) ok('nav.js 可访问');
+  else ko('nav.js 可访问', `status=${navJs.status}`);
 
   const pages = ['index.html', 'pages/kp-entry.html', 'pages/kp-detail.html',
     'pages/wordbook.html', 'pages/review.html', 'pages/articles.html',
     'pages/learning-center.html'];
   let navCount = 0;
   for (const pg of pages) {
-    if (fs.readFileSync(path.join(ROOT, 'frontend', pg), 'utf8').includes('auth-nav.js')) navCount++;
+    if (fs.readFileSync(path.join(ROOT, 'frontend', pg), 'utf8').includes('nav.js')) navCount++;
   }
-  if (navCount === pages.length) ok(`全部 ${pages.length} 个页面引入 auth-nav.js`);
-  else ko('页面引入 auth-nav.js', `${navCount}/${pages.length}`);
+  if (navCount === pages.length) ok(`全部 ${pages.length} 个页面引入 nav.js`);
+  else ko('页面引入 nav.js', `${navCount}/${pages.length}`);
 
   // ---- 9. 用户名含点 + 密码含空格 ----
   console.log('\n[9] 用户名含点、密码含空格（含首尾空格，空格为有效字符）');

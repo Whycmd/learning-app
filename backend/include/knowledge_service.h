@@ -15,10 +15,41 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
+#include <cstdlib>
 #include <unistd.h>
 #include <sys/wait.h>
 
 namespace eng {
+
+// AI 偶发在 JSON 字符串内输出真实换行/制表等控制字符，导致解析失败。
+// 按 JSON 规范在字符串内部转义这些字符；字符串外的内容保持不变。
+inline std::string repairJsonControlChars(const std::string& s) {
+  std::string out;
+  out.reserve(s.size() + 16);
+  bool inStr = false, esc = false;
+  for (char c : s) {
+    if (inStr) {
+      if (esc) { out += c; esc = false; continue; }
+      if (c == '\\') { out += c; esc = true; continue; }
+      if (c == '"')  { out += c; inStr = false; continue; }
+      if (c == '\n') { out += "\\n"; continue; }
+      if (c == '\r') { out += "\\r"; continue; }
+      if (c == '\t') { out += "\\t"; continue; }
+      if ((unsigned char)c < 0x20) {
+        char buf[8];
+        std::snprintf(buf, sizeof(buf), "\\u%04x", (unsigned char)c);
+        out += buf;
+        continue;
+      }
+      out += c;
+    } else {
+      if (c == '"') inStr = true;
+      out += c;
+    }
+  }
+  return out;
+}
 
 struct KnowledgePoint {
   int64_t id=0;
@@ -37,9 +68,10 @@ class KnowledgeService {
   Db& db_;
   AiClient& ai_;
   std::string wordTmpDir_;
+  std::string root_;
 public:
-  KnowledgeService(Db& db, AiClient& ai, const std::string& wordTmp)
-    : db_(db), ai_(ai), wordTmpDir_(wordTmp) {}
+  KnowledgeService(Db& db, AiClient& ai, const std::string& wordTmp, const std::string& root)
+    : db_(db), ai_(ai), wordTmpDir_(wordTmp), root_(root) {}
 
   // 原子任务1：知识点录入（单条，未固化不查重）
   struct CreateResult { int64_t id=0; bool ok=false; std::string error; bool duplicate=false; };
@@ -137,11 +169,11 @@ public:
     for (auto& row : unsolidified) {
       int64_t id = std::stoll(row["id"]);
       std::string err;
-      bool ok = solidifyOne(id, row["user_input_content"], row["remark"], err);
-      if (ok) {
+      auto result = solidifyOne(id, row["user_input_content"], row["remark"], err);
+      if (result.ok) {
         r.success++;
         // Word 导出
-        std::string wp = exportWord(id);
+        std::string wp = exportWord(result.effective_id);
         if (!wp.empty()) r.wordPaths.push_back(wp);
       } else {
         r.failed++;
@@ -162,11 +194,13 @@ public:
   {
     // 同时查 standard_content 和 user_input_content（AI 可能润色 standard_content，
     // 但 user_input_content 是用户原始输入，更稳定）
+    // 优先同用户副本：命中自己的已固化词条才应合并，避免被他人词条抢先复制成重复记录
     auto dup = db_.query(
       "SELECT id, user_id FROM knowledge_points WHERE "
       "(standard_content='" + Db::escape(userInput) + "' "
       " OR user_input_content='" + Db::escape(userInput) + "') "
-      "AND is_solidified=1 AND id<>" + std::to_string(id) + " LIMIT 1"
+      "AND is_solidified=1 AND id<>" + std::to_string(id) +
+      " ORDER BY (user_id=" + std::to_string(RequestContext::currentUserId()) + ") DESC, id ASC LIMIT 1"
     );
     if (dup.empty()) return CacheHit::Miss;
 
@@ -188,12 +222,14 @@ public:
     return CacheHit::Miss;
   }
 
-  // 单条 AI 固化
-  bool solidifyOne(int64_t id, const std::string& userInput, const std::string& remark, std::string& err) {
+  // 单条 AI 固化结果（含合并后有效 ID）
+  struct SolidifyOneResult { int64_t effective_id = 0; bool ok = false; std::string error; };
+  SolidifyOneResult solidifyOne(int64_t id, const std::string& userInput, const std::string& remark, std::string& err) {
+    SolidifyOneResult r;
     // 跨用户查重：相同 standard_content 的已固化词条（不限 user_id）
     CacheHit hit = tryCrossUserCache(id, userInput, remark, err);
-    if (hit == CacheHit::Merged) return true;
-    if (hit == CacheHit::Copied) return true;
+    if (hit == CacheHit::Merged) { r.effective_id = std::stoll(err.substr(err.rfind('#')+1)); r.ok = true; return r; }
+    if (hit == CacheHit::Copied) { r.effective_id = id; r.ok = true; return r; }
     // Miss：继续 AI 流程
 
     // AI 响应缓存检查：ai_tasks 表中是否有 done 状态、相同输入的任务
@@ -216,8 +252,9 @@ public:
     // 断网降级检查
     if (ai_.isDegraded()) {
       err = "AI gateway unreachable (degraded)";
+      r.error = err;
       if (taskId) db_.exec("UPDATE ai_tasks SET status='failed', error_msg='" + Db::escape(err) + "' WHERE id=" + std::to_string(taskId));
-      return false;
+      return r;
     }
 
     // 构造 AI 提示：使用 prompts.h 模板（注释与提示词内容统一在 prompts.h 维护）
@@ -225,38 +262,64 @@ public:
     if (!remark.empty()) {
       remarkLine = prompts::replace(prompts::KP_REMARK_RULE, "{REMARK}", remark);
     }
-    std::string userPrompt = prompts::buildTemplate(
-      prompts::KP_SOLIDIFY_ONE_USER,
-      {
-        {"{KP_SIX_SECTIONS}", prompts::KP_SIX_SECTIONS},
-        {"{KP_RULES}",       prompts::KP_RULES},
-        {"{REMARK_LINE}",    remarkLine},
-        {"{KP_JSON_SCHEMA}", prompts::KP_JSON_SCHEMA},
-        {"{KP_JSON_SCHEMA}", prompts::KP_JSON_SCHEMA},
-        {"{LEARNER_IDENTITY}", prompts::getLearnerIdentity(db_, RequestContext::currentUserId())},
-        {"{USER_INPUT}",     userInput}
+    // 调用 AI 并解析 JSON；extraNote 用于内容错配后的纠正重试
+    auto callAi = [&](const std::string& extraNote, JsonValue& out, std::string& callErr) -> bool {
+      std::string userPrompt = prompts::buildTemplate(
+        prompts::KP_SOLIDIFY_ONE_USER,
+        {
+          {"{KP_SIX_SECTIONS}", prompts::KP_SIX_SECTIONS},
+          {"{KP_RULES}",       prompts::KP_RULES},
+          {"{REMARK_LINE}",    remarkLine},
+          {"{KP_HYBRID_SCHEMA}", prompts::KP_HYBRID_JSON_SCHEMA},
+          {"{KP_MARKDOWN_RULES}", prompts::KP_MARKDOWN_RULES},
+          {"{KP_MARKDOWN_EXAMPLE}", prompts::KP_MARKDOWN_EXAMPLE},
+          {"{LEARNER_IDENTITY}", prompts::getLearnerIdentity(db_, RequestContext::currentUserId())},
+          {"{USER_INPUT}",     userInput},
+          {"{EXTRA_NOTE}",     extraNote}
+        }
+      );
+      std::vector<std::map<std::string,std::string>> msgs = {
+        {{"role","system"},{"content",prompts::KP_SOLIDIFY_SYSTEM}},
+        {{"role","user"},{"content",userPrompt}}
+      };
+      auto resp = ai_.postChat(msgs, true, 3072, 0.3);
+      if (!resp.ok) { callErr = "AI call failed: " + resp.body; return false; }
+      try {
+        if (resp.extractedJson.empty()) { callErr = "AI returned no JSON"; return false; }
+        out = parseJson(repairJsonControlChars(resp.extractedJson));
+      } catch (const std::exception& e) {
+        callErr = std::string("JSON parse failed: ") + e.what();
+        return false;
       }
-    );
-    std::vector<std::map<std::string,std::string>> msgs = {
-      {{"role","system"},{"content",prompts::KP_SOLIDIFY_SYSTEM}},
-      {{"role","user"},{"content",userPrompt}}
+      if (!out.isObject()) { callErr = "AI JSON not object"; return false; }
+      return true;
     };
-    auto resp = ai_.postChat(msgs, true, 2048, 0.3);
-    if (!resp.ok) {
-      err = "AI call failed: " + resp.body;
-      if (taskId) db_.exec("UPDATE ai_tasks SET status='failed', error_msg='" + Db::escape(err) + "', retry_times=retry_times+1 WHERE id=" + std::to_string(taskId));
-      return false;
-    }
+
     JsonValue json;
-    try {
-      if (!resp.extractedJson.empty()) json = parseJson(resp.extractedJson);
-      else { err = "AI returned no JSON"; if (taskId) db_.exec("UPDATE ai_tasks SET status='failed', error_msg='" + Db::escape(err) + "', retry_times=retry_times+1 WHERE id=" + std::to_string(taskId)); return false; }
-    } catch (const std::exception& e) {
-      err = std::string("JSON parse failed: ") + e.what();
-      if (taskId) db_.exec("UPDATE ai_tasks SET status='failed', error_msg='" + Db::escape(err) + "', retry_times=retry_times+1 WHERE id=" + std::to_string(taskId));
-      return false;
+    if (!callAi("", json, err)) {
+      // 模型偶发输出非法 JSON：重试一次再判定失败
+      JsonValue retryJson;
+      std::string retryErr;
+      if (!callAi("", retryJson, retryErr)) {
+        if (taskId) db_.exec("UPDATE ai_tasks SET status='failed', error_msg='" + Db::escape(err) + "', retry_times=retry_times+1 WHERE id=" + std::to_string(taskId));
+        return r;
+      }
+      json = retryJson;
     }
-    if (!json.isObject()) { err = "AI JSON not object"; if (taskId) db_.exec("UPDATE ai_tasks SET status='failed', error_msg='" + Db::escape(err) + "', retry_times=retry_times+1 WHERE id=" + std::to_string(taskId)); return false; }
+    // AI 偶发返回其他词的内容（示例词泄漏）：带纠正说明重试一次，仍错配则拒绝入库
+    if (!sameWordForm(json.getString("standard_content", userInput), userInput)) {
+      JsonValue retryJson;
+      std::string retryErr;
+      std::string note = "注意：目标词是 \"" + userInput + "\"，standard_content 必须填写该词本身，禁止替换为其他单词或近义词，请重新输出完整 JSON 对象。\n\n";
+      if (callAi(note, retryJson, retryErr) && sameWordForm(retryJson.getString("standard_content", userInput), userInput)) {
+        json = retryJson;
+      } else {
+        err = "AI content mismatch: got '" + json.getString("standard_content", userInput) + "', expected '" + userInput + "'";
+        r.error = err;
+        if (taskId) db_.exec("UPDATE ai_tasks SET status='failed', error_msg='" + Db::escape(err) + "', retry_times=retry_times+1 WHERE id=" + std::to_string(taskId));
+        return r;
+      }
+    }
 
     bool ok = applySolidify(id, userInput, json, err);
     if (ok && taskId) {
@@ -270,7 +333,10 @@ public:
     } else if (!ok && taskId) {
       db_.exec("UPDATE ai_tasks SET status='failed', error_msg='" + Db::escape(err) + "', retry_times=retry_times+1 WHERE id=" + std::to_string(taskId));
     }
-    return ok;
+    r.ok = ok;
+    r.effective_id = ok ? id : 0;
+    if (!ok) r.error = err;
+    return r;
   }
 
   // 跨用户复用：将 src 已固化知识点完整复制到 dst（dst 的 id/user_id 保持不变）
@@ -332,10 +398,47 @@ public:
     catch (...) {}
   }
 
+  // 校验 AI 返回的 standard_content 是否是目标词本身：
+  // 允许拼写纠正、词形变化、测试用前缀词（t002retryword→retry）；
+  // 拒绝完全无关的词（appropriate→venture、abandon→be done with）。
+  static bool sameWordForm(const std::string& aiWord, const std::string& input)
+  {
+    auto norm = [](std::string s) -> std::string {
+      size_t b = s.find_first_not_of(" \t\r\n\"'");
+      size_t e = s.find_last_not_of(" \t\r\n\"'");
+      s = (b == std::string::npos) ? "" : s.substr(b, e - b + 1);
+      for (char& c : s) c = (char)std::tolower((unsigned char)c);
+      return s;
+    };
+    std::string a = norm(aiWord), u = norm(input);
+    if (a.empty() || u.empty() || a == u) return true;
+    if (a.find(u) != std::string::npos || u.find(a) != std::string::npos) return true;
+    if (a.rfind(u, 0) == 0 || u.rfind(a, 0) == 0) return true;
+    if (a.find(' ') != std::string::npos || u.find(' ') != std::string::npos) return false;
+    // Levenshtein 编辑距离：容忍拼写纠正与词形变化
+    std::vector<size_t> prev(u.size() + 1), cur(u.size() + 1);
+    for (size_t j = 0; j <= u.size(); j++) prev[j] = j;
+    for (size_t i = 1; i <= a.size(); i++)
+    {
+      cur[0] = i;
+      for (size_t j = 1; j <= u.size(); j++)
+        cur[j] = std::min({prev[j] + 1, cur[j - 1] + 1,
+                           prev[j - 1] + (a[i - 1] == u[j - 1] ? 0 : 1)});
+      prev = cur;
+    }
+    size_t maxLen = std::max(a.size(), u.size());
+    return prev[u.size()] <= std::max<size_t>(2, maxLen * 3 / 10);
+  }
+
   // 公共入库逻辑（solidifyOne 和 solidifyBatch 共用）
   bool applySolidify(int64_t id, const std::string& userInput, const JsonValue& json, std::string& err) {
     std::string stdContent = json.getString("standard_content", userInput);
     if (stdContent.empty() || stdContent.size() > 100) stdContent = userInput;
+    // AI 偶发返回其他词的内容（示例词泄漏/串行错位），拒绝入库，避免知识点内容错配
+    if (!sameWordForm(stdContent, userInput)) {
+      err = "AI content mismatch: got '" + stdContent + "', expected '" + userInput + "'";
+      return false;
+    }
     // 同时查 standard_content 和 user_input_content（AI 可能润色 standard_content，
     // 但 user_input_content 是用户原始输入，更稳定）
     auto dup = db_.query(
@@ -408,9 +511,15 @@ public:
       auto* syns = json.find("synonyms");
       if (syns && syns->isArray()) {
         for (auto& s : syns->asArray()) {
+          // 兼容 AI 的纯字符串与导出/导入的 {synonym, usage_diff} 对象
+          std::string word = s.isString() ? s.asString() : s.getString("synonym");
+          std::string diff = s.isObject() ? s.getString("usage_diff") : "";
+          if (word.empty()) continue;
           std::ostringstream sql;
-          sql << "INSERT INTO kp_synonyms (knowledge_id, synonym, display_order) VALUES ("
-              << id << ", '" << Db::escape(s.asString()) << "', " << (order++) << ")";
+          sql << "INSERT INTO kp_synonyms (knowledge_id, synonym, usage_diff, display_order) VALUES ("
+              << id << ", '" << Db::escape(word) << "', ";
+          if (diff.empty()) sql << "NULL"; else sql << "'" << Db::escape(diff) << "'";
+          sql << ", " << (order++) << ")";
           db_.exec(sql.str());
         }
       }
@@ -418,9 +527,12 @@ public:
       auto* ants = json.find("antonyms");
       if (ants && ants->isArray()) {
         for (auto& a : ants->asArray()) {
+          // 兼容 AI 的纯字符串与导出/导入的 {antonym} 对象
+          std::string word = a.isString() ? a.asString() : a.getString("antonym");
+          if (word.empty()) continue;
           std::ostringstream sql;
           sql << "INSERT INTO kp_antonyms (knowledge_id, antonym, display_order) VALUES ("
-              << id << ", '" << Db::escape(a.asString()) << "', " << (order++) << ")";
+              << id << ", '" << Db::escape(word) << "', " << (order++) << ")";
           db_.exec(sql.str());
         }
       }
@@ -470,18 +582,31 @@ public:
         }
         return "";
       };
-      // 顺序对应六板块：音标 → 词根词源 → 同源词汇 → 典故俗语 → 辨析/短语/重难点 → 频率/语域/文化/同类
-      addExtra("phonetic", json.getString("phonetic"));
-      addExtra("root", json.getString("root_analysis"));
-      addExtra("word_family", flexStr("word_family"));
-      addExtra("allusions", flexStr("allusions"));
-      addExtra("synonym_analysis", json.getString("synonym_analysis"));
-      addExtra("phrase_analysis", json.getString("phrase_analysis"));
-      addExtra("key_points", json.getString("key_points"));
-      addExtra("frequency", json.getString("frequency_note"));
-      addExtra("register", json.getString("register_note"));
-      addExtra("cultural", json.getString("cultural_note"));
-      addExtra("related_words", flexStr("related_words"));
+      // 讲解类内容：导入的完整数据优先按 extras 原样恢复；AI 输出走 markdown_content / 旧逐条字段
+      auto* importedExtras = json.find("extras");
+      if (importedExtras && importedExtras->isArray() && !importedExtras->asArray().empty()) {
+        for (auto& e : importedExtras->asArray()) {
+          addExtra(e.getString("extra_type"), e.getString("content"));
+        }
+      } else {
+        std::string mdContent = flexStr("markdown_content");
+        if (!mdContent.empty() && !isEmptySaying(mdContent)) {
+          addExtra("markdown_content", mdContent);
+        } else {
+          // 顺序对应六板块：音标 → 词根词源 → 同源词汇 → 典故俗语 → 辨析/短语/重难点 → 频率/语域/文化/同类
+          addExtra("phonetic", json.getString("phonetic"));
+          addExtra("root", json.getString("root_analysis"));
+          addExtra("word_family", flexStr("word_family"));
+          addExtra("allusions", flexStr("allusions"));
+          addExtra("synonym_analysis", json.getString("synonym_analysis"));
+          addExtra("phrase_analysis", json.getString("phrase_analysis"));
+          addExtra("key_points", json.getString("key_points"));
+          addExtra("frequency", json.getString("frequency_note"));
+          addExtra("register", json.getString("register_note"));
+          addExtra("cultural", json.getString("cultural_note"));
+          addExtra("related_words", flexStr("related_words"));
+        }
+      }
       return true;
     });
     if (!txOk) { err = "transaction failed"; return false; }
@@ -500,8 +625,10 @@ public:
     f << jsonStr;
     f.close();
 
-    std::string scriptPath = "/Users/junwang/Desktop/王浩源/英语/英语学习应用/scripts/gen_word_kp.js";
-    std::string cmd = "/Users/junwang/.local/bin/node " + scriptPath + " " + std::to_string(kpId) + " " + tmpPath + " " + wordTmpDir_;
+    std::string scriptPath = root_ + "/scripts/gen_word_kp.js";
+    const char* nodeEnv = std::getenv("NODE_BIN");
+    std::string nodeBin = nodeEnv ? nodeEnv : "node";
+    std::string cmd = nodeBin + " " + scriptPath + " " + std::to_string(kpId) + " " + tmpPath + " " + wordTmpDir_;
     int rc = std::system(cmd.c_str());
     if (rc != 0) return "";
     // 返回生成的 docx 路径
@@ -511,10 +638,28 @@ public:
   }
 
   // 批量 AI 固化（一次AI调用处理多个知识点，减少对接次数）
-  struct BatchResult { int success=0; int failed=0; std::string error; };
-  BatchResult solidifyBatch(const std::vector<int64_t>& ids) {
+  struct BatchItemResult {
+    int64_t id=0;
+    bool ok=false;
+    bool skipped=false;   // 命中已有固化内容（跨用户缓存/合并），未调用 AI
+    std::string error;
+  };
+  struct BatchResult {
+    int success=0; int failed=0; std::string error;
+    std::vector<std::string> failed_reasons;
+    std::vector<BatchItemResult> items;
+  };
+  BatchResult solidifyBatch(const std::vector<int64_t>& ids,
+                            const std::function<void(const BatchItemResult&)>& onItem = nullptr) {
     BatchResult r;
     if (ids.empty()) { r.error = "no ids"; return r; }
+    // 逐项上报（异步任务用于即时落库与渐进展示；同步调用不传回调）
+    auto emit = [&](int64_t id, bool ok, bool skipped, const std::string& e) {
+      BatchItemResult item{id, ok, skipped, e};
+      r.items.push_back(item);
+      if (ok) r.success++; else r.failed++;
+      if (onItem) onItem(item);
+    };
 
     // 收集未固化知识点
     struct KpInfo { int64_t id; std::string input; std::string remark; };
@@ -531,7 +676,7 @@ public:
     {
       std::string cacheErr;
       CacheHit hit = tryCrossUserCache(kp.id, kp.input, kp.remark, cacheErr);
-      if (hit == CacheHit::Copied || hit == CacheHit::Merged) r.success++;
+      if (hit == CacheHit::Copied || hit == CacheHit::Merged) emit(kp.id, true, true, "");
       else needAi.push_back(kp);
     }
     if (needAi.empty()) return r;
@@ -541,7 +686,7 @@ public:
     std::ostringstream wordList;
     int idx = 0;
     for (auto& kp : kps) {
-      wordList << (++idx) << ". "" << kp.input << """;
+      wordList << (++idx) << ". \"" << kp.input << "\"";
       if (!kp.remark.empty()) wordList << "（备注:" << kp.remark << "）";
       wordList << "\n";
     }
@@ -550,7 +695,9 @@ public:
       {
         {"{KP_SIX_SECTIONS}", prompts::KP_SIX_SECTIONS},
         {"{KP_RULES}",       prompts::KP_RULES},
-        {"{KP_JSON_SCHEMA}", prompts::KP_JSON_SCHEMA},
+        {"{KP_HYBRID_SCHEMA}", prompts::KP_HYBRID_JSON_SCHEMA},
+        {"{KP_MARKDOWN_RULES}", prompts::KP_MARKDOWN_RULES},
+        {"{KP_MARKDOWN_EXAMPLE}", prompts::KP_MARKDOWN_EXAMPLE},
         {"{WORD_LIST}",      wordList.str()},
         {"{LEARNER_IDENTITY}", prompts::getLearnerIdentity(db_, RequestContext::currentUserId())},
       }
@@ -559,32 +706,67 @@ public:
       {{"role","system"},{"content",prompts::KP_SOLIDIFY_BATCH_SYSTEM}},
       {{"role","user"},{"content",userPrompt}}
     };
-    int maxTokens = 1024 * std::min((int)kps.size(), 8);
-    auto resp = ai_.postChat(msgs, true, maxTokens, 0.3);
-    if (!resp.ok) { r.error = "AI batch call failed: " + resp.body; return r; }
-
+    int maxTokens = 1024 * std::min((int)kps.size(), 4);
+    // 模型偶发输出非法 JSON：与单条固化一致，重试一次再判定失败
     JsonValue json;
-    try {
-      if (!resp.extractedJson.empty()) json = parseJson(resp.extractedJson);
-      else { r.error = "AI returned no JSON"; return r; }
-    } catch (const std::exception& e) {
-      r.error = std::string("JSON parse failed: ") + e.what();
+    std::string aiErr;
+    bool parsed = false;
+    for (int attempt = 0; attempt < 2 && !parsed; attempt++) {
+      auto resp = ai_.postChat(msgs, true, maxTokens, 0.3);
+      if (!resp.ok) { aiErr = "AI batch call failed: " + resp.body; continue; }
+      if (resp.extractedJson.empty()) { aiErr = "AI returned no JSON"; continue; }
+      try {
+        json = parseJson(repairJsonControlChars(resp.extractedJson));
+        parsed = json.isArray() || json.isObject();
+        if (!parsed) aiErr = "AI JSON not array";
+      } catch (const std::exception& e) {
+        aiErr = std::string("JSON parse failed: ") + e.what();
+      }
+    }
+    if (!parsed) {
+      r.error = aiErr;
+      for (auto& kp : kps) emit(kp.id, false, false, aiErr);
       return r;
     }
 
+    // 批量响应可能串行错位（元素与词表不一一对应）：错位项改走单条固化重试
+    std::vector<size_t> retryIdx;
     if (json.isArray()) {
       auto& arr = json.asArray();
-      for (size_t i = 0; i < kps.size() && i < arr.size(); i++) {
+      for (size_t i = 0; i < kps.size(); i++) {
         std::string subErr;
-        if (applySolidify(kps[i].id, kps[i].input, arr[i], subErr)) r.success++;
-        else r.failed++;
+        if (i >= arr.size()) { emit(kps[i].id, false, false, "AI response missing item"); continue; }
+        if (!sameWordForm(arr[i].getString("standard_content", kps[i].input), kps[i].input)) {
+          retryIdx.push_back(i);
+          continue;
+        }
+        if (applySolidify(kps[i].id, kps[i].input, arr[i], subErr)) emit(kps[i].id, true, false, "");
+        else {
+          r.failed_reasons.push_back(kps[i].input + ": " + subErr);
+          emit(kps[i].id, false, false, subErr);
+        }
       }
     } else if (json.isObject() && kps.size() == 1) {
       std::string subErr;
-      if (applySolidify(kps[0].id, kps[0].input, json, subErr)) r.success++;
-      else r.failed++;
+      if (applySolidify(kps[0].id, kps[0].input, json, subErr)) emit(kps[0].id, true, false, "");
+      else {
+        r.failed_reasons.push_back(kps[0].input + ": " + subErr);
+        emit(kps[0].id, false, false, subErr);
+      }
     } else {
       r.error = "AI JSON not array";
+      for (auto& kp : kps) emit(kp.id, false, false, r.error);
+      return r;
+    }
+    for (size_t i : retryIdx) {
+      std::string singleErr;
+      auto one = solidifyOne(kps[i].id, kps[i].input, kps[i].remark, singleErr);
+      if (one.ok) emit(kps[i].id, true, false, "");
+      else {
+        r.failed_reasons.push_back(kps[i].input + ": " + singleErr);
+        if (r.error.empty()) r.error = singleErr;
+        emit(kps[i].id, false, false, singleErr);
+      }
     }
     return r;
   }
@@ -610,7 +792,7 @@ public:
     f << jsonStr;
     f.close();
 
-    std::string scriptPath = "/Users/junwang/Desktop/王浩源/英语/英语学习应用/scripts/gen_word_kp.js";
+    std::string scriptPath = root_ + "/scripts/gen_word_kp.js";
     std::string cmd = "/Users/junwang/.local/bin/node " + scriptPath + " batch " + tmpPath + " " + wordTmpDir_;
     int rc = std::system(cmd.c_str());
     if (rc != 0) return "";

@@ -217,7 +217,7 @@ async function main() {
       if (!bad.json || !bad.json.ok) ok('第1题拒绝固化');
       else ko('第1题拒绝固化', JSON.stringify(bad.json));
 
-      const sol = await api('POST', '/api/quiz/solidify-item', { quiz_id: quizId, no: 4 });
+      const sol = await api('POST', '/api/quiz/solidify-item', { quiz_id: quizId, no: 4 }, 130000);
       if (sol.status === 200 && sol.json && sol.json.ok && sol.json.knowledge_id)
         ok('第4题固化成功', 'kp=' + sol.json.knowledge_id);
       else ko('第4题固化成功', sol.text);

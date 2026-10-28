@@ -354,7 +354,7 @@ ${xLabels}`;
   }
 
   async function loadResetList() {
-    const r = await fetch('/api/kp?limit=1000').then(x => x.json()).catch(() => ({}));
+    const r = await fetch('/api/kp?size=1000', { cache: 'no-store' }).then(x => x.json()).catch(() => ({}));
     const sel = document.getElementById('reset-sel');
     sel.innerHTML = (r.data || []).map(k =>
       `<option value="${k.id}">${esc(k.standard_content || k.user_input_content)}</option>`

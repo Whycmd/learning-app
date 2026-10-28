@@ -16,6 +16,8 @@ const WORD_TMP = '/Users/junwang/Desktop/王浩源/英语/英语学习应用/wor
 
 let pass = 0, fail = 0;
 const failures = [];
+// 本套件使用独立测试用户，所有读写与清理都限定在其名下，不触碰真实用户数据
+let COOKIE = null, TEST_UID = 0, TEST_USER = '';
 function ok(name, msg='') { pass++; console.log(`  ✓ ${name}${msg ? ' — ' + msg : ''}`); }
 function ko(name, msg) { fail++; failures.push({name, msg}); console.log(`  ✗ ${name} — ${msg}`); }
 
@@ -23,6 +25,7 @@ function req(method, urlPath, body) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : null;
     const headers = { 'Content-Type':'application/json' };
+    if (COOKIE) headers['Cookie'] = 'eng_session=' + COOKIE;
     if (data) headers['Content-Length'] = Buffer.byteLength(data);
     const r = http.request({ host:'127.0.0.1', port:8088, method, path:urlPath,
       headers, timeout: 130000 }, res => {
@@ -30,8 +33,11 @@ function req(method, urlPath, body) {
       res.on('data', c => chunks.push(c));
       res.on('end', () => {
         const text = Buffer.concat(chunks).toString('utf8');
-        try { resolve({ status:res.statusCode, json:JSON.parse(text), text }); }
-        catch { resolve({ status:res.statusCode, json:null, text }); }
+        const sc = res.headers['set-cookie'];
+        let setCookie = null;
+        if (sc) { const m = /eng_session=([a-f0-9]*)/.exec(Array.isArray(sc) ? sc[0] : sc); if (m) setCookie = m[1]; }
+        try { resolve({ status:res.statusCode, json:JSON.parse(text), text, setCookie }); }
+        catch { resolve({ status:res.statusCode, json:null, text, setCookie }); }
       });
     });
     r.on('error', reject);
@@ -49,13 +55,37 @@ function runMysql(sql, silent=true) {
   return spawnSync(MYSQL_BIN, args, { encoding:'utf8', timeout:15000 });
 }
 
+// 只清理本套件测试用户（t4user_%）名下的数据
+function cleanupTestData() {
+  const like = "u.username LIKE 't4user_%'";
+  for (const t of ['user_learning', 'kp_definitions', 'kp_collocations', 'kp_synonyms', 'kp_antonyms', 'kp_extras'])
+    runMysql(`DELETE t FROM ${t} t JOIN knowledge_points kp ON t.knowledge_id=kp.id JOIN users u ON kp.user_id=u.id WHERE ${like};`);
+  runMysql(`DELETE a FROM ai_tasks a JOIN knowledge_points kp ON a.ref_id=kp.id JOIN users u ON kp.user_id=u.id WHERE ${like};`);
+  runMysql(`DELETE kp FROM knowledge_points kp JOIN users u ON kp.user_id=u.id WHERE ${like};`);
+  runMysql("DELETE FROM user_sessions WHERE user_id IN (SELECT id FROM users WHERE username LIKE 't4user_%');");
+  runMysql("DELETE FROM users WHERE username LIKE 't4user_%';");
+}
+
+// 注册并登录本套件专用测试用户
+async function setupTestUser() {
+  TEST_USER = 't4user_' + Date.now().toString(36);
+  const reg = await req('POST', '/api/auth/register', { username: TEST_USER, password: 'test pass 1' });
+  if (!reg.json || !reg.json.ok) throw new Error('测试用户注册失败: ' + reg.text.slice(0, 150));
+  const login = await req('POST', '/api/auth/login', { username: TEST_USER, password: 'test pass 1' });
+  if (!login.setCookie) throw new Error('测试用户登录失败: ' + login.text.slice(0, 150));
+  COOKIE = login.setCookie;
+  TEST_UID = parseInt(runMysql(`SELECT id FROM users WHERE username='${TEST_USER}';`).stdout.trim(), 10);
+}
+
 async function main() {
   console.log('=== 阶段四：AI 出题 & 自动批改引擎集成测试 ===\n');
 
   // ---- 0. 前置：准备固化知识点 ----
   console.log('[0] 前置：准备数据');
   try {
-    runMysql("DELETE FROM kp_extras; DELETE FROM kp_antonyms; DELETE FROM kp_synonyms; DELETE FROM kp_collocations; DELETE FROM kp_definitions; DELETE FROM user_learning; DELETE FROM knowledge_points;");
+    cleanupTestData();
+    await setupTestUser();
+    ok('清理数据并创建测试用户', `${TEST_USER} (uid=${TEST_UID})`);
     const kps = ['abandon', 'benefit', 'comprehend'];
     const kpIds = [];
     for (const w of kps) {

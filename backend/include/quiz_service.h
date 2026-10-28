@@ -508,7 +508,8 @@ public:
     }
 
     std::string err;
-    if (!kpSvc_.solidifyOne(kpId, word, remark, err))
+    auto result = kpSvc_.solidifyOne(kpId, word, remark, err);
+    if (!result.ok)
     {
       r.code = 500; r.error = err.empty() ? "solidify failed" : err; return r;
     }

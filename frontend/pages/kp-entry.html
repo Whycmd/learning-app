@@ -52,16 +52,25 @@
         <svg viewBox="0 0 24 24"><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/><circle cx="12" cy="12" r="4"/></svg>
       </span>
       <span class="wing-card__title">AI 一键固化</span>
-      <span class="wing-card__meta">整段一次发送，不切割拼接</span>
+      <span class="wing-card__meta">分片并发 · 边生成边可见</span>
     </div>
     <p class="notice text-sm">
-      点击后将<strong>整段提示词一次发送</strong>给 AI 模型，批量处理所有待固化知识点，返回完整结构化结果入库。
+      点击后后台<strong>分片并发</strong>处理所有待固化知识点；下方会实时显示已生成的词条，不必等全部完成。
     </p>
     <div class="u-row-sm">
       <button class="btn btn-primary" id="btn-solidify">一键 AI 固化</button>
       <button class="btn btn-secondary" id="btn-export-batch" type="button">批量导出 Word</button>
     </div>
     <p class="state-line" id="op-msg"></p>
+    <div id="job-panel" style="display:none;margin-top:12px">
+      <p class="state-line" id="job-status"></p>
+      <div style="height:8px;background:#e7e5e4;border-radius:999px;overflow:hidden">
+        <div id="job-bar" style="height:100%;width:0;background:#a16207;transition:width .3s"></div>
+      </div>
+      <div id="job-done" style="margin-top:10px"></div>
+      <div id="job-failed" class="state-line state-line--danger"></div>
+      <button class="btn btn-secondary" id="btn-resume" style="display:none;margin-top:8px">继续未完成任务</button>
+    </div>
   </div>
 
   <!-- 三、知识点列表 -->
@@ -88,6 +97,11 @@
   'use strict';
 
   let kps = [];
+  let jobId = null;
+  let pollTimer = null;
+  let shownIds = new Set();
+
+  const TERMINAL = ['done', 'partial', 'failed', 'interrupted'];
 
   function setMsg(id, cls, t)
   {
@@ -101,7 +115,7 @@
   {
     try
     {
-      const r = await fetch('/api/kp?limit=1000', { cache: 'no-store' });
+      const r = await fetch('/api/kp?size=1000', { cache: 'no-store' });
       const j = await r.json();
       kps = j.data || [];
     }
@@ -157,6 +171,7 @@
       document.getElementById('content').focus();
     });
     document.getElementById('btn-solidify').addEventListener('click', solidifyAll);
+    document.getElementById('btn-resume').addEventListener('click', resumeJob);
     document.getElementById('btn-export-batch').addEventListener('click', exportBatch);
     document.getElementById('filter').addEventListener('input', render);
 
@@ -200,28 +215,163 @@
     catch (e) { setMsg('add-msg', 'state-line--danger', '网络异常'); }
   }
 
+  function showJobPanel(show)
+  {
+    document.getElementById('job-panel').style.display = show ? '' : 'none';
+  }
+
+  function resetJobPanel()
+  {
+    shownIds = new Set();
+    document.getElementById('job-status').textContent = '';
+    document.getElementById('job-bar').style.width = '0';
+    document.getElementById('job-done').textContent = '';
+    document.getElementById('job-failed').textContent = '';
+    document.getElementById('btn-resume').style.display = 'none';
+  }
+
+  function renderJob(j)
+  {
+    showJobPanel(true);
+    const label = {
+      pending: '排队中', running: '正在生成', done: '已完成',
+      partial: '部分完成', failed: '失败', interrupted: '已中断'
+    }[j.status] || j.status;
+    document.getElementById('job-status').className = 'state-line';
+    document.getElementById('job-status').textContent =
+      `${label}：完成 ${j.done}/${j.total}，失败 ${j.failed}（${j.progress}%）`;
+    document.getElementById('job-bar').style.width = Math.max(0, Math.min(100, j.progress || 0)) + '%';
+
+    const box = document.getElementById('job-done');
+    (j.completed_ids || []).forEach(id =>
+    {
+      if (shownIds.has(id)) return;
+      shownIds.add(id);
+      const kp = kps.find(k => Number(k.id) === Number(id));
+      const row = document.createElement('div');
+      const a = document.createElement('a');
+      a.href = '/pages/kp-detail.html?id=' + id;
+      a.textContent = '✓ ' + (kp ? (kp.standard_content || kp.user_input_content) : ('#' + id));
+      a.style.marginRight = '10px';
+      row.appendChild(a);
+      box.appendChild(row);
+    });
+
+    const failed = document.getElementById('job-failed');
+    failed.textContent = (j.failed_items || [])
+      .map(f => `${f.input || ('#' + f.knowledge_id)}：${f.error}`).join('；');
+
+    const canResume = ['interrupted', 'partial', 'failed'].includes(j.status);
+    document.getElementById('btn-resume').style.display = canResume ? '' : 'none';
+  }
+
+  function stopPolling()
+  {
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+  }
+
+  function startPolling(id)
+  {
+    stopPolling();
+    jobId = id;
+    async function tick()
+    {
+      try
+      {
+        const r = await fetch('/api/kp/solidify/jobs/' + encodeURIComponent(id), { cache: 'no-store' });
+        if (r.status === 404)
+        {
+          stopPolling();
+          setMsg('op-msg', 'state-line--danger', '任务记录已失效；已生成的词条仍可查看。');
+          load();
+          return;
+        }
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        renderJob(j);
+        if (TERMINAL.includes(j.status))
+        {
+          stopPolling();
+          if (j.status === 'done') setMsg('op-msg', 'state-line--success', `固化完成：${j.done}/${j.total}`);
+          else setMsg('op-msg', 'state-line--danger', `固化结束（${j.status}）：成功 ${j.done}，失败 ${j.failed}`);
+          load();
+          return;
+        }
+        pollTimer = setTimeout(tick, 1500);
+      }
+      catch (e)
+      {
+        stopPolling();
+        setMsg('op-msg', 'state-line--danger', '进度查询失败：' + e.message);
+      }
+    }
+    tick();
+  }
+
+  async function restoreActiveJob()
+  {
+    try
+    {
+      const r = await fetch('/api/kp/solidify/jobs?limit=10', { cache: 'no-store' });
+      if (!r.ok) return;
+      const j = await r.json();
+      const jobs = (j && j.data) || [];
+      const active = jobs.find(x => x.status === 'running' || x.status === 'pending');
+      const stopped = jobs.find(x => ['interrupted', 'partial', 'failed'].includes(x.status));
+      const target = active || stopped;
+      if (!target) return;
+      resetJobPanel();
+      jobId = target.job_id;
+      renderJob(target);
+      if (active) startPolling(active.job_id);
+      else setMsg('op-msg', '', '存在未完成任务，可点击“继续未完成任务”。');
+    }
+    catch (e) {}
+  }
+
+  async function resumeJob()
+  {
+    if (!jobId) return;
+    const btn = document.getElementById('btn-resume');
+    btn.disabled = true;
+    try
+    {
+      const r = await fetch('/api/kp/solidify/jobs/' + encodeURIComponent(jobId) + '/resume', { method: 'POST' });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      setMsg('op-msg', '', '已继续未完成任务…');
+      startPolling(jobId);
+    }
+    catch (e)
+    {
+      setMsg('op-msg', 'state-line--danger', '继续失败：' + e.message);
+    }
+    btn.disabled = false;
+  }
+
   async function solidifyAll()
   {
     const btn = document.getElementById('btn-solidify');
     btn.disabled = true;
-    setMsg('op-msg', '', 'AI 固化中，请稍候…');
+    setMsg('op-msg', '', '正在提交批量固化任务…');
     try
     {
-      const r = await fetch('/api/kp/solidify', { method: 'POST' });
+      const r = await fetch('/api/kp/solidify/async', { method: 'POST' });
       const j = await r.json();
-      if (j.success !== undefined)
+      if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      if (!j.total)
       {
-        const suffix = j.error ? '（' + j.error + '）' : '';
-        setMsg('op-msg', 'state-line--success',
-          `固化完成：成功 ${j.success}，失败 ${j.failed}${suffix}`);
+        setMsg('op-msg', 'state-line--success', '没有待固化的知识点。');
         load();
+        return;
       }
-      else
-      {
-        setMsg('op-msg', 'state-line--danger', j.error || '固化失败');
-      }
+      resetJobPanel();
+      showJobPanel(true);
+      setMsg('op-msg', '', j.reused ? '已有运行中的任务，正在显示其进度。' : '任务已提交，后台生成中…');
+      startPolling(j.job_id);
+      load();
     }
-    catch (e) { setMsg('op-msg', 'state-line--danger', '网络异常'); }
+    catch (e) { setMsg('op-msg', 'state-line--danger', '提交失败：' + e.message); }
     btn.disabled = false;
   }
 
@@ -234,7 +384,11 @@
       const j = await r.json();
       if (r.ok && j.ok)
       {
-        setMsg('op-msg', 'state-line--success', '固化成功');
+        const eff = Number(j.id);
+        if (eff && eff !== Number(id))
+          setMsg('op-msg', 'state-line--success', '固化成功，已合并到已有词条 #' + eff);
+        else
+          setMsg('op-msg', 'state-line--success', '固化成功');
         load();
       }
       else
@@ -292,7 +446,7 @@
   }
 
   attachHandlers();
-  load();
+  load().then(restoreActiveJob);
 })();
 </script>
 </body>

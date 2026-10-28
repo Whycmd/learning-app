@@ -29,16 +29,18 @@ namespace prompts {
  * 约束：只输出 JSON，不输出 markdown 或额外解释
  */
 static const std::string KP_SOLIDIFY_SYSTEM =
-  "You are an English learning assistant. Return ONLY a valid JSON object, no markdown, no explanation."
-  "语言规则：所有面向学习者的说明性文本（词根拆解、固定搭配说明、同义词辨析、文化延伸、评语等）用中文输出；目标词、英文例句、英文原文、词性等纯英文内容保持英文。";
+  "You are an English learning assistant. Return ONLY a valid JSON object, no extra explanation. "
+  "The value of markdown_content must be an array of Markdown lines, one line per element."
+  "语言规则：所有面向学习者的说明性文本（词根拆解、固定搭配说明、同义词辨析、文化延伸、评语等）用中文输出；目标词、英文例句、英文原文、文化俗语、词性等纯英文内容保持英文。";
 
 /**
  * KP_SOLIDIFY_BATCH_SYSTEM — 批量固化专用 system prompt（强调数组输出）
  * 使用者：KnowledgeService::solidifyBatch
  */
 static const std::string KP_SOLIDIFY_BATCH_SYSTEM =
-  "You are an English learning assistant. Return ONLY a valid JSON array, no markdown, no explanation."
-  "语言规则：所有面向学习者的说明性文本（词根拆解、固定搭配说明、同义词辨析、文化延伸、评语等）用中文输出；目标词、英文例句、英文原文、词性等纯英文内容保持英文。";
+  "You are an English learning assistant. Return ONLY a valid JSON array, no extra explanation. "
+  "The value of each markdown_content must be an array of Markdown lines, one line per element."
+  "语言规则：所有面向学习者的说明性文本（词根拆解、固定搭配说明、同义词辨析、文化延伸、评语等）用中文输出；目标词、英文例句、英文原文、文化俗语、词性等纯英文内容保持英文。";
 
 /**
  * EXERCISE_GENERATE_SYSTEM — 复习习题生成 system prompt
@@ -83,14 +85,9 @@ static const std::string DEFAULT_LEARNER_IDENTITY = "高中生";
  * 内容：依次要求 AI 输出六个维度的信息
  */
 static const std::string KP_SIX_SECTIONS =
-  "可以考虑给出：\n"
-  "一、核心含义与例句：先给英文核心释义（若过于冗长或难以解释清楚或学习者语言水平较低，则使用中文），再配英文经典例句；每一个含义都要紧接着给出例句。\n"
-  "二、词根与词源：词根拆解、词源追溯。\n"
-  "三、同源词汇：同根 / 同词族的词。\n"
-  "四、典故、俗语与固定搭配：列出固定搭配（争取各给例句），并说明相关典故、俗语与应用场景。\n"
-  "五、同义词及辨析：列出同义词，同义替换词，并说明彼此用法差异。\n"
-  "六、补充相关知识（重点）：使用频率、语域说明、文化延伸、同类其他词语等。\n"
-  "七、根据学习者身份给出其他补充相关知识\n\n";
+  "内容维度（择要写入 markdown_content）：\n"
+  "核心含义与例句；词根与词源；同源词汇；典故、俗语与固定搭配；同义词辨析；使用频率、语域说明、文化延伸、同类其他词语。\n"
+  "只写该词确实存在且有讲解价值的维度；不存在的维度整项不出现，禁止“无固定搭配”等占位句。\n\n";
 
 /**
  * KP_RULES — 固化规则（单次 / 批量固化共用，不含 remark 动态段）
@@ -98,11 +95,13 @@ static const std::string KP_SIX_SECTIONS =
  */
 static const std::string KP_RULES =
   "规则：\n"
-  "- 应当根据实际情况对内容进行增减，如写作高频词汇讲解写作用法\n"
-  "- 若某一项不适用，只选择其中价值较高的项输出，应直接略过（字段留空字符串或省略），禁止输出“无 / 没有 / no / none / not applicable”之类说明；\n"
-  "- 控制篇幅，讲清重点即可，不要冗长堆砌；\n"
-  "- 对较长的短语，对其中包含的核心单词和子短语予以额外解析（填入 phrase_analysis 字段，含同类高频短语和语法考点）。\n\n";
-
+  "- 根据实际情况增减内容，如写作高频词补写作用法。\n"
+  "- 不适用项整项省略：字段留空（数组用 []）或删除章节；禁止“无 / 暂无 / 没有 / 未找到 / 不适用”等占位句，宁可少写一节，不留空章节。\n"
+  "- 直接给核心内容：删除“是一个 / 指的是 / 可以用来表示 / 也就是说”等套话及“首先 / 其次 / 总之”等填充词。\n"
+  "- 控制篇幅，不重复。\n"
+  "- standard_content 必须是目标词本身（可修正拼写、统一词形），禁止替换为近义词。\n"
+  "- 较长短语额外解析其中核心词、子短语、同类高频短语与语法考点，写入短语解析章节。\n"
+  "- 参考网上已有教育资料。\n\n";
 /**
  * KP_REMARK_RULE — 用户备注规则（仅单次固化，动态拼接 remark 值）
  * Service 层使用时需做 std::string replace：将 {REMARK} 替换为实际备注文本
@@ -116,7 +115,7 @@ static const std::string KP_REMARK_RULE =
  */
 static const std::string KP_JSON_SCHEMA =
   "{\"standard_content\":\"最简英文单词或短语\", \"difficulty\":1-5整数, "
-  "\"phonetic\":\"音标如/ˈventʃər/\", "
+  "\"phonetic\":\"国际音标（IPA 格式）\", "
   "\"definitions\":[{\"pos\":\"词性\",\"meaning\":\"英文核心含义\",\"example\":\"经典例句\"}], "
   "\"root_analysis\":\"词根拆解与词源追溯\", "
   "\"word_family\":[\"同源词汇\"], "
@@ -126,6 +125,76 @@ static const std::string KP_JSON_SCHEMA =
   "\"phrase_analysis\":\"(仅短语)内嵌单词/子短语额外解析\", "
   "\"frequency_note\":\"使用频率\", \"register_note\":\"语域说明\", "
   "\"cultural_note\":\"文化延伸\", \"related_words\":\"同类其他词语\"}";
+
+/**
+ * KP_MARKDOWN_RULES — 讲解类内容 Markdown 写作规则（单次 / 批量固化共用）
+ * 内容：章节组织、排版、去重与篇幅约束
+ */
+static const std::string KP_MARKDOWN_RULES =
+  "markdown_content 生成核心讲解部分，写作要求：\n"
+  "- 必须为字符串数组：每个元素是一行 Markdown（元素内不得含换行符），按顺序拼接即为完整正文；禁止把多行文本塞进单个元素、禁止输出真实换行；\n"
+  "- 用 # / ## / ### 组织章节，开篇用“# 单词精讲”；关键术语用 **粗体**，英文例句用 > 引用，并列要点用 - 列表；\n"
+  "- 按实际情况包含以下几项：音标与读音要点、词根与词源、同源词汇、典故俗语与搭配说明、同义词辨析、短语解析、使用频率、语域说明、文化延伸、同类词语、学习提示；选择 2–6 个对本词最有价值的写入；\n"
+  "- 此外考虑增加该词特色章节，如可以拓展的学习内容、包含该知识点的名言等\n"
+  "- 讲解风格、难度与英文占比(英文例句、释义与英文原文合计，保证默认约40%)必须匹配学习者身份：高中/高考 → 英文占比不少于正文的 50%，中文只保留必要的用法说明与辨析；考研/雅思/托福/GRE → 以英文讲解为主，仅关键辨析用中文；\n"
+  "- 多给英文例句：核心义项、固定搭配、同义辨析各至少 1 条,不逐条翻译，只说明有难度的部分；\n"
+  "- 不求面面俱到，优先逻辑清晰、阅读顺畅：同类内容合并成一节；短句为主；\n"
+  "- 语言风格幽默生动、有画面感，可用轻松类比，但必须准确；\n"
+  "- 不重复 definitions / collocations / synonyms / antonyms 已列清单，但难理解处必须补用法与辨析；\n"
+  "- 保持连贯讲解，控制篇幅；每片 3 个单词控制在 500–1600 个汉字（英文例句不计），最多 2500 汉字；\n"
+  "- 不适用章节整节删除（标题与正文一起删）；禁止“无固定搭配 / 暂无 / 没有 / 不适用”等占位说明、空列表、空引用；\n"
+  "- 展示说明用中文，目标词、英文例句、英文原文与引用保持英文。\n\n";
+
+/**
+ * KP_MARKDOWN_EXAMPLE — Markdown 课件写作示例（单次 / 批量固化共用）
+ * 内容：参照《知识点拓展输出文档示例.docx》的单词语料结构，给出一个完整词条样板
+ * 约束：只示范章节、排版与内容颗粒度；实际词条必须按目标词重新创作，禁止照抄本示例
+ * 插入点：KP_SOLIDIFY_ONE_USER / KP_SOLIDIFY_BATCH_USER 的 {KP_MARKDOWN_EXAMPLE}
+ */
+static const std::string KP_MARKDOWN_EXAMPLE =
+  "【Markdown 课件示例：单个词条，仅示范结构与写法；实际内容必须按目标词重新创作，禁止照抄】\n"
+  "# 单词精讲：venture\n"
+  "**音标**：/ˈventʃə(r)/\n"
+  "**使用频率**：中频正式词汇，多用于书面、商务、新闻、文学语境，口语使用较少，高考、四六级、考研高频词。\n"
+  "\n"
+  "## 核心释义与真题例句\n"
+  "1. **v.** to go somewhere dangerous or unknown; to do something risky（冒险去；大胆尝试）\n"
+  "   > Few people dare to venture into the dense forest alone.\n"
+  "2. **v.** to say something cautiously or bravely（大胆提出；冒昧说）\n"
+  "   > I venture to say that his plan is not practical.\n"
+  "\n"
+  "## 词根与词源\n"
+  "源自拉丁语 *ventus*（运气、风险），词根 **vent-** 表示“冒险、尝试”，最初指“凭借运气做事”，14 世纪进入英语，逐渐衍生出冒险、投资、尝试等含义。\n"
+  "\n"
+  "## 同源词汇\n"
+  "- **venturesome** adj. 冒险的；鲁莽的\n"
+  "  > It is venturesome to invest all money in one project.（把所有钱投入一个项目）\n"
+  "\n"
+  "## 固定搭配\n"
+  "- **venture into** 冒险进入；大胆从事\n"
+  "- **joint venture** 合资企业\n"
+  "\n"
+  "## 同义词及辨析\n"
+  "- **venture**：侧重主动明知有风险，仍大胆尝试，多指投资领域的冒险，正式用语。\n"
+  "- **risk**：通用词，侧重被动承担风险，常用搭配 risk doing sth.。\n"
+  "- **dare**：侧重主观勇气，敢于做常人不敢做的事，语气通俗。\n"
+  "\n"
+  "## 重点补充\n"
+  "venture 词义核心围绕“风险与尝试”。商务场景中 joint venture 为专业高频术语；书面写作中 venture to say 可委婉提异议，谦逊高级，适配议论文、书信。该词无贬义，侧重“勇敢探索、突破”，区别于 reckless（鲁莽冒险）。变形：过去式/过去分词 ventured，现在分词 venturing，无特殊变形。考研完形常考 venture 与 risk 的用法辨析。\n"
+  "\n"
+  "（短语词条按同样结构组织，可增加“固定用法与语法考点”章节；以上仅为写法示例，不得复制其中的单词与例句；）\n\n";
+
+/**
+ * KP_HYBRID_JSON_SCHEMA — 混合模式 JSON schema（对象格式，单次固化用）
+ * 结构化：standard_content / difficulty / definitions / collocations / synonyms / antonyms
+ * 富文本：markdown_content（讲解类内容整块 Markdown）
+ */
+static const std::string KP_HYBRID_JSON_SCHEMA =
+  "{\"standard_content\":\"目标词\", \"difficulty\":1-5, "
+  "\"definitions\":[{\"pos\":\"词性\",\"meaning\":\"英文核心含义\",\"example\":\"英文例句\"}], "
+  "\"collocations\":[{\"collocation\":\"固定搭配\",\"example\":\"例句\"}], "
+  "\"synonyms\":[\"同义词\"], \"antonyms\":[\"反义词\"], "
+  "\"markdown_content\":[\"# 单词精讲\",\"## 核心含义与例句\",\"> 英文例句\"]}";
 
 // ==========================================================================
 // User 角色模板（中文，较长，用于详细说明任务要求）
@@ -139,17 +208,20 @@ static const std::string KP_JSON_SCHEMA =
  *   {REMARK_LINE} — 可选的 remark 规则行（有备注时才插入，来自 KP_REMARK_RULE 替换后的文本）
  *
  * 使用者：KnowledgeService::solidifyOne
- * 输出格式：单个 JSON 对象（schema 见 KP_JSON_SCHEMA）
+ * 输出格式：单个 JSON 对象（schema 见 KP_HYBRID_JSON_SCHEMA）
  */
 static const std::string KP_SOLIDIFY_ONE_USER =
-  "你是一位资深英语教研专家。请对下面这个英语单词或短语做一次完整、连贯的精讲，用于学习者的知识点拓展。\n"
-  "学习者身份：{LEARNER_IDENTITY}\n（请据此身份对应的学习目标与考察方向调整内容侧重与深度——例如：高中生→高考词汇/语法/长难句/阅读写作；CET-4/6→核心词汇与题型训练；考研→长难句/翻译/写作套路；雅思/托福→听说读写四科应用与学术场景；GRE→高阶学术词汇与批判性阅读。）\n\n"
+  "你是一位资深英语教研专家。你的任务是对下面这个英语单词或短语做一次完整、连贯的精讲，用于学习者的知识点拓展。\n"
+  "学习者身份：{LEARNER_IDENTITY}\n（按身份调整侧重与深度：高考重词汇语法阅读写作；四六级重核心词汇与题型；考研重长难句翻译写作；雅思托福重四科应用；GRE 重学术词汇与批判阅读。）\n\n"
   "{KP_SIX_SECTIONS}"
   "{KP_RULES}"
   "{REMARK_LINE}"
   "请把内容整理为一个 JSON 对象返回，字段：\n"
-  "{KP_JSON_SCHEMA}\n\n"
+  "{KP_HYBRID_SCHEMA}\n\n"
+  "{KP_MARKDOWN_RULES}"
+  "{KP_MARKDOWN_EXAMPLE}"
   "目标词：\"{USER_INPUT}\"\n\n"
+  "{EXTRA_NOTE}"
   "只输出 JSON 对象，不要任何额外文字。";
 
 /**
@@ -159,16 +231,18 @@ static const std::string KP_SOLIDIFY_ONE_USER =
  *   {WORD_LIST} — 编号词表，格式为多行 "1. \"word\"（备注:xxx）" 由 Service 层循环拼接
  *
  * 使用者：KnowledgeService::solidifyBatch
- * 输出格式：JSON 数组，每个元素 schema 同 KP_JSON_SCHEMA
+ * 输出格式：JSON 数组，每个元素 schema 同 KP_HYBRID_JSON_SCHEMA
  */
 static const std::string KP_SOLIDIFY_BATCH_USER =
   "你是一位资深英语教研专家。下面给你一组英语单词和短语，"
-  "请你对其中【每一个】词都做一次完整、连贯的精讲，用于学习者的知识点拓展。\n"
-  "学习者身份：{LEARNER_IDENTITY}\n（请据此身份对应的学习目标与考察方向调整内容侧重与深度——例如：高中生→高考词汇/语法/长难句/阅读写作；CET-4/6→核心词汇与题型训练；考研→长难句/翻译/写作套路；雅思/托福→听说读写四科应用与学术场景；GRE→高阶学术词汇与批判性阅读。）\n\n"
+  "你的任务是对其中【每一个】词都做一次完整、连贯的精讲，用于学习者的知识点拓展，讲解内容符合整体主题方向。\n"
+  "学习者身份：{LEARNER_IDENTITY}\n（按身份调整侧重与深度：高考重词汇语法阅读写作；四六级重核心词汇与题型；考研重长难句翻译写作；雅思托福重四科应用；GRE 重学术词汇与批判阅读。）\n\n"
   "{KP_SIX_SECTIONS}"
   "{KP_RULES}"
   "请把全部内容整理为一个 JSON 数组返回，每个数组元素对应一个词，顺序与下方词表一致，元素字段：\n"
-  "{KP_JSON_SCHEMA}\n\n"
+  "{KP_HYBRID_SCHEMA}\n\n"
+  "{KP_MARKDOWN_RULES}"
+  "{KP_MARKDOWN_EXAMPLE}"
   "词表：\n"
   "{WORD_LIST}\n\n"
   "只输出 JSON 数组，不要任何额外文字。";

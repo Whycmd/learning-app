@@ -4,9 +4,10 @@
   "chat_model": "glm-4-flash",
   "provider_type": "openai_compatible",
   "embedding_model": "",
-  "request_timeout_sec": 120,
+  "request_timeout_sec": 180,
   "max_tokens_default": 2048,
   "temperature_default": 0.4,
   "retry_times": 2,
-  "retry_interval_sec": 2
+  "retry_interval_sec": 2,
+  "max_concurrency": 3
 }

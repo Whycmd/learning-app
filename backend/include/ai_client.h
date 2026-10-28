@@ -6,6 +6,7 @@
 #include <map>
 #include <sstream>
 #include <memory>
+#include <atomic>
 #include <fstream>
 #include <unistd.h>
 #include "json.h"
@@ -16,7 +17,7 @@ namespace eng {
 class AiClient {
   AiConfig cfg_;
   std::unique_ptr<IAiProvider> provider_;
-  bool degraded_ = false;
+  std::atomic<bool> degraded_{false};
 public:
   void setConfig(const AiConfig& c) {
     cfg_ = c;
@@ -88,6 +89,9 @@ public:
     c.temperature_default = getDouble("temperature_default", 0.7);
     c.retry_times = getInt("retry_times", 2);
     c.retry_interval_sec = getInt("retry_interval_sec", 2);
+    c.max_concurrency = getInt("max_concurrency", 2);
+    if (c.max_concurrency < 1) c.max_concurrency = 2;
+    if (c.max_concurrency > 16) c.max_concurrency = 16;
     return c;
   }
 

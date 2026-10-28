@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, PageBreak, Table, TableRow, TableCell, WidthType, BorderStyle } = require('docx');
+const { renderMarkdownBlocks, mergeMarkdownStyles } = require('./md_to_docx');
 
 const [, , modeArg, jsonPath, outDir] = process.argv;
 if (!modeArg || !jsonPath || !outDir) {
@@ -88,18 +89,8 @@ function getExtra(kp, type) {
   return found ? found.content : '';
 }
 
-// ---- 构建文档内容 ----
-const children = [];
-children.push(titleLine('英语学习知识点拓展'));
-children.push(p(`共 ${kps.length} 个知识点  ·  生成时间: ${new Date().toLocaleString('zh-CN')}`, { color: COLOR_MUTED, after: 200 }));
-
-for (let i = 0; i < kps.length; i++) {
-  const kp = kps[i];
-  if (i > 0) children.push(pageBreak());
-
-  // 知识点标题 + 音标
-  children.push(kpHeader(i + 1, kp));
-
+// ---- 旧格式：音标/词根/搭配/同义/补充等逐条 extras ----
+function appendLegacyBody(children, kp) {
   // 使用频率（页眉下简要一行）
   const freq = getExtra(kp, 'frequency');
   if (freq) {
@@ -200,17 +191,54 @@ for (let i = 0; i < kps.length; i++) {
   }
 }
 
-children.push(empty(300));
-children.push(new Paragraph({
-  alignment: AlignmentType.CENTER,
-  children: [new TextRun({ text: '— 文档由智谱AI GLM-4-Flash 固化生成 · 永久复用 —', size: 18, color: COLOR_MUTED, italics: true })]
-}));
+// ---- 构建文档内容 ----
+async function buildChildren(kps) {
+  const children = [];
+  const converters = [];
+  children.push(titleLine('英语学习知识点拓展'));
+  children.push(p(`共 ${kps.length} 个知识点  ·  生成时间: ${new Date().toLocaleString('zh-CN')}`, { color: COLOR_MUTED, after: 200 }));
 
-const doc = new Document({ sections: [section(children)] });
+  for (let i = 0; i < kps.length; i++) {
+    const kp = kps[i];
+    if (i > 0) children.push(pageBreak());
+
+    // 知识点标题 + 音标
+    children.push(kpHeader(i + 1, kp));
+
+    // v1.4.0-T010：新格式精讲整块 Markdown；无则保持旧格式
+    const markdown = getExtra(kp, 'markdown_content');
+    if (markdown && String(markdown).trim()) {
+      const rendered = await renderMarkdownBlocks(markdown);
+      if (rendered.blocks.length) children.push(...rendered.blocks);
+      if (rendered.converter) converters.push(rendered.converter);
+    } else {
+      appendLegacyBody(children, kp);
+    }
+  }
+
+  children.push(empty(300));
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    children: [new TextRun({ text: '— 文档由智谱AI GLM-4-Flash 固化生成 · 永久复用 —', size: 18, color: COLOR_MUTED, italics: true })]
+  }));
+
+  return { children, converters };
+}
 
 (async () => {
   try {
     fs.mkdirSync(outDir, { recursive: true });
+    const { children, converters } = await buildChildren(kps);
+    const options = { sections: [section(children)] };
+    if (converters.length) {
+      const styles = mergeMarkdownStyles(converters);
+      if (styles.numbering) options.numbering = styles.numbering;
+      options.styles = {
+        paragraphStyles: styles.paragraphStyles,
+        characterStyles: styles.characterStyles,
+      };
+    }
+    const doc = new Document(options);
     const buf = await Packer.toBuffer(doc);
     const outName = isBatch ? 'knowledge_points_batch.docx' : `knowledge_point_${modeArg}.docx`;
     const outPath = path.join(outDir, outName);

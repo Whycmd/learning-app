@@ -19,6 +19,8 @@ struct AiConfig {
   double temperature_default=0.7;
   int retry_times=2;
   int retry_interval_sec=2;
+  // [CONFIG] AI 批量任务并发数（config/ai.json），换模型时可直接调整
+  int max_concurrency=2;
 };
 
 // AI 请求/响应结构（各 Provider 共用）

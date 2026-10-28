@@ -9,6 +9,41 @@
 <link rel="stylesheet" href="/static/components.css">
 <script src="/static/theme.js"></script>
 <script src="/static/nav.js"></script>
+<script src="/static/marked.min.js"></script>
+<script src="/static/md-render.js"></script>
+<style>
+  /* T010：Markdown 精讲排版，颜色/间距取自 style.css :root 令牌 */
+  .md-content { line-height: 1.75; color: var(--ink-soft); font-size: 14px; }
+  .md-content h1, .md-content h2, .md-content h3,
+  .md-content h4, .md-content h5, .md-content h6 {
+    color: var(--ink); font-family: var(--font-display); line-height: 1.4;
+    margin: var(--sp-md) 0 var(--sp-xs);
+  }
+  .md-content h1 { font-size: 20px; }
+  .md-content h2 { font-size: 17px; }
+  .md-content h3 { font-size: 15px; }
+  .md-content h4, .md-content h5, .md-content h6 { font-size: 14px; }
+  .md-content p { margin: var(--sp-xs) 0; }
+  .md-content ul, .md-content ol { margin: var(--sp-xs) 0; padding-left: 1.6em; }
+  .md-content li { margin: 2px 0; }
+  .md-content blockquote {
+    margin: var(--sp-sm) 0; padding: 2px 0 2px var(--sp-sm);
+    border-left: 3px solid var(--gold); color: var(--muted); background: var(--gold-wash);
+  }
+  .md-content code {
+    padding: 1px 5px; border-radius: var(--r-sm);
+    background: var(--paper-deep); font-size: 0.92em;
+  }
+  .md-content pre {
+    margin: var(--sp-sm) 0; padding: var(--sp-sm); border-radius: var(--r-sm);
+    background: var(--paper-deep); overflow-x: auto;
+  }
+  .md-content pre code { padding: 0; background: none; }
+  .md-content hr { border: none; border-top: 1px dashed var(--line); margin: var(--sp-md) 0; }
+  .md-content table { border-collapse: collapse; margin: var(--sp-sm) 0; }
+  .md-content th, .md-content td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
+  .md-content a { color: var(--accent); text-decoration: underline; }
+</style>
 </head>
 <body>
 <div id="topbar-slot"></div>
@@ -72,7 +107,7 @@
   {
     try
     {
-      const r = await fetch('/api/kp?limit=1000', { cache: 'no-store' });
+      const r = await fetch('/api/kp?size=1000', { cache: 'no-store' });
       const j = await r.json();
       const kps = j.data || [];
       const sel = document.getElementById('selector');
@@ -81,8 +116,17 @@
       ).join('');
       document.getElementById('sel-meta').textContent = '共 ' + kps.length + ' 条';
       const preset = new URLSearchParams(location.search).get('id');
-      if (preset) sel.value = preset;
-      if (kps.length) loadDetail();
+      const presetHit = preset && kps.some(k => String(k.id) === preset);
+      if (presetHit) sel.value = preset;
+      if (kps.length) await loadDetail();
+      else document.getElementById('detail').innerHTML =
+        '<div class="wing-card"><p class="state-line">暂无知识点，请先录入并固化。</p></div>';
+      if (preset && !presetHit)
+      {
+        const msg = document.getElementById('detail-msg');
+        msg.className = 'state-line state-line--danger';
+        msg.textContent = '词条 #' + preset + ' 不存在或已被合并，已显示最新词条';
+      }
     }
     catch (e)
     {
@@ -190,6 +234,22 @@
       </section>`);
     }
 
+    // 讲解类内容：新格式为单条 Markdown；旧格式仍走下方逐条 <br> 渲染
+    if (extras.markdown_content)
+    {
+      const mdHtml = typeof window.renderMarkdown === 'function'
+        ? window.renderMarkdown(extras.markdown_content)
+        : escapeHtml(extras.markdown_content).replace(/\n/g, '<br>');
+      blocks.push(`
+      <section class="wing-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">${extraIcon('markdown_content')}</span>
+          <span class="wing-card__title">单词精讲</span>
+        </div>
+        <div class="md-content">${mdHtml}</div>
+      </section>`);
+    }
+
     // 扩展板块（词根/同源/典故等）
     for (const t of EXTRA_ORDER)
     {
@@ -229,6 +289,7 @@
   {
     // 不同 extra 类型给不同 SVG 图标（与 wing-card__ico 配合）
     const icons = {
+      markdown_content: '<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
       phonetic:     '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
       root:         '<svg viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M12 2a5 5 0 0 1 5 5v0a5 5 0 0 1-5 5"/><path d="M12 7a5 5 0 0 0-5 5v0a5 5 0 0 0 5 5"/></svg>',
       word_family:  '<svg viewBox="0 0 24 24"><path d="M17 10H8"/><path d="M17 14H8"/><path d="M21 6H3"/><path d="M21 18H3"/></svg>',

@@ -4,6 +4,7 @@
 #include "../include/db.h"
 #include "../include/ai_client.h"
 #include "../include/knowledge_service.h"
+#include "../include/solidify_job.h"
 #include "../include/learning_service.h"
 #include "../include/question_service.h"
 #include "../include/maintenance_service.h"
@@ -28,6 +29,7 @@ using namespace eng;
 static Db g_db;
 static AiClient g_ai;
 static KnowledgeService* g_kpSvc = nullptr;
+static SolidifyJobService* g_jobSvc = nullptr;
 static LearningService* g_learnSvc = nullptr;
 static QuestionService* g_qSvc = nullptr;
 static MaintenanceService* g_maintSvc = nullptr;
@@ -118,6 +120,83 @@ static HttpResponse handleKpDetail(const HttpRequest& req) {
   return jsonOk(v.dump());
 }
 
+static JsonValue jobViewJson(const SolidifyJobView& v)
+{
+  JsonObject o;
+  o["job_id"] = JsonValue::makeString(v.id);
+  o["status"] = JsonValue::makeString(v.status);
+  o["total"] = JsonValue::makeInt(v.total);
+  o["done"] = JsonValue::makeInt(v.done);
+  o["failed"] = JsonValue::makeInt(v.failed);
+  o["progress"] = JsonValue::makeInt(v.progress);
+  o["create_time"] = JsonValue::makeString(v.createTime);
+  o["update_time"] = JsonValue::makeString(v.updateTime);
+  if (!v.error.empty()) o["error"] = JsonValue::makeString(v.error);
+  JsonArray ids;
+  for (int64_t id : v.completedIds) ids.push_back(JsonValue::makeInt(id));
+  o["completed_ids"] = JsonValue::makeArray(ids);
+  JsonArray failed;
+  for (auto& f : v.failedItems)
+  {
+    JsonObject fo;
+    fo["knowledge_id"] = JsonValue::makeInt(f.knowledgeId);
+    fo["input"] = JsonValue::makeString(f.input);
+    fo["error"] = JsonValue::makeString(f.error);
+    failed.push_back(JsonValue::makeObject(fo));
+  }
+  o["failed_items"] = JsonValue::makeArray(failed);
+  return JsonValue::makeObject(o);
+}
+
+static HttpResponse handleKpSolidifyAsync(const HttpRequest& req)
+{
+  auto rows = g_db.query("SELECT id FROM knowledge_points WHERE is_solidified=0 AND user_id="
+                         + std::to_string(RequestContext::currentUserId()) + " ORDER BY id");
+  std::vector<int64_t> ids;
+  for (auto& row : rows) ids.push_back(std::stoll(row["id"]));
+  if (ids.empty())
+    return jsonOk("{\"job_id\":\"\",\"total\":0,\"done\":0,\"failed\":0,\"status\":\"done\",\"reused\":false}");
+  auto r = g_jobSvc->createOrReuse(RequestContext::currentUserId(), ids);
+  JsonObject o;
+  o["job_id"] = JsonValue::makeString(r.jobId);
+  o["total"] = JsonValue::makeInt(r.total);
+  o["done"] = JsonValue::makeInt(0);
+  o["failed"] = JsonValue::makeInt(0);
+  o["status"] = JsonValue::makeString(r.status);
+  o["reused"] = JsonValue::makeBool(r.reused);
+  return jsonOk(JsonValue::makeObject(o).dump());
+}
+
+static HttpResponse handleKpSolidifyJobGet(const HttpRequest& req)
+{
+  SolidifyJobView v;
+  if (!g_jobSvc->get(req.pathParam("job_id"), RequestContext::currentUserId(), v))
+    return jsonErr(404, "job not found");
+  return jsonOk(jobViewJson(v).dump());
+}
+
+static HttpResponse handleKpSolidifyJobList(const HttpRequest& req)
+{
+  int limit = 20, offset = 0;
+  try { limit = std::stoi(req.queryParam("limit")); } catch (...) {}
+  try { offset = std::stoi(req.queryParam("offset")); } catch (...) {}
+  auto jobs = g_jobSvc->list(RequestContext::currentUserId(), limit, offset);
+  JsonArray arr;
+  for (auto& v : jobs) arr.push_back(jobViewJson(v));
+  return jsonOk(JsonValue::makeObject({{"data", JsonValue::makeArray(arr)}}).dump());
+}
+
+static HttpResponse handleKpSolidifyJobResume(const HttpRequest& req)
+{
+  auto r = g_jobSvc->resume(req.pathParam("job_id"), RequestContext::currentUserId());
+  if (!r.ok) return jsonErr(r.code, r.error);
+  JsonObject o;
+  o["ok"] = JsonValue::makeBool(true);
+  o["job_id"] = JsonValue::makeString(req.pathParam("job_id"));
+  o["status"] = JsonValue::makeString(r.status);
+  return jsonOk(JsonValue::makeObject(o).dump());
+}
+
 static HttpResponse handleKpSolidifyAll(const HttpRequest& req) {
   // 查询所有未固化的知识点ID，一次AI调用批量固化
   auto rows = g_db.query("SELECT id FROM knowledge_points WHERE is_solidified=0 AND user_id="
@@ -131,6 +210,11 @@ static HttpResponse handleKpSolidifyAll(const HttpRequest& req) {
   o["success"] = JsonValue::makeInt(r.success);
   o["failed"] = JsonValue::makeInt(r.failed);
   o["error"] = JsonValue::makeString(r.error);
+  if (!r.failed_reasons.empty()) {
+    JsonArray arr;
+    for (auto& s : r.failed_reasons) arr.push_back(JsonValue::makeString(s));
+    o["failed_reasons"] = JsonValue::makeArray(arr);
+  }
   if (r.success > 0) {
     int uid = RequestContext::currentUserId();
     g_treasurySvc->checkAndAwardMasterySeals(uid);
@@ -163,14 +247,14 @@ static HttpResponse handleKpSolidifyOne(const HttpRequest& req) {
   if (rows.empty()) return jsonErr(404, "not found");
   if (rows[0]["is_solidified"] == "1") return jsonErr(409, "already solidified");
   std::string err;
-  bool ok = g_kpSvc->solidifyOne(id, rows[0]["user_input_content"], rows[0]["remark"], err);
-  if (!ok) return jsonErr(500, err);
+  auto result = g_kpSvc->solidifyOne(id, rows[0]["user_input_content"], rows[0]["remark"], err);
+  if (!result.ok) return jsonErr(500, result.error.empty() ? err : result.error);
   int uid = RequestContext::currentUserId();
   g_treasurySvc->checkAndAwardMasterySeals(uid);
   g_treasurySvc->checkAndAwardTitle(uid);
-  std::string wordPath = g_kpSvc->exportWord(id);
+  std::string wordPath = g_kpSvc->exportWord(result.effective_id);
   std::ostringstream o;
-  o << "{\"id\":" << id << ",\"ok\":true,\"word_path\":\"" << Db::escape(wordPath) << "\"}";
+  o << "{\"id\":" << result.effective_id << ",\"ok\":true,\"word_path\":\"" << Db::escape(wordPath) << "\"}";
   return jsonOk(o.str());
 }
 
@@ -644,9 +728,9 @@ static HttpResponse handleAiTaskRetry(const HttpRequest& req) {
     if (kp.empty()) return jsonErr(404, "knowledge point not found");
     g_db.exec("UPDATE ai_tasks SET status='running' WHERE id=" + std::to_string(taskId));
     std::string err;
-    bool ok = g_kpSvc->solidifyOne(refId, kp[0]["user_input_content"], kp[0]["remark"], err);
+    auto result = g_kpSvc->solidifyOne(refId, kp[0]["user_input_content"], kp[0]["remark"], err);
     std::ostringstream o;
-    o << "{\"ok\":" << (ok?"true":"false") << ",\"error\":\"" << Db::escape(err) << "\"}";
+    o << "{\"ok\":" << (result.ok?"true":"false") << ",\"error\":\"" << Db::escape(err) << "\"}";
     return jsonOk(o.str());
   }
   return jsonErr(400, "unsupported task type: " + taskType);
@@ -663,7 +747,8 @@ static HttpResponse handleAiTaskRetryAll(const HttpRequest& req) {
     if (kp.empty()) continue;
     g_db.exec("UPDATE ai_tasks SET status='running' WHERE id=" + std::to_string(taskId));
     std::string err;
-    if (g_kpSvc->solidifyOne(refId, kp[0]["user_input_content"], kp[0]["remark"], err)) success++;
+    auto result = g_kpSvc->solidifyOne(refId, kp[0]["user_input_content"], kp[0]["remark"], err);
+    if (result.ok) success++;
     else failed++;
   }
   std::ostringstream o;
@@ -1125,7 +1210,7 @@ int main(int argc, char** argv) {
 
   std::string wordTmp = root + "/word_tmp";
   ::mkdir(wordTmp.c_str(), 0755);
-  KnowledgeService kpSvc(g_db, g_ai, wordTmp);
+  KnowledgeService kpSvc(g_db, g_ai, wordTmp, root);
   g_kpSvc = &kpSvc;
   LearningService learnSvc(g_db);
   g_learnSvc = &learnSvc;
@@ -1143,6 +1228,15 @@ int main(int argc, char** argv) {
   authSvc.purgeExpired();
   TreasuryService treasurySvc(g_db, root + "/config/rewards.json");
   g_treasurySvc = &treasurySvc;
+  // v1.4.0-T012：异步批量固化（2 路并发来自 config/ai.json）
+  SolidifyJobService jobSvc(g_db, kpSvc, aiCfg.max_concurrency, [](int uid) {
+    if (!g_treasurySvc) return;
+    g_treasurySvc->checkAndAwardMasterySeals(uid);
+    g_treasurySvc->checkAndAwardTitle(uid);
+  });
+  g_jobSvc = &jobSvc;
+  jobSvc.recoverOnStartup();
+  std::cout << "[solidify] max_concurrency=" << aiCfg.max_concurrency << std::endl;
   QuizService quizSvc(g_db, g_ai, kpSvc, learnSvc, treasurySvc);
   g_quizSvc = &quizSvc;
   // v1.3.0 文章模块：Service 初始化 + EFLLex 加载
@@ -1167,6 +1261,10 @@ int main(int argc, char** argv) {
   server.Get("/api/kp", handleKpList);
   server.Get("/api/kp/:id", handleKpDetail);
   server.Post("/api/kp/solidify", handleKpSolidifyAll);
+  server.Post("/api/kp/solidify/async", handleKpSolidifyAsync);
+  server.Get("/api/kp/solidify/jobs", handleKpSolidifyJobList);
+  server.Get("/api/kp/solidify/jobs/:job_id", handleKpSolidifyJobGet);
+  server.Post("/api/kp/solidify/jobs/:job_id/resume", handleKpSolidifyJobResume);
   server.Post("/api/kp/:id/solidify", handleKpSolidifyOne);
   server.Post("/api/kp/:id/export-word", handleKpExportWord);
   server.Post("/api/kp/export-batch-word", handleKpExportBatchWord);

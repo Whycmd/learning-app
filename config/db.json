@@ -4,7 +4,7 @@
   "user": "eng_app",
   "password_file": "../../../../../.local/mysql/.root_pw",
   "database": "english_learning",
-  "socket": "/Users/junwang/.local/run/mysql.sock",
+  "socket": "/tmp/mysql_sock/mysql.sock",
   "charset": "utf8mb4",
   "connect_timeout": 5,
   "retry_times": 3,

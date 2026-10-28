@@ -15,6 +15,8 @@ const BACKUP_DIR = '/Users/junwang/Desktop/王浩源/英语/英语学习应用/b
 
 let pass = 0, fail = 0;
 const failures = [];
+// 本套件使用独立测试用户，所有读写与清理都限定在其名下，不触碰真实用户数据
+let COOKIE = null, TEST_UID = 0, TEST_USER = '';
 function ok(name, msg='') { pass++; console.log(`  ✓ ${name}${msg ? ' — ' + msg : ''}`); }
 function ko(name, msg) { fail++; failures.push({name, msg}); console.log(`  ✗ ${name} — ${msg}`); }
 
@@ -22,6 +24,7 @@ function req(method, urlPath, body) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : null;
     const headers = { 'Content-Type':'application/json' };
+    if (COOKIE) headers['Cookie'] = 'eng_session=' + COOKIE;
     if (data) headers['Content-Length'] = Buffer.byteLength(data);
     else headers['Content-Length'] = 0;
     const r = http.request({ host:'127.0.0.1', port:8088, method, path:urlPath,
@@ -30,8 +33,11 @@ function req(method, urlPath, body) {
       res.on('data', c => chunks.push(c));
       res.on('end', () => {
         const text = Buffer.concat(chunks).toString('utf8');
-        try { resolve({ status:res.statusCode, json:JSON.parse(text), text }); }
-        catch { resolve({ status:res.statusCode, json:null, text }); }
+        const sc = res.headers['set-cookie'];
+        let setCookie = null;
+        if (sc) { const m = /eng_session=([a-f0-9]*)/.exec(Array.isArray(sc) ? sc[0] : sc); if (m) setCookie = m[1]; }
+        try { resolve({ status:res.statusCode, json:JSON.parse(text), text, setCookie }); }
+        catch { resolve({ status:res.statusCode, json:null, text, setCookie }); }
       });
     });
     r.on('error', reject);
@@ -49,8 +55,45 @@ function runMysql(sql, silent=true) {
   return spawnSync(MYSQL_BIN, args, { encoding:'utf8', timeout:15000 });
 }
 
+// 只清理本套件测试用户（t6user_%）名下的数据
+function cleanupTestData() {
+  const like = "u.username LIKE 't6user_%'";
+  for (const t of ['user_learning', 'kp_definitions', 'kp_collocations', 'kp_synonyms', 'kp_antonyms', 'kp_extras'])
+    runMysql(`DELETE t FROM ${t} t JOIN knowledge_points kp ON t.knowledge_id=kp.id JOIN users u ON kp.user_id=u.id WHERE ${like};`);
+  runMysql(`DELETE a FROM ai_tasks a JOIN knowledge_points kp ON a.ref_id=kp.id JOIN users u ON kp.user_id=u.id WHERE ${like};`);
+  runMysql(`DELETE kp FROM knowledge_points kp JOIN users u ON kp.user_id=u.id WHERE ${like};`);
+  runMysql("DELETE FROM user_sessions WHERE user_id IN (SELECT id FROM users WHERE username LIKE 't6user_%');");
+  runMysql("DELETE FROM users WHERE username LIKE 't6user_%';");
+}
+
+// 注册并登录本套件专用测试用户
+async function setupTestUser() {
+  TEST_USER = 't6user_' + Date.now().toString(36);
+  const reg = await req('POST', '/api/auth/register', { username: TEST_USER, password: 'test pass 1' });
+  if (!reg.json || !reg.json.ok) throw new Error('测试用户注册失败: ' + reg.text.slice(0, 150));
+  const login = await req('POST', '/api/auth/login', { username: TEST_USER, password: 'test pass 1' });
+  if (!login.setCookie) throw new Error('测试用户登录失败: ' + login.text.slice(0, 150));
+  COOKIE = login.setCookie;
+  TEST_UID = parseInt(runMysql(`SELECT id FROM users WHERE username='${TEST_USER}';`).stdout.trim(), 10);
+}
+
+// 清空本套件测试用户名下的业务数据，但保留测试用户本身（Cookie 仍有效）
+function resetTestData() {
+  const uid = TEST_UID;
+  for (const t of ['user_learning', 'kp_definitions', 'kp_collocations', 'kp_synonyms', 'kp_antonyms', 'kp_extras'])
+    runMysql(`DELETE t FROM ${t} t JOIN knowledge_points kp ON t.knowledge_id=kp.id WHERE kp.user_id=${uid};`);
+  runMysql(`DELETE a FROM ai_tasks a JOIN knowledge_points kp ON a.ref_id=kp.id WHERE kp.user_id=${uid};`);
+  runMysql(`DELETE FROM knowledge_points WHERE user_id=${uid};`);
+}
+
 async function main() {
   console.log('=== 阶段六：定时任务 & 异常兜底 & 数据安全测试 ===\n');
+
+  try {
+    cleanupTestData();
+    await setupTestUser();
+    ok('创建测试用户', `${TEST_USER} (uid=${TEST_UID})`);
+  } catch (e) { ko('创建测试用户', e.message); }
 
   // ---- 1. 数据备份 ----
   console.log('[1] 数据备份');
@@ -75,8 +118,8 @@ async function main() {
   // ---- 3. 学情重置 ----
   console.log('\n[3] 学情重置');
   try {
-    // 先准备数据：录入、固化、设置学情
-    runMysql("DELETE FROM kp_extras; DELETE FROM kp_antonyms; DELETE FROM kp_synonyms; DELETE FROM kp_collocations; DELETE FROM kp_definitions; DELETE FROM user_learning; DELETE FROM knowledge_points;");
+    // 先准备数据：录入、固化、设置学情（仅限测试用户名下）
+    resetTestData();
     const kp = await req('POST', '/api/kp', { user_input_content: 'abandon' });
     await req('POST', `/api/kp/${kp.json.id}/solidify`);
     const lr = await req('GET', `/api/learn/${kp.json.id}`);
