@@ -1,10 +1,14 @@
 #!/bin/bash
 # 停止 LocalAI + MySQL 本地服务
-MYSQL_ADMIN="/Users/junwang/.local/mysql/bin/mysqladmin"
-SOCK="/Users/junwang/.local/run/mysql.sock"
-MYSQL_PW_FILE="/Users/junwang/.local/mysql/.root_pw"
-LOCALAI_PID="/Users/junwang/.local/run/localai.pid"
-MYSQL_PID="/Users/junwang/.local/run/mysqld.pid"
+# 可覆盖的环境变量：MYSQL_HOME、APP_RUN_DIR
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MYSQL_HOME="${MYSQL_HOME:-$HOME/.local/mysql}"
+RUN_DIR="${APP_RUN_DIR:-$HOME/.local/run}"
+MYSQL_ADMIN="$MYSQL_HOME/bin/mysqladmin"
+SOCK="${DB_SOCKET:-$RUN_DIR/mysql.sock}"
+MYSQL_PW_FILE="$MYSQL_HOME/.root_pw"
+LOCALAI_PID="$RUN_DIR/localai.pid"
+MYSQL_PID="$RUN_DIR/mysqld.pid"
 
 # 停止 LocalAI
 if [ -f "$LOCALAI_PID" ] && kill -0 "$(cat $LOCALAI_PID)" 2>/dev/null; then

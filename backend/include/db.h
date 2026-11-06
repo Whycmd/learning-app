@@ -109,7 +109,7 @@ public:
     // 密码从 password_file 读取（相对路径相对配置文件目录）
     std::string pwFile = getStr("password_file");
     if (!pwFile.empty()) {
-      // 配置文件位于 config/ 目录，相对路径 ../.. 解析为 /Users/junwang/.local/...
+      // 配置文件位于 config/ 目录，相对路径按 ../ 前缀逐级向上解析到密码文件
       std::string cfgDir = cfgPath.substr(0, cfgPath.find_last_of('/'));
       // 解析相对路径
       std::string full = pwFile;
@@ -136,8 +136,13 @@ public:
     mysql_options(&conn_, MYSQL_OPT_CONNECT_TIMEOUT, &cfg_.connect_timeout);
     mysql_options(&conn_, MYSQL_SET_CHARSET_NAME, cfg_.charset.c_str());
     // 本地 socket 连接禁用 SSL（SSL_free 在连接重建路径上会触发 OpenSSL 堆损坏崩溃）
+    // 注意：SSL_MODE_DISABLED / MYSQL_OPT_SSL_MODE 是 Oracle MySQL 客户端专有选项。
+    // Debian 系默认安装的 MariaDB Connector/C 没有这两个符号，且它默认不上 SSL，
+    // 所以非 Oracle 环境下跳过设置即可（macOS Homebrew 版属于 Oracle 分支，照常设置）。
+#ifdef LIBMYSQL_VERSION_ID
     unsigned int ssl_mode = SSL_MODE_DISABLED;
     mysql_options(&conn_, MYSQL_OPT_SSL_MODE, &ssl_mode);
+#endif
     // 不再使用 MYSQL_OPT_RECONNECT（MySQL 8 已废弃且在线程环境下会导致堆损坏）；
     // 连接丢失由 query/exec 内的 2006/2013 分支显式重连
     unsigned int read_timeout = 30;

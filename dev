@@ -1,0 +1,231 @@
+#!/bin/bash
+# 开发环境统一入口
+#
+# 用法：./dev <命令>
+#   up        启动（默认 Docker；加 --host 用本机 MySQL+网关+后端）
+#   down      停止
+#   debug     本机前台调试模式：日志直接打屏，Ctrl+C 停止
+#   logs      聚合查看日志（容器在跑看容器，否则看本机）
+#   doctor    环境自检：编译器、数据库、端口、配置、密钥
+#   test      跑测试：./dev test 全量；./dev test 2 只跑 stage2
+#
+# 设计原则：本脚本只做编排，具体的启动/停止逻辑仍然复用 scripts/ 下已有脚本，
+# 避免出现两套实现互相打架。
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT"
+
+# Docker Desktop 在 macOS 上不一定在 PATH 里，补上常见位置
+export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
+
+info()  { printf '\033[36m%s\033[0m\n' "$*"; }
+okmsg() { printf '\033[32m  ✓ %s\033[0m\n' "$*"; }
+warn()  { printf '\033[33m  ! %s\033[0m\n' "$*"; }
+err()   { printf '\033[31m  ✗ %s\033[0m\n' "$*"; }
+
+container_running() {
+  docker compose ps -q app 2>/dev/null | grep -q . && \
+    [ "$(docker inspect -f '{{.State.Running}}' elf-app 2>/dev/null)" = "true" ]
+}
+
+host_backend_running() {
+  lsof -nP -iTCP:8088 -sTCP:LISTEN >/dev/null 2>&1
+}
+
+cmd_up() {
+  local mode="${1:-docker}"
+  if [ "$mode" = "--host" ] || [ "$mode" = "host" ]; then
+    info "启动本机模式（MySQL + AI 网关 + 后端）"
+    bash scripts/start_mysql.sh
+    bash scripts/start_localai.sh
+    if host_backend_running; then
+      warn "8088 已有进程占用，跳过启动后端"
+    else
+      mkdir -p "$HOME/.local/log"
+      nohup ./backend/build/eng_app_server > "$HOME/.local/log/backend.out" 2>&1 &
+      disown
+      sleep 4
+      host_backend_running && okmsg "后端已启动 http://127.0.0.1:8088" || err "后端启动失败，查看 ./dev logs"
+    fi
+    return 0
+  fi
+
+  info "启动 Docker 容器"
+  docker compose up -d
+  sleep 8
+  if container_running; then
+    okmsg "容器已就绪 http://127.0.0.1:8088"
+  else
+    err "容器启动失败，查看 ./dev logs"
+  fi
+}
+
+cmd_down() {
+  if container_running; then
+    info "停止 Docker 容器"
+    docker compose down
+  fi
+  if host_backend_running || [ -S "$HOME/.local/run/mysql.sock" ]; then
+    info "停止本机服务"
+    bash scripts/stop_all.sh
+  fi
+  okmsg "已停止"
+}
+
+cmd_debug() {
+  info "调试模式：数据库与网关在后台，后端日志直接打在终端"
+  bash scripts/start_mysql.sh
+  bash scripts/start_localai.sh
+  if container_running; then
+    warn "Docker 容器正在占用 8088，先执行 ./dev down"
+    return 1
+  fi
+  echo "----- 后端日志开始（Ctrl+C 退出） -----"
+  exec ./backend/build/eng_app_server
+}
+
+cmd_logs() {
+  local n="${1:-50}"
+  if container_running; then
+    info "容器日志（最近 $n 行，持续跟踪）"
+    exec docker compose logs -f --tail="$n" app
+  fi
+  info "本机日志（最近 $n 行，持续跟踪）"
+  local files=("$HOME/.local/log/backend.out" "$HOME/.local/log/mysqld.err" "$HOME/.local/log/localai.out")
+  local exist=()
+  for f in "${files[@]}"; do [ -f "$f" ] && exist+=("$f"); done
+  if [ ${#exist[@]} -eq 0 ]; then
+    err "没有找到日志文件，服务可能未启动"
+    return 1
+  fi
+  exec tail -n "$n" -f "${exist[@]}"
+}
+
+cmd_doctor() {
+  local bad=0
+
+  info "1. 编译器"
+  if command -v clang++ >/dev/null 2>&1; then
+    # macOS 常见故障：CLT 损坏时 clang++ 仍存在，但连 stdio.h 都找不到
+    if echo '#include <string>' | clang++ -x c++ -fsyntax-only - 2>/dev/null; then
+      okmsg "clang++ 可用"
+    else
+      err "clang++ 存在但标准库缺失（Command Line Tools 可能已损坏）"
+      echo "       修复：sudo rm -rf /Library/Developer/CommandLineTools && sudo xcode-select --install"
+      bad=$((bad+1))
+    fi
+  elif command -v g++ >/dev/null 2>&1; then
+    okmsg "g++ 可用"
+  else
+    err "没有 C++ 编译器"
+    bad=$((bad+1))
+  fi
+
+  info "2. Node.js"
+  if command -v node >/dev/null 2>&1; then
+    okmsg "node $(node -v)"
+  else
+    err "未安装 Node.js"
+    bad=$((bad+1))
+  fi
+
+  info "3. 配置文件"
+  for f in config/db.json config/ai.json; do
+    if [ -f "$f" ]; then okmsg "$f 存在"; else err "$f 缺失"; bad=$((bad+1)); fi
+  done
+
+  info "4. AI Key"
+  local key
+  key=$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('config/ai.json','utf8')).api_key||'')}catch(e){console.log('')}")
+  if [ -z "$key" ]; then
+    warn "api_key 为空（AI 功能不可用，其余功能正常）"
+  elif printf '%s' "$key" | LC_ALL=C grep -q '[^ -~]'; then
+    err "api_key 含非 ASCII 字符（会导致网关崩溃），请检查 config/ai.json"
+    bad=$((bad+1))
+  else
+    okmsg "api_key 已配置（${#key} 位）"
+  fi
+
+  info "5. 数据库"
+  if nc -z 127.0.0.1 3306 2>/dev/null; then
+    okmsg "本机 MySQL 监听 3306"
+  elif [ -S "$HOME/.local/run/mysql.sock" ]; then
+    okmsg "本机 MySQL socket 存在"
+  elif container_running; then
+    okmsg "容器内 MySQL 运行中（db 服务）"
+  else
+    warn "未检测到运行中的 MySQL"
+  fi
+
+  info "6. 端口"
+  for p in 8088 5340; do
+    if lsof -nP -iTCP:$p -sTCP:LISTEN >/dev/null 2>&1; then
+      okmsg "端口 $p 已占用（服务在跑）"
+    else
+      warn "端口 $p 空闲（服务未启动）"
+    fi
+  done
+
+  info "7. Docker"
+  if command -v docker >/dev/null 2>&1; then
+    okmsg "docker $(docker --version | awk '{print $3}' | tr -d ',')"
+    if container_running; then okmsg "容器 elf-app 运行中"; else warn "容器未运行"; fi
+  else
+    warn "未安装 Docker（只能走本机模式）"
+  fi
+
+  info "8. 测试环境"
+  if node -e "require('./tests/_env')" 2>/dev/null; then
+    okmsg "tests/_env.js 可加载"
+  else
+    err "tests/_env.js 加载失败"
+    bad=$((bad+1))
+  fi
+
+  echo ""
+  if [ $bad -eq 0 ]; then okmsg "自检通过（警告项不影响基础功能）"; else err "发现 $bad 项阻塞问题，请按上面提示修复"; fi
+  return $bad
+}
+
+cmd_test() {
+  local stage="${1:-}"
+  # 容器在跑时自动进容器执行：容器里的 MySQL 是独立的，宿主直跑会连不上库
+  local runner="node"
+  if container_running; then
+    runner="docker compose exec -T app node"
+  fi
+
+  if [ -z "$stage" ]; then
+    info "运行全量回归（17 套件，约 8-10 分钟）"
+    $runner tests/run_all.js
+    return $?
+  fi
+
+  local f
+  f=$(ls tests/stage${stage}_*.test.js 2>/dev/null | head -1)
+  if [ -z "$f" ]; then
+    err "找不到 stage${stage} 对应的测试文件"
+    echo "       可用：$(ls tests/stage*.test.js | sed 's|tests/stage||;s|_.*||' | tr '\n' ' ')"
+    return 1
+  fi
+  info "运行 $f"
+  $runner "$f"
+}
+
+case "${1:-help}" in
+  up)     shift; cmd_up "${1:-docker}" ;;
+  down)   cmd_down ;;
+  debug)  cmd_debug ;;
+  logs)   shift; cmd_logs "${1:-50}" ;;
+  doctor) cmd_doctor ;;
+  test)   shift; cmd_test "${1:-}" ;;
+  help|--help|-h|"")
+    sed -n '3,11p' "$0" | sed 's/^# \{0,1\}//'
+    ;;
+  *)
+    err "未知命令: $1"
+    echo "       执行 ./dev help 查看用法"
+    exit 1
+    ;;
+esac

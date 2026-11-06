@@ -1,6 +1,6 @@
 {
   "app_name": "轻量化本地英语学习软件",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "backend_host": "127.0.0.1",
   "backend_port": 8088,
   "frontend_port": 8089,

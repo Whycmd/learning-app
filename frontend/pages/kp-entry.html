@@ -377,7 +377,18 @@
 
   async function solidifyOne(id)
   {
-    setMsg('op-msg', '', '固化中…');
+    // 单条固化是一次同步 AI 调用，模型需要生成完整六板块 JSON，
+    // 通常耗时 15~30 秒。这里用秒表持续刷新提示，避免用户以为页面卡死。
+    const t0 = Date.now();
+    let finished = false;
+    const tick = () => {
+      if (finished) return;
+      const sec = Math.floor((Date.now() - t0) / 1000);
+      setMsg('op-msg', '', '固化中… 已用 ' + sec + ' 秒（AI 正在生成释义、词根、搭配、同义词等内容，通常 15~30 秒）');
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+
     try
     {
       const r = await fetch('/api/kp/' + id + '/solidify', { method: 'POST' });
@@ -385,10 +396,11 @@
       if (r.ok && j.ok)
       {
         const eff = Number(j.id);
+        const cost = (Date.now() - t0) / 1000;
         if (eff && eff !== Number(id))
-          setMsg('op-msg', 'state-line--success', '固化成功，已合并到已有词条 #' + eff);
+          setMsg('op-msg', 'state-line--success', '固化成功（' + cost.toFixed(1) + ' 秒），已合并到已有词条 #' + eff);
         else
-          setMsg('op-msg', 'state-line--success', '固化成功');
+          setMsg('op-msg', 'state-line--success', '固化成功（' + cost.toFixed(1) + ' 秒）');
         load();
       }
       else
@@ -397,6 +409,11 @@
       }
     }
     catch (e) { setMsg('op-msg', 'state-line--danger', '网络异常'); }
+    finally
+    {
+      finished = true;
+      clearInterval(timer);
+    }
   }
 
   function download(path)

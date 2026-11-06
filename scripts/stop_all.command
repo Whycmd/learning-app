@@ -1,12 +1,16 @@
 #!/bin/bash
 # 英语学习应用 - 一键停止全部服务
-APP_DIR="/Users/junwang/Desktop/王浩源/英语/英语学习应用"
-BACKEND_PID_FILE="/Users/junwang/.local/run/eng_app.pid"
-LOCALAI_PID="/Users/junwang/.local/run/localai.pid"
-MYSQL_PID="/Users/junwang/.local/run/mysqld.pid"
-SOCK="/Users/junwang/.local/run/mysql.sock"
-MYSQL_ADMIN="/Users/junwang/.local/mysql/bin/mysqladmin"
-MYSQL_PW_FILE="/Users/junwang/.local/mysql/.root_pw"
+# 可覆盖的环境变量：MYSQL_HOME、APP_RUN_DIR
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+MYSQL_HOME="${MYSQL_HOME:-$HOME/.local/mysql}"
+RUN_DIR="${APP_RUN_DIR:-$HOME/.local/run}"
+BACKEND_PID_FILE="$RUN_DIR/eng_app.pid"
+LOCALAI_PID="$RUN_DIR/localai.pid"
+MYSQL_PID="$RUN_DIR/mysqld.pid"
+SOCK="${DB_SOCKET:-$RUN_DIR/mysql.sock}"
+MYSQL_ADMIN="$MYSQL_HOME/bin/mysqladmin"
+MYSQL_PW_FILE="$MYSQL_HOME/.root_pw"
 
 echo "========================================"
 echo "  停止全部服务"

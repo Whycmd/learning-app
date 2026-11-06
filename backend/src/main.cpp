@@ -23,8 +23,13 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <limits.h>
+#include <stdlib.h>
 
 using namespace eng;
+
+// 项目根目录：由 --root / APP_ROOT / 可执行文件位置 / 当前目录推导（见 resolveRoot）
+static std::string g_root = ".";
 
 static Db g_db;
 static AiClient g_ai;
@@ -1126,16 +1131,55 @@ static HttpResponse handleArticleDifficultyReport(const HttpRequest& req) {
 }
 
 
+// 文件是否存在（用于判断候选根目录是否有效）
+static bool fileExists(const std::string& p)
+{
+  std::ifstream f(p);
+  return static_cast<bool>(f);
+}
+
+// 取父目录（无斜杠时返回空串）
+static std::string dirOf(const std::string& p)
+{
+  size_t pos = p.find_last_of('/');
+  return pos == std::string::npos ? std::string() : p.substr(0, pos);
+}
+
+// realpath 解析；失败返回空串
+static std::string canonicalPath(const std::string& p)
+{
+  if (p.empty()) return std::string();
+  char buf[PATH_MAX];
+  return realpath(p.c_str(), buf) ? std::string(buf) : std::string();
+}
+
+// 根目录三级回退：APP_ROOT 环境变量 → 可执行文件上级目录 → 当前工作目录
+// 以 config/db.json 是否存在判定候选是否有效；--root 参数在 main 中优先覆盖
+static std::string resolveRoot(const char* argv0)
+{
+  const char* envRoot = std::getenv("APP_ROOT");
+  if (envRoot && *envRoot) return envRoot;
+
+  std::string exe = canonicalPath(argv0 ? argv0 : "");
+  if (exe.empty() && argv0) exe = argv0;
+  std::string exeRoot = canonicalPath(dirOf(exe) + "/../..");
+  std::string cwdRoot = canonicalPath(".");
+
+  if (!exeRoot.empty() && fileExists(exeRoot + "/config/db.json")) return exeRoot;
+  if (!cwdRoot.empty() && fileExists(cwdRoot + "/config/db.json")) return cwdRoot;
+  return !exeRoot.empty() ? exeRoot : (cwdRoot.empty() ? std::string(".") : cwdRoot);
+}
+
 static HttpResponse handleStatic(const HttpRequest& req) {
   std::string p = req.path;
   if (p == "/" || p.empty()) p = "/index.html";
   // 防目录穿越
   if (p.find("..") != std::string::npos) return jsonErr(400, "bad path");
-  std::string full = "/Users/junwang/Desktop/王浩源/英语/英语学习应用/frontend" + p;
+  std::string full = g_root + "/frontend" + p;
   std::ifstream f(full, std::ios::binary);
   if (!f) {
     // 尝试 /pages/...
-    full = "/Users/junwang/Desktop/王浩源/英语/英语学习应用/frontend/pages" + p;
+    full = g_root + "/frontend/pages" + p;
     f.clear(); f.open(full, std::ios::binary);
     if (!f) return jsonErr(404, "not found: " + p);
   }
@@ -1182,7 +1226,7 @@ int main(int argc, char** argv) {
   signal(SIGINT, sigHandler);
   signal(SIGTERM, sigHandler);
 
-  std::string root = "/Users/junwang/Desktop/王浩源/英语/英语学习应用";
+  std::string root = resolveRoot(argc > 0 ? argv[0] : "");
   int port = 8088;
   std::string host = "127.0.0.1";
   for (int i = 1; i < argc; i++) {
@@ -1191,6 +1235,8 @@ int main(int argc, char** argv) {
     else if (a == "--host" && i+1 < argc) host = argv[++i];
     else if (a == "--root" && i+1 < argc) root = argv[++i];
   }
+  g_root = root;
+  std::cerr << "[server] root=" << g_root << std::endl;
 
   // 加载配置
   DbConfig dbCfg = Db::loadFromJsonFile(root + "/config/db.json");

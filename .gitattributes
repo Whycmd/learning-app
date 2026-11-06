@@ -1,0 +1,19 @@
+# 统一换行符：避免 Windows 克隆后 shell 脚本变成 CRLF，导致容器内 #!/bin/bash 启动失败
+* text=auto eol=lf
+
+# 脚本类强制 LF
+*.sh text eol=lf
+*.command text eol=lf
+dev text eol=lf
+
+# 二进制资源不做文本转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.docx binary
+*.zip binary

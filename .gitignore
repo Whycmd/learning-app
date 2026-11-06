@@ -28,9 +28,14 @@ logs/
 
 # 密钥与本地私有配置（人工修改渠道：复制 config/ai.example.json 为 config/ai.json 后填入自己的 Key）
 config/ai.json
+# Docker 环境变量（含数据库密码，人工修改渠道：复制 .env.example 为 .env）
+.env
 
 # 编辑器/工具本地文件
 .rooignore
 
 # 备份文件
 *.bak
+
+# 发开发/验收用的打包产物
+dist/

@@ -7,9 +7,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const MYSQL_BIN = '/Users/junwang/.local/mysql/bin/mysql';
-const MYSQL_PW_FILE = '/Users/junwang/.local/mysql/.root_pw';
-const SOCK = '/Users/junwang/.local/run/mysql.sock';
+const { MYSQL_BIN, MYSQL_PW_FILE, SOCK } = require('./_env');
 const API = 'http://127.0.0.1:8088';
 
 let pass = 0, fail = 0, skipped = 0;

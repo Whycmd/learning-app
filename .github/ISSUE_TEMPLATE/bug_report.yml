@@ -1,0 +1,85 @@
+name: Bug 报告
+description: 报告可复现的错误或异常行为
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提交前请先搜索 Issue，避免重复。请附上可复现步骤，越具体越容易定位。
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 运行环境
+      description: 操作系统、版本号、浏览器、数据库版本等。
+      placeholder: |
+        例如：
+        - 系统：macOS 15.8 / Windows 11
+        - 项目版本：v1.4.1
+        - 运行方式：Docker / 本机 / Codespaces
+        - 浏览器：Chrome 130
+        - MySQL：8.0.x
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: 受影响功能
+      options:
+        - 知识点录入 / 固化
+        - 复习 / 遗忘曲线
+        - AI 出题 / 批改
+        - 每日小测
+        - 单词本
+        - 点金圣殿
+        - 文章库
+        - 登录 / 多用户
+        - 播放 / 朗读
+        - 启动 / 部署
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 按顺序列出每一步操作，注明使用的数据（如具体单词、页面）。
+      placeholder: |
+        1. 打开 xxx 页面
+        2. 输入 xxx
+        3. 点击 xxx
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+      description: 实际发生了什么；如有报错，请粘贴完整错误信息。
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / 截图
+      description: 后端日志（`logs/`）、浏览器控制台截图或录屏链接。（可拖拽上传图片）
+    validations:
+      required: false
+
+  - type: input
+    id: contact
+    attributes:
+      label: 联系方式
+      description: 如需进一步沟通，可留下邮箱或 GitHub 用户名。（可选）
+    validations:
+      required: false

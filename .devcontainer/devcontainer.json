@@ -1,0 +1,37 @@
+{
+  // ============================================================
+  // GitHub Codespaces 开发容器配置
+  //
+  // 作用：在浏览器里打开 Codespace 时，自动用本项目自己的
+  // docker-compose.yml 把数据库和应用一起拉起来，不需要本地装任何东西。
+  //
+  // 注意：这是"备用方案"。主力方式仍然是本地 docker compose up。
+  // ============================================================
+  "name": "英语学习应用",
+
+  // 复用主 compose 文件，保证 Codespaces 和本地跑的是同一套环境
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/app",
+
+  // 浏览器里点开后自动转发 8088，并直接打开页面
+  "forwardPorts": [8088],
+  "portsAttributes": {
+    "8088": {
+      "label": "应用主页",
+      "onAutoForward": "openBrowser"
+    }
+  },
+
+  // 装 C++ 插件，方便在容器里直接看后端代码
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools"
+      ]
+    }
+  },
+
+  // 容器建好后给一句提示，避免使用者不知道下一步干什么
+  "postCreateCommand": "echo '容器已就绪：打开 8088 端口即可使用'"
+}

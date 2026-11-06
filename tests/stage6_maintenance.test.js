@@ -7,11 +7,7 @@ const http = require('http');
 const fs = require('fs');
 const { spawnSync } = require('child_process');
 
-const MYSQL_BIN = '/Users/junwang/.local/mysql/bin/mysql';
-const MYSQL_PW_FILE = '/Users/junwang/.local/mysql/.root_pw';
-const SOCK = '/Users/junwang/.local/run/mysql.sock';
-const WORD_TMP = '/Users/junwang/Desktop/王浩源/英语/英语学习应用/word_tmp';
-const BACKUP_DIR = '/Users/junwang/Desktop/王浩源/英语/英语学习应用/backups';
+const { MYSQL_BIN, MYSQL_PW_FILE, SOCK, WORD_TMP, BACKUP_DIR } = require('./_env');
 
 let pass = 0, fail = 0;
 const failures = [];

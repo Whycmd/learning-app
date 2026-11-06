@@ -107,7 +107,7 @@ public:
     req.maxTokens = maxTokens;
     req.temperature = temperature;
 
-    if (!provider_) return AiResponse{.status=0, .ok=false, .body="no provider initialized"};
+    if (!provider_) return AiResponse{.status=0, .body="no provider initialized", .ok=false};
 
     // 指数退避重试
     int base = std::max(1, cfg_.retry_interval_sec);
@@ -120,7 +120,7 @@ public:
       } catch (const std::exception&) {
         degraded_ = (attempt == cfg_.retry_times);
         if (attempt == cfg_.retry_times) {
-          return AiResponse{.status=0, .ok=false, .body="AI request failed after retries"};
+          return AiResponse{.status=0, .body="AI request failed after retries", .ok=false};
         }
       }
       int wait = base * (1 << (attempt - 1));

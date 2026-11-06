@@ -1,0 +1,51 @@
+name: 体验反馈
+description: 反馈使用体验、界面与文案问题（非 Bug）
+title: "[反馈] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        这类反馈不要求可复现，只要你觉得「别扭、看不懂、慢、丑」都可以说。
+
+  - type: dropdown
+    id: rating
+    attributes:
+      label: 整体使用体验
+      options:
+        - 很好
+        - 一般
+        - 较差
+    validations:
+      required: true
+
+  - type: textarea
+    id: best
+    attributes:
+      label: 最有帮助的部分
+      description: 哪个功能对你最有用？为什么？
+    validations:
+      required: false
+
+  - type: textarea
+    id: confusing
+    attributes:
+      label: 最困惑或不顺手的地方
+      description: 哪个操作让你卡住、犹豫或需要摸索？
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 改进建议
+      description: 你希望界面、文案、流程怎么改。
+    validations:
+      required: false
+
+  - type: input
+    id: contact
+    attributes:
+      label: 联系方式
+      description: 如需进一步沟通，可留下邮箱或 GitHub 用户名。（可选）
+    validations:
+      required: false

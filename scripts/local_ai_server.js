@@ -14,10 +14,11 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const PORT = parseInt(process.env.LOCALAI_PORT || '5340', 10);
 const HOST = process.env.LOCALAI_HOST || '127.0.0.1';
-const LOG_DIR = '/Users/junwang/.local/log';
+const LOG_DIR = process.env.LOCALAI_LOG_DIR || path.join(os.homedir(), '.local', 'log');
 const LOG_FILE = path.join(LOG_DIR, 'localai.out');
 
 fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -33,7 +34,10 @@ const AI_CONFIG_PATH = path.join(__dirname, '..', 'config', 'ai.json');
 function loadConfig() {
   try {
     const raw = fs.readFileSync(AI_CONFIG_PATH, 'utf8');
-    return JSON.parse(raw);
+    const cfg = JSON.parse(raw);
+    // D10：环境变量 ZHIPU_API_KEY 优先于 config/ai.json 中的 api_key（便于 Docker/Codespaces）
+    if (process.env.ZHIPU_API_KEY) cfg.api_key = process.env.ZHIPU_API_KEY;
+    return cfg;
   } catch (e) {
     log(`[gateway] FATAL: cannot read ${AI_CONFIG_PATH}: ${e.message}`);
     return null;
@@ -44,7 +48,15 @@ const REMOTE_HOST = 'open.bigmodel.cn';
 const REMOTE_PATH = '/api/paas/v4/chat/completions';
 
 function isPlaceholderKey(key) {
-  return !key || key.startsWith('YOUR_') || key === 'local-offline-no-key';
+  if (!key) return true;
+  if (key.startsWith('YOUR_')) return true;
+  if (key === 'local-offline-no-key') return true;
+  // Key 必须是纯可打印 ASCII（不含空格）。
+  // 原因：api_key 会被拼进 HTTP 的 Authorization 头，而 Node 的 setHeader
+  // 遇到中文等非 ASCII 字符会直接抛 ERR_INVALID_CHAR，导致整个网关进程崩溃。
+  // 把非法 Key 当作"未配置"处理，可以返回明确的 401 提示而不是让服务挂掉。
+  if (!/^[\x21-\x7e]+$/.test(key)) return true;
+  return false;
 }
 
 const server = http.createServer((req, res) => {

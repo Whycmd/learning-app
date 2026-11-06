@@ -1,6 +1,7 @@
 {
   "base_url": "http://127.0.0.1:5340/v1",
-  "api_key": "在此填入你的智谱AI BigModel API Key",
+  "_comment_api_key": "在下面填入你的智谱 BigModel API Key（纯英文数字，不要填中文说明文字，否则网关会判定为未配置）",
+  "api_key": "",
   "chat_model": "glm-4-flash",
   "provider_type": "openai_compatible",
   "embedding_model": "",

@@ -5,6 +5,7 @@ const {
   HeadingLevel, PageNumber, PageBreak
 } = require('docx');
 const fs = require('fs');
+const path = require('path');
 
 // ── 辅助函数 ──
 const H1 = (text) => new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text, bold: true, size: 32 })] });
@@ -612,7 +613,7 @@ const doc = new Document({
 });
 
 Packer.toBuffer(doc).then(buffer => {
-  const outPath = "/Users/junwang/Desktop/王浩源/英语/英语学习应用/documents/英语学习应用_功能设计说明书_v1.4.0.docx";
+  const outPath = path.resolve(__dirname, '..', 'documents', '英语学习应用_功能设计说明书_v1.4.0.docx');
   fs.writeFileSync(outPath, buffer);
   console.log("文档已生成：" + outPath);
 }).catch(err => {

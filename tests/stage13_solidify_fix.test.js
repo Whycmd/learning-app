@@ -6,9 +6,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const MYSQL_BIN = '/Users/junwang/.local/mysql/bin/mysql';
-const MYSQL_PW_FILE = '/Users/junwang/.local/mysql/.root_pw';
-const SOCK = '/Users/junwang/.local/run/mysql.sock';
+const { MYSQL_BIN, MYSQL_PW_FILE, SOCK } = require('./_env');
 const MARKER_WORD = 'serendipity';
 const MERGE_WORD = 'merge_probe_word';
 

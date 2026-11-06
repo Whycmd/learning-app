@@ -1,12 +1,15 @@
 #!/bin/bash
 # 英语学习应用 - 一键启动
 # 双击此文件即可启动全部服务并打开浏览器
-APP_DIR="/Users/junwang/Desktop/王浩源/英语/英语学习应用"
-LOG_DIR="/Users/junwang/.local/log"
+# 可覆盖的环境变量：APP_LOG_DIR、APP_RUN_DIR
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$SCRIPT_DIR"
+LOG_DIR="${APP_LOG_DIR:-$HOME/.local/log}"
+RUN_DIR="${APP_RUN_DIR:-$HOME/.local/run}"
 BACKEND_PORT=8088
 
 cd "$APP_DIR" || exit 1
-mkdir -p "$LOG_DIR" /Users/junwang/.local/run
+mkdir -p "$LOG_DIR" "$RUN_DIR"
 
 echo "========================================"
 echo "  英语学习应用 - 一键启动"
@@ -25,7 +28,7 @@ echo ""
 
 # 3. 启动 C++ 后端
 echo "[3/4] 启动后端服务..."
-BACKEND_PID_FILE="/Users/junwang/.local/run/eng_app.pid"
+BACKEND_PID_FILE="$RUN_DIR/eng_app.pid"
 if curl -fsS --max-time 2 "http://127.0.0.1:$BACKEND_PORT/api/health" >/dev/null 2>&1; then
   echo "[backend] already running at http://127.0.0.1:$BACKEND_PORT"
 else
@@ -35,7 +38,7 @@ else
     --host "127.0.0.1" \
     > "$LOG_DIR/eng_app.out" 2>&1 &
   echo $! > "$BACKEND_PID_FILE"
-  echo "[backend] starting pid=$(cat $BACKEND_PID_FILE) at http://127.0.0.1:$BACKEND_PORT"
+  echo "[backend] starting pid=$(cat "$BACKEND_PID_FILE") at http://127.0.0.1:$BACKEND_PORT"
   for i in $(seq 1 30); do
     if curl -fsS --max-time 2 "http://127.0.0.1:$BACKEND_PORT/api/health" >/dev/null 2>&1; then
       echo "[backend] ready"

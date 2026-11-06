@@ -16,6 +16,7 @@
 #include <sstream>
 #include <fstream>
 #include <ctime>
+#include <cstdlib>
 #include <unistd.h>
 #include <algorithm>
 
@@ -162,7 +163,9 @@ public:
     f.close();
 
     std::string scriptPath = rootDir_ + "/scripts/gen_word_exercise.js";
-    std::string cmd = "/Users/junwang/.local/bin/node " + scriptPath + " " + exId + " " + tmpPath + " " + wordTmpDir_;
+    const char* nodeEnv = std::getenv("NODE_BIN");
+    std::string nodeBin = nodeEnv ? nodeEnv : "node";
+    std::string cmd = nodeBin + " " + scriptPath + " " + exId + " " + tmpPath + " " + wordTmpDir_;
     int rc = std::system(cmd.c_str());
     if (rc != 0) { r.error = "word generation failed (exit=" + std::to_string(rc) + ")"; return r; }
 

@@ -1,6 +1,6 @@
 # 贡献指南
 
-> 适用：所有团队成员 | 最后更新：2026-10-06
+> 适用：所有团队成员与外部贡献者 | 最后更新：2026-11-01
 
 ---
 
@@ -152,7 +152,7 @@ git push -u origin feature/v1.5.0-T001-team-list
 
 ### 文件规范
 
-- 所有文本文件统一 LF 换行（已在 `.gitattributes` 中配置）
+- 所有文本文件统一 LF 换行（请在编辑器中将换行符设为 LF）
 - 不提交 `config/ai.json`（含密钥）、`backups/`、`node_modules/`、编译产物
 - 新增依赖在 `package.json` 中声明，不手动上传 `node_modules/`
 
@@ -166,7 +166,37 @@ git push -u origin feature/v1.5.0-T001-team-list
 ## 五、快速检查清单（提 PR 前）
 
 - [ ] 已从 `main` 拉取最新代码并合并
-- [ ] `npm test` 全量通过（205 项测试）
+- [ ] `node tests/run_all.js` 全部套件通过（当前 17 个套件）
 - [ ] 未提交任何密钥、密码、本地路径
 - [ ] Commit message 符合规范
 - [ ] PR 描述说明了改动内容和测试方式
+
+---
+
+## 六、本地开发环境
+
+> **现状**：v1.4.1 起，Linux / Windows（Docker Desktop）与 GitHub Codespaces 均可用
+> `docker compose up` 启动；macOS 本机模式用 `./dev up --host`。详见《开发者使用指南》。
+
+| 组件 | 当前实现 |
+|------|---------|
+| 后端 | C++17 + 自研 HTTP 服务器；编译 `bash scripts/build_backend.sh`（Apple clang） |
+| 数据库 | MySQL 8.0 单机，连接参数在 `config/db.json`（Socket + 密码文件路径） |
+| 运行时 | Node.js 20（AI 网关、Word 生成、定时清理） |
+| AI | 智谱 GLM-4-Flash；Key 填入 `config/ai.json`（已 gitignore） |
+
+启动 / 停止 / 测试命令见 [README.md](README.md)。
+
+## 七、测试要求
+
+- 提交 PR 前必须跑全量：`node tests/run_all.js`（等价 `npm test`）。
+- 新增功能须新增套件：`tests/stage{N}_{功能}.test.js`，并在 `tests/run_all.js` 中登记。
+- 测试依赖本机 MySQL 与 AI 网关（端口 5340）；AI 用例失败请先重跑，确认是否为网络抖动。
+- 涉及并发或共享数据库连接的改动，须做并发验证（串行请求无法暴露竞态）。
+
+## 八、文档与人工修改渠道
+
+- 迭代流程（需求确认 → 计划 → 开发 → 自测 → 全量回归 → 文档同步 → 版本号）见 [AGENTS.md](AGENTS.md)；各阶段执行细则见 `documents/skills/`。
+- 任务完成后需同步 `documents/devlog/`：`产品现状.md`、`开发计划.md`、`工作总结.md`、`核心参数.md`。
+- 可直接人工修改、无需改代码的配置：`config/db.json`、`config/ai.json`、`config/app.json`、`config/rewards.json`。
+- 文档中的文件路径、接口与函数名必须与代码一致；发现文档冲突请提 Issue，不要自行猜测。

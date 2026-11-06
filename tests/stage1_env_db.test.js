@@ -7,9 +7,7 @@ const { execSync, spawnSync } = require('child_process');
 const { Document, Packer, Paragraph, TextRun, HeadingLevel } = require('docx');
 
 const ROOT = path.resolve(__dirname, '..');
-const MYSQL_BIN = '/Users/junwang/.local/mysql/bin/mysql';
-const MYSQL_PW_FILE = '/Users/junwang/.local/mysql/.root_pw';
-const SOCK = '/Users/junwang/.local/run/mysql.sock';
+const { MYSQL_BIN, MYSQL_PW_FILE, SOCK, IN_CONTAINER } = require('./_env');
 const WORD_TMP = path.join(ROOT, 'word_tmp');
 
 let pass = 0, fail = 0, skipped = 0;
@@ -68,9 +66,15 @@ async function main() {
     if (/utf8mb4/.test(cs)) ok('字符集 utf8mb4');
     else ko('字符集 utf8mb4', cs.trim());
     // 仅 127.0.0.1 绑定
-    const bind = runMysql('SHOW VARIABLES LIKE "bind_address";');
-    if (/127\.0\.0\.1/.test(bind)) ok('仅 127.0.0.1 绑定');
-    else ko('仅 127.0.0.1 绑定', bind.trim());
+    // 容器里 MySQL 必须监听 0.0.0.0 才能被 app 容器连上，这条断言只适用于本机
+    if (IN_CONTAINER) {
+      skip('仅 127.0.0.1 绑定', '容器内需监听 0.0.0.0，跳过本机专属断言');
+    }
+    else {
+      const bind = runMysql('SHOW VARIABLES LIKE "bind_address";');
+      if (/127\.0\.0\.1/.test(bind)) ok('仅 127.0.0.1 绑定');
+      else ko('仅 127.0.0.1 绑定', bind.trim());
+    }
   } catch (e) { ko('MySQL 服务连通性', e.message); }
 
   // ---- 2. 全量表结构存在性 ----
@@ -253,9 +257,13 @@ async function main() {
   // ---- 6. C++ 编译器可用性 ----
   console.log('\n[6] C++ 编译器');
   try {
-    const r = spawnSync('clang++', ['--version'], { encoding: 'utf8' });
-    if (r.status === 0 && /clang version|Apple clang/.test(r.stdout)) ok('clang++ 可用', r.stdout.split('\n')[0]);
-    else ko('clang++ 可用', r.stderr);
+    // 容器是运行环境，不含编译器，这项只针对本机开发环境
+    if (IN_CONTAINER) skip('clang++ 可用', '运行镜像不含编译器');
+    else {
+      const r = spawnSync('clang++', ['--version'], { encoding: 'utf8' });
+      if (r.status === 0 && /clang version|Apple clang/.test(r.stdout)) ok('clang++ 可用', r.stdout.split('\n')[0]);
+      else ko('clang++ 可用', r.stderr);
+    }
   } catch (e) { ko('clang++ 可用', e.message); }
 
   // ---- 7. 项目目录结构 ----
@@ -276,7 +284,9 @@ async function main() {
   console.log('\n[8] 相对路径与配置');
   try {
     const dbCfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config/db.json'), 'utf8'));
-    if (dbCfg.host === '127.0.0.1' && dbCfg.database === 'english_learning' && dbCfg.retry_times === 3) ok('db.json 配置合规');
+    // 本机走 Unix Socket（host=127.0.0.1）；容器走 TCP 连 db 服务（host=db）
+    const hostOk = IN_CONTAINER ? dbCfg.host === 'db' : dbCfg.host === '127.0.0.1';
+    if (hostOk && dbCfg.database === 'english_learning' && dbCfg.retry_times === 3) ok('db.json 配置合规');
     else ko('db.json 配置合规', JSON.stringify(dbCfg));
     const aiCfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config/ai.json'), 'utf8'));
     if (aiCfg.base_url.startsWith('http://127.0.0.1:5340') && aiCfg.retry_times === 2) ok('ai.json 配置合规');

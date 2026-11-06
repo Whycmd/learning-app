@@ -8,9 +8,7 @@ const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const BACKEND_URL = 'http://127.0.0.1:8088';
-const MYSQL_BIN = '/Users/junwang/.local/mysql/bin/mysql';
-const MYSQL_PW_FILE = '/Users/junwang/.local/mysql/.root_pw';
-const SOCK = '/Users/junwang/.local/run/mysql.sock';
+const { MYSQL_BIN, MYSQL_PW_FILE, SOCK } = require('./_env');
 const WORD_TMP = path.join(ROOT, 'word_tmp');
 
 let pass = 0, fail = 0;

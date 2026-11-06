@@ -793,7 +793,9 @@ public:
     f.close();
 
     std::string scriptPath = root_ + "/scripts/gen_word_kp.js";
-    std::string cmd = "/Users/junwang/.local/bin/node " + scriptPath + " batch " + tmpPath + " " + wordTmpDir_;
+    const char* nodeEnv = std::getenv("NODE_BIN");
+    std::string nodeBin = nodeEnv ? nodeEnv : "node";
+    std::string cmd = nodeBin + " " + scriptPath + " batch " + tmpPath + " " + wordTmpDir_;
     int rc = std::system(cmd.c_str());
     if (rc != 0) return "";
     std::string outPath = wordTmpDir_ + "/knowledge_points_batch.docx";
