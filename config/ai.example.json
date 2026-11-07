@@ -1,6 +1,6 @@
 {
   "base_url": "http://127.0.0.1:5340/v1",
-  "_comment_api_key": "在下面填入你的智谱 BigModel API Key（纯英文数字，不要填中文说明文字，否则网关会判定为未配置）",
+  "_comment_api_key": "推荐用 bash scripts/ai_key_store.sh set 存入 ~/.config/eng-app/ai.key（0600），或 Docker 用环境变量 ZHIPU_API_KEY；此处仅作最后兜底，请保持留空。读取优先级：密钥文件 → 环境变量 → 本字段",
   "api_key": "",
   "chat_model": "glm-4-flash",
   "provider_type": "openai_compatible",

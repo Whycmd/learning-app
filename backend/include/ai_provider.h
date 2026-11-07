@@ -21,6 +21,11 @@ struct AiConfig {
   int retry_interval_sec=2;
   // [CONFIG] AI 批量任务并发数（config/ai.json），换模型时可直接调整
   int max_concurrency=2;
+  // [TEST] AI Mock 模式：off(默认) | success | timeout | 5xx
+  // 仅测试环境通过 ENG_AI_MOCK_MODE 开启，生产保持 off，不发起网络请求
+  std::string mock_mode="off";
+  // Mock fixture 配置文件路径（config/ai_mock.json），由 loadFromJsonFile 推导
+  std::string mock_fixture_path;
 };
 
 // AI 请求/响应结构（各 Provider 共用）
@@ -41,7 +46,8 @@ struct AiResponse {
 // Provider 类型（需在使用前定义）
 enum class AiProviderType {
   OPENAI_COMPATIBLE, // OpenAI 兼容格式（默认）
-  AGNES              // Agnes AI（预留，后续扩展）
+  AGNES,             // Agnes AI（预留，后续扩展）
+  MOCK               // 测试用 Mock Provider（不发网络请求）
 };
 
 // 抽象 Provider 接口

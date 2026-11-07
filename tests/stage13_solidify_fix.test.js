@@ -6,7 +6,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const { MYSQL_BIN, MYSQL_PW_FILE, SOCK } = require('./_env');
+const { MYSQL_BIN, MYSQL_PW_FILE, SOCK, DB_NAME, API_HOST, API_PORT } = require('./_env');
 const MARKER_WORD = 'serendipity';
 const MERGE_WORD = 'merge_probe_word';
 
@@ -21,7 +21,7 @@ function req(method, urlPath, body) {
     const data = body ? JSON.stringify(body) : null;
     const headers = { 'Content-Type': 'application/json' };
     if (data) headers['Content-Length'] = Buffer.byteLength(data);
-    const r = http.request({ host: '127.0.0.1', port: 8088, method, path: urlPath,
+    const r = http.request({ host: API_HOST, port: API_PORT, method, path: urlPath,
       headers, timeout: 130000 }, res => {
       let chunks = [];
       res.on('data', c => chunks.push(c));
@@ -40,7 +40,7 @@ function req(method, urlPath, body) {
 
 function runMysql(sql) {
   const pw = fs.readFileSync(MYSQL_PW_FILE, 'utf8').trim();
-  const args = ['--socket=' + SOCK, '-uroot', '-p' + pw, '-s', '--skip-column-names', 'english_learning', '-e', sql];
+  const args = ['--socket=' + SOCK, '-uroot', '-p' + pw, '-s', '--skip-column-names', DB_NAME, '-e', sql];
   return spawnSync(MYSQL_BIN, args, { encoding: 'utf8', timeout: 15000 });
 }
 

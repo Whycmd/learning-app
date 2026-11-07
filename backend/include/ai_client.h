@@ -21,7 +21,9 @@ class AiClient {
 public:
   void setConfig(const AiConfig& c) {
     cfg_ = c;
-    auto newType = parseProviderType(c.provider_type);
+    // [TEST] mock 开启时固定走 Mock Provider，忽略 provider_type
+    AiProviderType newType = mockEnabled(c) ? AiProviderType::MOCK
+                                            : parseProviderType(c.provider_type);
     if (!provider_ || provider_->getProviderType() != newType) {
       provider_ = createAiProvider(newType);
     }
@@ -30,7 +32,11 @@ public:
   const AiConfig& config() const { return cfg_; }
   bool isDegraded() const { return degraded_; }
   AiProviderType getProviderType() const {
-    return parseProviderType(cfg_.provider_type);
+    return mockEnabled(cfg_) ? AiProviderType::MOCK
+                             : parseProviderType(cfg_.provider_type);
+  }
+  static bool mockEnabled(const AiConfig& c) {
+    return !c.mock_mode.empty() && c.mock_mode != "off";
   }
 
   // 从 ai.json 加载
@@ -92,6 +98,12 @@ public:
     c.max_concurrency = getInt("max_concurrency", 2);
     if (c.max_concurrency < 1) c.max_concurrency = 2;
     if (c.max_concurrency > 16) c.max_concurrency = 16;
+    c.mock_mode = getStr("mock_mode");
+    if (c.mock_mode.empty()) c.mock_mode = "off";
+    // fixture 与 ai.json 同目录，避免额外配置项
+    size_t slash = path.find_last_of('/');
+    c.mock_fixture_path = (slash == std::string::npos ? "" : path.substr(0, slash + 1))
+                          + "ai_mock.json";
     return c;
   }
 

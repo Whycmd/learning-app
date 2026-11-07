@@ -7,7 +7,7 @@ const http = require('http');
 const fs = require('fs');
 const { spawnSync } = require('child_process');
 
-const { MYSQL_BIN, MYSQL_PW_FILE, SOCK } = require('./_env');
+const { MYSQL_BIN, MYSQL_PW_FILE, SOCK, DB_NAME, API_HOST, API_PORT } = require('./_env');
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -22,7 +22,7 @@ function req(method, urlPath, body) {
     const headers = { 'Content-Type':'application/json' };
     if (COOKIE) headers['Cookie'] = 'eng_session=' + COOKIE;
     if (data) headers['Content-Length'] = Buffer.byteLength(data);
-    const r = http.request({ host:'127.0.0.1', port:8088, method, path:urlPath,
+    const r = http.request({ host:API_HOST, port:API_PORT, method, path:urlPath,
       headers, timeout: 60000 }, res => {
       let chunks = [];
       res.on('data', c => chunks.push(c));
@@ -46,7 +46,7 @@ function runMysql(sql, silent=true) {
   const pw = fs.readFileSync(MYSQL_PW_FILE, 'utf8').trim();
   const args = ['--socket='+SOCK, '-uroot', '-p'+pw];
   if (silent) args.push('-s', '--skip-column-names');
-  args.push('english_learning', '-e', sql);
+  args.push(DB_NAME, '-e', sql);
   return spawnSync(MYSQL_BIN, args, { encoding:'utf8', timeout:15000 });
 }
 

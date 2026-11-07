@@ -1,0 +1,6 @@
+{
+  "max_size_mb": 10,
+  "keep_files": 7,
+  "check_interval_sec": 60,
+  "files": ["eng_app.out", "backend.out", "localai.out", "log_rotate.out"]
+}

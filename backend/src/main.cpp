@@ -1241,6 +1241,22 @@ int main(int argc, char** argv) {
   // 加载配置
   DbConfig dbCfg = Db::loadFromJsonFile(root + "/config/db.json");
   AiConfig aiCfg = AiClient::loadFromJsonFile(root + "/config/ai.json");
+  // [TEST] 测试隔离：仅启动期读取环境变量覆盖，生产不设置即保持配置默认值
+  auto envOr = [](const char* key, const std::string& def) {
+    const char* v = std::getenv(key);
+    return (v && *v) ? std::string(v) : def;
+  };
+  dbCfg.database = envOr("ENG_DB_NAME", dbCfg.database);
+  aiCfg.mock_mode = envOr("ENG_AI_MOCK_MODE", aiCfg.mock_mode);
+  if (const char* v = std::getenv("ENG_AI_RETRY_TIMES"); v && *v) {
+    try { aiCfg.retry_times = std::max(1, std::stoi(v)); } catch (...) {}
+  }
+  if (const char* v = std::getenv("ENG_AI_RETRY_INTERVAL"); v && *v) {
+    try { aiCfg.retry_interval_sec = std::max(0, std::stoi(v)); } catch (...) {}
+  }
+  if (const char* v = std::getenv("ENG_AI_MAX_CONCURRENCY"); v && *v) {
+    try { aiCfg.max_concurrency = std::max(1, std::min(16, std::stoi(v))); } catch (...) {}
+  }
   g_ai.setConfig(aiCfg);
 
   // 连接数据库（带重试）
@@ -1254,7 +1270,7 @@ int main(int argc, char** argv) {
   }
   std::cerr << "[db] connected to " << dbCfg.host << ":" << dbCfg.port << "/" << dbCfg.database << std::endl;
 
-  std::string wordTmp = root + "/word_tmp";
+  std::string wordTmp = envOr("ENG_WORD_TMP", root + "/word_tmp");
   ::mkdir(wordTmp.c_str(), 0755);
   KnowledgeService kpSvc(g_db, g_ai, wordTmp, root);
   g_kpSvc = &kpSvc;
@@ -1262,7 +1278,7 @@ int main(int argc, char** argv) {
   g_learnSvc = &learnSvc;
   QuestionService qSvc(g_db, g_ai, kpSvc, learnSvc, wordTmp, root);
   g_qSvc = &qSvc;
-  std::string backupDir = root + "/backups";
+  std::string backupDir = envOr("ENG_BACKUP_DIR", root + "/backups");
   MaintenanceService maintSvc(g_db, backupDir, wordTmp);
   g_maintSvc = &maintSvc;
   WordbookService wbSvc(g_db, kpSvc, wordTmp);

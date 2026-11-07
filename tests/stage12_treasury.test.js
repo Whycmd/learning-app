@@ -7,8 +7,8 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const { MYSQL_BIN, MYSQL_PW_FILE, SOCK } = require('./_env');
-const API = 'http://127.0.0.1:8088';
+const { MYSQL_BIN, MYSQL_PW_FILE, SOCK, DB_NAME, API_HOST, API_PORT } = require('./_env');
+const API = `http://${API_HOST}:${API_PORT}`;
 
 let pass = 0, fail = 0, skipped = 0;
 const failures = [];
@@ -19,7 +19,7 @@ function skip(name, msg='') { skipped++; console.log(`  ~ ${name}${msg ? ' — '
 
 function runMysql(sql) {
   const pw = fs.readFileSync(MYSQL_PW_FILE, 'utf8').trim();
-  const args = ['--socket='+SOCK, '-uroot', '-p'+pw, 'english_learning', '-N', '-e', sql];
+  const args = ['--socket='+SOCK, '-uroot', '-p'+pw, DB_NAME, '-N', '-e', sql];
   const r = spawnSync(MYSQL_BIN, args, { encoding: 'utf8', timeout: 15000 });
   if (r.status !== 0) throw new Error(`mysql failed: ${r.stderr || r.stdout}`);
   return r.stdout.trim();

@@ -7,8 +7,7 @@ const http = require('http');
 const net = require('net');
 const { execSync } = require('child_process');
 
-const API_HOST = '127.0.0.1';
-const API_PORT = 8088;
+const { API_HOST, API_PORT } = require('./_env');
 
 let pass = 0, fail = 0, skipped = 0;
 const failures = [];

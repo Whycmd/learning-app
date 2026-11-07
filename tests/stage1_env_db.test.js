@@ -7,8 +7,7 @@ const { execSync, spawnSync } = require('child_process');
 const { Document, Packer, Paragraph, TextRun, HeadingLevel } = require('docx');
 
 const ROOT = path.resolve(__dirname, '..');
-const { MYSQL_BIN, MYSQL_PW_FILE, SOCK, IN_CONTAINER } = require('./_env');
-const WORD_TMP = path.join(ROOT, 'word_tmp');
+const { MYSQL_BIN, MYSQL_PW_FILE, SOCK, IN_CONTAINER, DB_NAME, WORD_TMP, AI_MOCK_MODE } = require('./_env');
 
 let pass = 0, fail = 0, skipped = 0;
 const failures = [];
@@ -19,7 +18,7 @@ function skip(name, msg='') { skipped++; console.log(`  ~ ${name}${msg ? ' — '
 
 function runMysql(sql, opts={}) {
   const pw = fs.readFileSync(MYSQL_PW_FILE, 'utf8').trim();
-  const db = opts.db || 'english_learning';
+  const db = opts.db || DB_NAME;
   const silentFlag = opts.silent ? ['-s', '--skip-column-names'] : [];
   const args = ['--socket='+SOCK, '-uroot', '-p'+pw, ...silentFlag, db, '-e', sql];
   const r = spawnSync(MYSQL_BIN, args, { encoding: 'utf8', timeout: 15000 });
@@ -90,7 +89,7 @@ async function main() {
       else ko(`表 ${t}`, '未找到');
     }
     // 字段检查（关键字段）
-    const cols = runMysql("SELECT GROUP_CONCAT(COLUMN_NAME, ':', TABLE_NAME SEPARATOR '\\n') FROM information_schema.columns WHERE table_schema='english_learning' AND COLUMN_NAME IN ('user_input_content','standard_content','difficulty','master_require','is_solidified','proficiency_level','next_review_time','review_mode','key_points','match_threshold','core_vocab','exercise_type','is_correct','task_type','status','retry_times');");
+    const cols = runMysql(`SELECT GROUP_CONCAT(COLUMN_NAME, ':', TABLE_NAME SEPARATOR '\\n') FROM information_schema.columns WHERE table_schema='${DB_NAME}' AND COLUMN_NAME IN ('user_input_content','standard_content','difficulty','master_require','is_solidified','proficiency_level','next_review_time','review_mode','key_points','match_threshold','core_vocab','exercise_type','is_correct','task_type','status','retry_times');`);
     const mustHave = [
       ['user_input_content','knowledge_points'], ['standard_content','knowledge_points'],
       ['master_require','knowledge_points'], ['proficiency_level','user_learning'],
@@ -102,16 +101,16 @@ async function main() {
       else ko(`字段 ${tbl}.${col}`, '未找到');
     }
     // 外键约束：检查表 DDL 中无 FOREIGN KEY 子句（PRD 要求不开启外键约束）
-    const ddl = runMysql("SELECT GROUP_CONCAT(TABLE_NAME) FROM information_schema.tables WHERE table_schema='english_learning';");
+    const ddl = runMysql(`SELECT GROUP_CONCAT(TABLE_NAME) FROM information_schema.tables WHERE table_schema='${DB_NAME}';`);
     let hasAnyFK = false;
     try {
-      const fkCheck = runMysql("SELECT TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='english_learning' AND REFERENCED_TABLE_NAME IS NOT NULL;");
+      const fkCheck = runMysql(`SELECT TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema='${DB_NAME}' AND REFERENCED_TABLE_NAME IS NOT NULL;`);
       hasAnyFK = /\S/.test(fkCheck);
     } catch {}
     if (!hasAnyFK) ok('无外键约束（PRD 要求）');
     else ko('无外键约束', '检测到 FOREIGN KEY');
     // 事务支持
-    const eng = runMysql("SELECT ENGINE FROM information_schema.tables WHERE table_schema='english_learning' AND TABLE_NAME='knowledge_points';");
+    const eng = runMysql(`SELECT ENGINE FROM information_schema.tables WHERE table_schema='${DB_NAME}' AND TABLE_NAME='knowledge_points';`);
     if (/InnoDB/.test(eng)) ok('InnoDB 引擎支持事务');
     else ko('InnoDB 引擎', eng.trim());
   } catch (e) { ko('表结构检查', e.message); }
@@ -130,7 +129,7 @@ async function main() {
       attempts++;
       try {
         const pw = fs.readFileSync(MYSQL_PW_FILE, 'utf8').trim();
-        const r = spawnSync(MYSQL_BIN, ['--socket='+SOCK, '-uroot', '-p'+pw, 'english_learning', '-e', "INSERT INTO knowledge_points (user_input_content) VALUES ('__retry_test__'); SELECT LAST_INSERT_ID() AS id;"], { encoding:'utf8', timeout: 5000 });
+        const r = spawnSync(MYSQL_BIN, ['--socket='+SOCK, '-uroot', '-p'+pw, DB_NAME, '-e', "INSERT INTO knowledge_points (user_input_content) VALUES ('__retry_test__'); SELECT LAST_INSERT_ID() AS id;"], { encoding:'utf8', timeout: 5000 });
         if (r.status === 0) { success = true; break; }
       } catch (e) { /* 重试 */ }
     }
@@ -142,6 +141,9 @@ async function main() {
 
   // ---- 4. AI 服务连通性与三种业务响应 ----
   console.log('\n[4] AI 服务连通性与业务响应');
+  if (AI_MOCK_MODE !== 'off') {
+    skip('AI 网关直连（success/timeout/5xx）', 'Mock 模式下跳过，由 stage17 覆盖');
+  } else {
   try {
     const health = await httpReq('GET', '/readyz');
     if (health.status === 200 && health.json && health.json.status === 'ok') ok('AI /readyz 响应');
@@ -225,6 +227,7 @@ async function main() {
       } else ko('AI 批改响应 JSON', '未提取到 JSON: ' + String(getContent(grading.json)).slice(0,100));
     } else ko('AI 批改请求响应', 'status=' + grading.status);
   } catch (e) { ko('AI 服务', e.message); }
+  }
 
   // ---- 5. Word 生成（docx 库） ----
   console.log('\n[5] Word 文件生成');

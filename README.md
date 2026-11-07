@@ -64,7 +64,7 @@
 | `./dev debug` | 调试模式：数据库与网关后台运行，后端日志直接打屏 |
 | `./dev logs` | 聚合查看日志（自动判断容器模式 / 本机模式） |
 | `./dev doctor` | 环境自检：编译器、Node、配置、AI Key、数据库、端口、Docker |
-| `./dev test` | 全量回归（17 套件） |
+| `./dev test` | 全量回归（20 套件） |
 | `./dev test 9` | 只跑 stage9（秒级反馈） |
 
 `./dev doctor` 能提前发现常见故障，例如 Command Line Tools 损坏、AI Key 含中文、端口被占用。
@@ -98,7 +98,8 @@ git clone https://github.com/Whycmd/learning-app.git
 cd learning-app
 
 # 1. 配置 AI Key（免费申请：https://open.bigmodel.cn）
-cp config/ai.example.json config/ai.json   # 编辑填入 api_key
+cp config/ai.example.json config/ai.json   # 保持 api_key 留空
+bash scripts/ai_key_store.sh set           # 按提示输入 Key，写入 ~/.config/eng-app/ai.key（0600）
 
 # 2. 编译后端
 bash scripts/build_backend.sh
@@ -133,9 +134,10 @@ bash scripts/stop_all.sh
 
 1. 注册智谱 AI 开放平台：https://open.bigmodel.cn
 2. 创建 API Key（`glm-4-flash` 完全免费）
-3. 填入 `config/ai.json` 的 `api_key` 字段
+3. 执行 `bash scripts/ai_key_store.sh set`，按提示输入 Key（写入 `~/.config/eng-app/ai.key`，权限 600）
 
-`config/ai.json` 已在 `.gitignore` 中，**不会被提交**；模板见 `config/ai.example.json`。
+读取优先级：密钥文件 → 环境变量 `ZHIPU_API_KEY` → `config/ai.json` 的 `api_key`。
+`config/ai.json` 的 `api_key` 保持留空，真实 Key 不再写入配置文件；Docker 模式继续用 `.env` 的 `ZHIPU_API_KEY`。
 未配置 Key 时 AI 功能返回明确提示，其余功能照常可用。
 
 ## 测试

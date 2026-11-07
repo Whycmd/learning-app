@@ -1,0 +1,30 @@
+{
+  "_comment": "AI Mock fixture（仅测试使用）。mock_mode 由 config/ai.json 或 ENG_AI_MOCK_MODE 控制：off/success/timeout/5xx。修改本文件内容后重启后端生效。",
+  "timeout_delay_ms": 300,
+  "server_error_status": 503,
+  "batch_delay_ms": 1200,
+  "solidify": {
+    "difficulty": 3,
+    "pos": "n.",
+    "meaning": "（模拟释义）核心含义",
+    "pos2": "v.",
+    "meaning2": "（模拟释义）引申含义",
+    "example": "This is a mock example sentence for {WORD}.",
+    "collocation": "mock collocation",
+    "synonym": "mock synonym",
+    "antonym": "mock antonym"
+  },
+  "grade": {
+    "score": 100,
+    "error_analysis": "（模拟批改）表达正确",
+    "reference_answer": "（模拟）参考译文"
+  },
+  "quiz": {
+    "familiar_word": "run",
+    "familiar_meaning": "经营；管理",
+    "familiar_example": "He runs a company.",
+    "new_word": "ample",
+    "new_meaning": "充足的",
+    "new_example": "There was ample food."
+  }
+}

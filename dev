@@ -33,6 +33,23 @@ host_backend_running() {
   lsof -nP -iTCP:8088 -sTCP:LISTEN >/dev/null 2>&1
 }
 
+# 日志轮转守护：后台运行，不阻塞启动
+start_log_rotate() {
+  local log_dir="${APP_LOG_DIR:-$HOME/.local/log}"
+  local pid_file="$HOME/.local/run/log_rotate.pid"
+  mkdir -p "$log_dir" "$HOME/.local/run"
+  if [ -f "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+    return 0
+  fi
+  if ! command -v node >/dev/null 2>&1; then
+    warn "未找到 node，跳过日志轮转"
+    return 0
+  fi
+  APP_LOG_DIR="$log_dir" nohup node "$ROOT/scripts/log_rotate.js" --watch >> "$log_dir/log_rotate.out" 2>&1 &
+  echo $! > "$pid_file"
+  okmsg "日志轮转已启动（$log_dir）"
+}
+
 cmd_up() {
   local mode="${1:-docker}"
   if [ "$mode" = "--host" ] || [ "$mode" = "host" ]; then
@@ -48,6 +65,7 @@ cmd_up() {
       sleep 4
       host_backend_running && okmsg "后端已启动 http://127.0.0.1:8088" || err "后端启动失败，查看 ./dev logs"
     fi
+    start_log_rotate
     return 0
   fi
 
@@ -81,6 +99,7 @@ cmd_debug() {
     warn "Docker 容器正在占用 8088，先执行 ./dev down"
     return 1
   fi
+  start_log_rotate
   echo "----- 后端日志开始（Ctrl+C 退出） -----"
   exec ./backend/build/eng_app_server
 }
@@ -136,15 +155,34 @@ cmd_doctor() {
   done
 
   info "4. AI Key"
-  local key
-  key=$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('config/ai.json','utf8')).api_key||'')}catch(e){console.log('')}")
+  local key_file="${ENG_AI_KEY_FILE:-$HOME/.config/eng-app/ai.key}"
+  local key=""
+  local key_source="none"
+  if [ -f "$key_file" ]; then
+    local key_mode
+    key_mode=$(stat -c %a "$key_file" 2>/dev/null || stat -f %Lp "$key_file" 2>/dev/null || echo unknown)
+    if [ "$key_mode" = "600" ]; then
+      key=$(head -n 1 "$key_file" | tr -d '\r')
+      key_source="密钥文件"
+    else
+      warn "密钥文件权限为 $key_mode（应为 600），网关将忽略：$key_file"
+    fi
+  fi
+  if [ -z "$key" ] && [ -n "${ZHIPU_API_KEY:-}" ]; then
+    key="$ZHIPU_API_KEY"
+    key_source="环境变量 ZHIPU_API_KEY"
+  fi
   if [ -z "$key" ]; then
-    warn "api_key 为空（AI 功能不可用，其余功能正常）"
+    key=$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('config/ai.json','utf8')).api_key||'')}catch(e){console.log('')}")
+    [ -n "$key" ] && key_source="config/ai.json"
+  fi
+  if [ -z "$key" ]; then
+    warn "API Key 未配置（AI 功能不可用，其余功能正常）；可执行 bash scripts/ai_key_store.sh set"
   elif printf '%s' "$key" | LC_ALL=C grep -q '[^ -~]'; then
-    err "api_key 含非 ASCII 字符（会导致网关崩溃），请检查 config/ai.json"
+    err "API Key 含非 ASCII 字符（会导致网关崩溃），请检查 $key_source"
     bad=$((bad+1))
   else
-    okmsg "api_key 已配置（${#key} 位）"
+    okmsg "API Key 已配置（${#key} 位，来源：${key_source}）"
   fi
 
   info "5. 数据库"

@@ -29,6 +29,13 @@ const SOCK = env('MYSQL_SOCKET', path.join(LOCAL, 'run/mysql.sock'));
 const WORD_TMP = env('WORD_TMP', path.join(ROOT, 'word_tmp'));
 const BACKUP_DIR = env('BACKUP_DIR', path.join(ROOT, 'backups'));
 
+// 测试隔离：run_all.js 会注入指向独立测试库与独立后端的环境变量；
+// 单独执行某个套件时回落到开发默认值，行为与改造前一致。
+const DB_NAME = env('DB_NAME', env('TEST_DB_NAME', 'english_learning'));
+const API_HOST = env('API_HOST', '127.0.0.1');
+const API_PORT = Number(env('API_PORT', env('TEST_API_PORT', '8088')));
+const AI_MOCK_MODE = env('AI_MOCK_MODE', env('ENG_AI_MOCK_MODE', 'off'));
+
 // 是否运行在 Docker 容器里。
 // 部分断言只在"本机开发环境"才成立（例如 clang++ 是否存在、端口是否只绑 127.0.0.1），
 // 容器里这些条件天然不满足，需要跳过而不是判失败。
@@ -44,4 +51,8 @@ module.exports = {
   SOCK,
   WORD_TMP,
   BACKUP_DIR,
+  DB_NAME,
+  API_HOST,
+  API_PORT,
+  AI_MOCK_MODE,
 };

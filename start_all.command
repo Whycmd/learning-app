@@ -55,6 +55,21 @@ else
 fi
 echo ""
 
+# 3.5 启动日志轮转守护（后台运行，不阻塞启动）
+LOG_ROTATE_PID_FILE="$RUN_DIR/log_rotate.pid"
+if command -v node >/dev/null 2>&1; then
+  if [ -f "$LOG_ROTATE_PID_FILE" ] && kill -0 "$(cat "$LOG_ROTATE_PID_FILE")" 2>/dev/null; then
+    echo "[log-rotate] already running (pid=$(cat "$LOG_ROTATE_PID_FILE"))"
+  else
+    APP_LOG_DIR="$LOG_DIR" nohup node "$APP_DIR/scripts/log_rotate.js" --watch >> "$LOG_DIR/log_rotate.out" 2>&1 &
+    echo $! > "$LOG_ROTATE_PID_FILE"
+    echo "[log-rotate] starting pid=$(cat "$LOG_ROTATE_PID_FILE")"
+  fi
+else
+  echo "[log-rotate] skipped: node not found"
+fi
+echo ""
+
 # 4. 打开浏览器
 echo "[4/4] 打开浏览器..."
 sleep 1

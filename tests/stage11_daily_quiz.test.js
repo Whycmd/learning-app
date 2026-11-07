@@ -6,8 +6,8 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const { MYSQL_BIN, MYSQL_PW_FILE, SOCK } = require('./_env');
-const API = 'http://127.0.0.1:8088';
+const { MYSQL_BIN, MYSQL_PW_FILE, SOCK, DB_NAME, API_HOST, API_PORT } = require('./_env');
+const API = `http://${API_HOST}:${API_PORT}`;
 
 let pass = 0, fail = 0, skipped = 0;
 const failures = [];
@@ -18,7 +18,7 @@ function skip(name, msg='') { skipped++; console.log(`  ~ ${name}${msg ? ' — '
 
 function runMysql(sql) {
   const pw = fs.readFileSync(MYSQL_PW_FILE, 'utf8').trim();
-  const args = ['--socket='+SOCK, '-uroot', '-p'+pw, 'english_learning', '-N', '-e', sql];
+  const args = ['--socket='+SOCK, '-uroot', '-p'+pw, DB_NAME, '-N', '-e', sql];
   const r = spawnSync(MYSQL_BIN, args, { encoding: 'utf8', timeout: 15000 });
   if (r.status !== 0) throw new Error(`mysql failed: ${r.stderr || r.stdout}`);
   return r.stdout.trim();
@@ -55,10 +55,26 @@ function resetTestUser() {
   try { runMysql("DELETE FROM user_coin WHERE user_id=1"); } catch(e) {}
 }
 
+// 测试库每轮重建，小测出题需要至少 1 条已固化知识点：
+// 自建游客前置数据，不依赖开发库存量数据
+function seedGuestKp() {
+  try {
+    const cnt = runMysql("SELECT COUNT(*) FROM knowledge_points WHERE user_id=1 AND is_solidified=1").trim();
+    if (cnt !== '0') return;
+    const out = runMysql(
+      "INSERT INTO knowledge_points (user_id,user_input_content,standard_content,difficulty,master_require,is_solidified,solidify_time) "
+      + "VALUES (1,'mockword','mockword',3,'会写',1,NOW()); SELECT LAST_INSERT_ID();"
+    ).trim();
+    const id = out.split('\n').pop().trim();
+    runMysql(`INSERT INTO kp_definitions (knowledge_id,pos,meaning,example,display_order) VALUES (${id},'n.','模拟释义','This is a mock sentence.',0);`);
+  } catch(e) {}
+}
+
 async function main() {
   console.log('=== 阶段十一：每日小测（v1.2.0-T007）集成测试 ===\n');
 
   resetTestUser();
+  seedGuestKp();
 
   // ---- 0. 健康检查 ----
   console.log('[0] 前置检查');

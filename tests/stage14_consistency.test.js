@@ -7,8 +7,8 @@ const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const SCRIPT = path.join(ROOT, 'scripts', 'check_consistency.js');
-const { MYSQL_BIN, SOCK, PW_FILE, IN_CONTAINER } = require('./_env');
-const DB = 'english_learning';
+const { MYSQL_BIN, SOCK, PW_FILE, IN_CONTAINER, DB_NAME } = require('./_env');
+const DB = DB_NAME;
 const PROBE_KP = 999999;
 
 let pass = 0, fail = 0, skipped = 0;

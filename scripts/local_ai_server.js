@@ -21,22 +21,74 @@ const HOST = process.env.LOCALAI_HOST || '127.0.0.1';
 const LOG_DIR = process.env.LOCALAI_LOG_DIR || path.join(os.homedir(), '.local', 'log');
 const LOG_FILE = path.join(LOG_DIR, 'localai.out');
 
-fs.mkdirSync(LOG_DIR, { recursive: true });
-const logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+// 密钥文件（Linux/macOS 通用）：默认仓库外的用户配置目录，权限必须 600
+// 可用 ENG_AI_KEY_FILE 覆盖；容器/Windows 无该文件时回退环境变量
+const KEY_FILE_PATH = process.env.ENG_AI_KEY_FILE
+  || path.join(os.homedir(), '.config', 'eng-app', 'ai.key');
+
+let logStream = null;
+const warned = new Set();
+
 function log(msg) {
   const line = `[${new Date().toISOString()}] ${msg}`;
   console.log(line);
-  logStream.write(line + '\n');
+  if (logStream) logStream.write(line + '\n');
+}
+
+function warnOnce(key, msg) {
+  if (warned.has(key)) return;
+  warned.add(key);
+  log(msg);
 }
 
 // 加载配置（智谱AI API Key + 模型）
 const AI_CONFIG_PATH = path.join(__dirname, '..', 'config', 'ai.json');
+
+// 读取密钥文件：不存在/权限过宽/内容非法均视为未配置，交由下一优先级兜底
+function readKeyFile() {
+  let st;
+  try {
+    st = fs.statSync(KEY_FILE_PATH);
+  } catch (e) {
+    return null;
+  }
+  if (!st.isFile()) return null;
+  if ((st.mode & 0o077) !== 0) {
+    const mode = (st.mode & 0o777).toString(8);
+    warnOnce('perm', `[gateway] WARNING: 密钥文件权限过宽（${mode}），已忽略：${KEY_FILE_PATH}（请执行 chmod 600）`);
+    return null;
+  }
+  try {
+    const raw = fs.readFileSync(KEY_FILE_PATH, 'utf8').trim();
+    if (isPlaceholderKey(raw)) {
+      warnOnce('empty', `[gateway] WARNING: 密钥文件内容为空或非法，已忽略：${KEY_FILE_PATH}`);
+      return null;
+    }
+    return raw;
+  } catch (e) {
+    warnOnce('read', `[gateway] WARNING: 密钥文件读取失败：${e.message}`);
+    return null;
+  }
+}
+
+// 优先级：密钥文件 → 环境变量 ZHIPU_API_KEY → config/ai.json
+function resolveApiKey(configKey) {
+  const fileKey = readKeyFile();
+  if (fileKey) return { key: fileKey, source: 'file' };
+  if (!isPlaceholderKey(process.env.ZHIPU_API_KEY)) {
+    return { key: process.env.ZHIPU_API_KEY, source: 'env' };
+  }
+  if (!isPlaceholderKey(configKey)) return { key: configKey, source: 'config' };
+  return { key: '', source: 'none' };
+}
+
 function loadConfig() {
   try {
     const raw = fs.readFileSync(AI_CONFIG_PATH, 'utf8');
     const cfg = JSON.parse(raw);
-    // D10：环境变量 ZHIPU_API_KEY 优先于 config/ai.json 中的 api_key（便于 Docker/Codespaces）
-    if (process.env.ZHIPU_API_KEY) cfg.api_key = process.env.ZHIPU_API_KEY;
+    const resolved = resolveApiKey(cfg.api_key);
+    cfg.api_key = resolved.key;
+    cfg._key_source = resolved.source;
     return cfg;
   } catch (e) {
     log(`[gateway] FATAL: cannot read ${AI_CONFIG_PATH}: ${e.message}`);
@@ -71,7 +123,8 @@ const server = http.createServer((req, res) => {
       model: cfg ? cfg.chat_model : 'unknown',
       remote: REMOTE_HOST,
       api_key_configured: keyOk,
-      note: keyOk ? '' : '请在 config/ai.json 填入智谱AI BigModel API Key'
+      api_key_source: cfg ? cfg._key_source : 'none',
+      note: keyOk ? '' : '请执行 bash scripts/ai_key_store.sh set，或设置 ZHIPU_API_KEY'
     }));
     return;
   }
@@ -95,7 +148,7 @@ const server = http.createServer((req, res) => {
     if (isPlaceholderKey(cfg.api_key)) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
-        error: { message: '智谱AI API Key 未配置，请在 config/ai.json 的 api_key 字段填入 BigModel API Key（注册 https://open.bigmodel.cn 获取，GLM-4-Flash 完全免费）' }
+        error: { message: '智谱AI API Key 未配置，请执行 bash scripts/ai_key_store.sh set，或设置环境变量 ZHIPU_API_KEY（注册 https://open.bigmodel.cn 获取，GLM-4-Flash 完全免费）' }
       }));
       return;
     }
@@ -166,14 +219,22 @@ const server = http.createServer((req, res) => {
   res.end('Not found');
 });
 
-server.listen(PORT, HOST, () => {
-  const cfg = loadConfig();
-  const keyOk = cfg && !isPlaceholderKey(cfg.api_key);
-  log(`[gateway] listening on http://${HOST}:${PORT}, forwarding to https://${REMOTE_HOST}, model=${cfg ? cfg.chat_model : '?'}, api_key=${keyOk ? 'configured' : 'MISSING'}`);
-  if (!keyOk) {
-    log('[gateway] WARNING: API Key 未配置，请在 config/ai.json 填入智谱AI BigModel API Key');
-  }
-});
+function startServer() {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+  logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+  server.listen(PORT, HOST, () => {
+    const cfg = loadConfig();
+    const keyOk = cfg && !isPlaceholderKey(cfg.api_key);
+    const source = cfg ? cfg._key_source : 'none';
+    log(`[gateway] listening on http://${HOST}:${PORT}, forwarding to https://${REMOTE_HOST}, model=${cfg ? cfg.chat_model : '?'}, api_key=${keyOk ? 'configured' : 'MISSING'} (source=${source})`);
+    if (!keyOk) {
+      log(`[gateway] WARNING: API Key 未配置。请执行 bash scripts/ai_key_store.sh set，或设置环境变量 ZHIPU_API_KEY（密钥文件：${KEY_FILE_PATH}）`);
+    }
+  });
+  process.on('SIGINT', () => { log('[gateway] shutdown'); process.exit(0); });
+  process.on('SIGTERM', () => { log('[gateway] shutdown'); process.exit(0); });
+}
 
-process.on('SIGINT', () => { log('[gateway] shutdown'); process.exit(0); });
-process.on('SIGTERM', () => { log('[gateway] shutdown'); process.exit(0); });
+if (require.main === module) startServer();
+
+module.exports = { loadConfig, resolveApiKey, readKeyFile, isPlaceholderKey, KEY_FILE_PATH, server };

@@ -104,6 +104,7 @@ fi
 
 # ---------- 4. 启动两个服务 ----------
 export LOCALAI_LOG_DIR="${LOCALAI_LOG_DIR:-/app/logs}"
+export APP_LOG_DIR="${APP_LOG_DIR:-/app/logs}"
 
 echo "[entrypoint] 启动 AI 网关（内部端口 5340）..."
 node scripts/local_ai_server.js &
@@ -114,12 +115,17 @@ echo "[entrypoint] 启动后端（对外端口 8088）..."
 ./backend/build/eng_app_server --root "$APP_ROOT" --host 0.0.0.0 --port 8088 &
 BACKEND_PID=$!
 
+# 日志轮转守护：容器内只轮转应用自己写的日志（网关 localai.out 等）；
+# 后端 stdout 由 Docker 日志驱动管理，不在本任务范围。
+node scripts/log_rotate.js --watch >> "$APP_LOG_DIR/log_rotate.out" 2>&1 &
+LOG_ROTATE_PID=$!
+
 # ---------- 5. 停止处理 ----------
 # docker compose down 会给本脚本发 SIGTERM，这里负责把两个子进程一起带走，
 # 避免网关变成孤儿进程继续占用端口。
 stop_all() {
   echo "[entrypoint] 收到停止信号，正在关闭服务..."
-  kill "$GATEWAY_PID" "$BACKEND_PID" 2>/dev/null || true
+  kill "$GATEWAY_PID" "$BACKEND_PID" "$LOG_ROTATE_PID" 2>/dev/null || true
   wait 2>/dev/null || true
   exit 0
 }
