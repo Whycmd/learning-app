@@ -70,6 +70,21 @@ else
 fi
 echo ""
 
+# 3.6 启动每日备份守护（v1.5.0-T011：mysqldump 每日一次，保留 7 天）
+BACKUP_PID_FILE="$RUN_DIR/backup_daily.pid"
+if command -v node >/dev/null 2>&1; then
+  if [ -f "$BACKUP_PID_FILE" ] && kill -0 "$(cat "$BACKUP_PID_FILE")" 2>/dev/null; then
+    echo "[backup] already running (pid=$(cat "$BACKUP_PID_FILE"))"
+  else
+    nohup node "$APP_DIR/scripts/backup_daily.js" --watch >> "$LOG_DIR/backup_daily.out" 2>&1 &
+    echo $! > "$BACKUP_PID_FILE"
+    echo "[backup] starting pid=$(cat "$BACKUP_PID_FILE")"
+  fi
+else
+  echo "[backup] skipped: node not found"
+fi
+echo ""
+
 # 4. 打开浏览器
 echo "[4/4] 打开浏览器..."
 sleep 1

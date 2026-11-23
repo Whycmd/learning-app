@@ -1,0 +1,36 @@
+{
+  "templates": [
+    {
+      "template_key": "review",
+      "name": "每日复习",
+      "goal_type": "review_items",
+      "target_desc": "每周复习 30 条",
+      "period_days": 7,
+      "daily_minutes": 20,
+      "daily_new_words": 0
+    },
+    {
+      "template_key": "new_words",
+      "name": "新词积累",
+      "goal_type": "new_words",
+      "target_desc": "每周学习 10 个新词",
+      "period_days": 7,
+      "daily_minutes": 20,
+      "daily_new_words": 10
+    },
+    {
+      "template_key": "quiz",
+      "name": "小测巩固",
+      "goal_type": "quiz_count",
+      "target_desc": "每周完成 2 次小测",
+      "period_days": 7,
+      "daily_minutes": 15,
+      "daily_new_words": 5
+    }
+  ],
+  "wizard": [
+    { "step": 1, "question": "你主要想练什么？", "options": ["复习", "学习新词", "完成小测"] },
+    { "step": 2, "question": "想在多久内达成？", "default_days": 7 },
+    { "step": 3, "question": "每天能投入多少时间与新词？", "default_minutes": 20, "default_new_words": 10 }
+  ]
+}

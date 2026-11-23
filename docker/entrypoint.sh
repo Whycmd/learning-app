@@ -120,12 +120,16 @@ BACKEND_PID=$!
 node scripts/log_rotate.js --watch >> "$APP_LOG_DIR/log_rotate.out" 2>&1 &
 LOG_ROTATE_PID=$!
 
+# 每日备份守护（v1.5.0-T011）：容器内用 mariadb-dump/mysqldump，备份目录由 compose 挂载到宿主
+node scripts/backup_daily.js --watch >> "$APP_LOG_DIR/backup_daily.out" 2>&1 &
+BACKUP_PID=$!
+
 # ---------- 5. 停止处理 ----------
 # docker compose down 会给本脚本发 SIGTERM，这里负责把两个子进程一起带走，
 # 避免网关变成孤儿进程继续占用端口。
 stop_all() {
   echo "[entrypoint] 收到停止信号，正在关闭服务..."
-  kill "$GATEWAY_PID" "$BACKEND_PID" "$LOG_ROTATE_PID" 2>/dev/null || true
+  kill "$GATEWAY_PID" "$BACKEND_PID" "$LOG_ROTATE_PID" "$BACKUP_PID" 2>/dev/null || true
   wait 2>/dev/null || true
   exit 0
 }

@@ -97,22 +97,35 @@ async function main() {
 
     // ---- 1. AI 出题通用规则引擎 ----
     console.log('\n[1] AI 出题通用规则引擎');
+    let paperPath = '';
+    const exportPaper = async (j, label) => {
+      const payload = {
+        exercises: (j.exercises && j.exercises.exercises) || j.exercises || [],
+        knowledge_points: [], quick_memo: {}, title: '高频高阶单词专项测试'
+      };
+      const r = await req('POST', '/api/exercise/export-word', payload);
+      if (r.json && r.json.word_path && fs.existsSync(r.json.word_path)) {
+        const size = fs.statSync(r.json.word_path).size;
+        if (size > 1000) ok(`${label} 按需导出 Word`, `${size} bytes`);
+        else ko(`${label} Word 大小`, `${size} bytes`);
+        const fd = fs.openSync(r.json.word_path, 'r');
+        const buf = Buffer.alloc(2);
+        fs.readSync(fd, buf, 0, 2, 0);
+        fs.closeSync(fd);
+        if (buf[0] === 0x50 && buf[1] === 0x4b) ok(`${label} Word 有效 .docx (PK 头)`);
+        else ko(`${label} Word 格式`, `头部: ${buf.toString('hex')}`);
+        return r.json.word_path;
+      }
+      ko(`${label} 按需导出`, JSON.stringify(r.json).slice(0, 200));
+      return '';
+    };
     // 按日模式出题
     const gen1 = await req('POST', '/api/exercise/generate', { knowledge_ids: kpIds, mode: 'daily' });
     if (gen1.json && gen1.json.ok) {
       ok('按日出题成功', `ex_id=${gen1.json.exercise_id}`);
-      if (gen1.json.word_path && fs.existsSync(gen1.json.word_path)) {
-        const size = fs.statSync(gen1.json.word_path).size;
-        if (size > 1000) ok('习题 Word 生成', `${size} bytes`);
-        else ko('Word 大小', `${size} bytes`);
-        // 验证 .docx PK 头
-        const fd = fs.openSync(gen1.json.word_path, 'r');
-        const buf = Buffer.alloc(2);
-        fs.readSync(fd, buf, 0, 2, 0);
-        fs.closeSync(fd);
-        if (buf[0] === 0x50 && buf[1] === 0x4b) ok('Word 有效 .docx (PK 头)');
-        else ko('Word 格式', `头部: ${buf.toString('hex')}`);
-      } else ko('Word 文件', '不存在');
+      if (!gen1.json.word_path) ok('出题不再自动生成 Word');
+      else ko('出题仍返回 word_path', gen1.json.word_path);
+      paperPath = await exportPaper(gen1.json, '按日');
       // 页数限制
       if (gen1.json.page_limit >= 1 && gen1.json.page_limit <= 2) ok('按日页数限制', `limit=${gen1.json.page_limit}`);
       else ko('按日页数', `limit=${gen1.json.page_limit}`);
@@ -126,9 +139,7 @@ async function main() {
     const gen2 = await req('POST', '/api/exercise/generate', { knowledge_ids: kpIds, mode: 'weekly' });
     if (gen2.json && gen2.json.ok) {
       ok('按周出题成功', `ex_id=${gen2.json.exercise_id}`);
-      if (gen2.json.word_path && fs.existsSync(gen2.json.word_path)) {
-        ok('习题 Word 生成', `${fs.statSync(gen2.json.word_path).size} bytes`);
-      } else ko('Word 文件', '不存在');
+      paperPath = (await exportPaper(gen2.json, '按周')) || paperPath;
       // 页数限制 3-5
       if (gen2.json.page_limit >= 3 && gen2.json.page_limit <= 5) ok('按周页数限制', `limit=${gen2.json.page_limit}`);
       else ko('按周页数', `limit=${gen2.json.page_limit}`);
@@ -245,12 +256,12 @@ async function main() {
     if (!tables) ok('习题不入库', '无 exercise 表');
     else ko('习题不入库', `存在: ${tables}`);
 
-    // 习题 Word 是临时文件
-    if (gen1.json && gen1.json.word_path) {
-      const fn = gen1.json.word_path.split('/').pop();
-      if (fn.startsWith('exercise_') && fn.endsWith('.docx')) ok('习题 Word 文件名规范', fn);
+    // 习题 Word 是临时文件，且仅在按需导出时生成
+    if (paperPath) {
+      const fn = paperPath.split('/').pop();
+      if (fn.startsWith('exercise_ex_') && fn.endsWith('.docx')) ok('习题 Word 文件名规范', fn);
       else ko('Word 文件名', fn);
-    }
+    } else ko('习题 Word 文件名', '无导出文件');
 
   } catch (e) {
     ko('阶段四测试', e.message);

@@ -239,7 +239,8 @@ async function main() {
       const out = execSync(`top -l 1 -pid ${pid} -stats pid,threads`, { encoding: 'utf8', timeout: 10000 });
       const m = out.match(new RegExp(`^\\s*${pid}\\s+(\\d+)`, 'm'));
       const threads = m ? parseInt(m[1], 10) : 0;
-      if (threads > 1 && threads <= 18) ok('线程数上限', `${threads} 个线程（≤ 16+2）`);
+      // v1.5.0：固定 16 个 HTTP worker，另含主线程与日志/AI 队列常驻线程（实测 20）
+      if (threads > 1 && threads <= 22) ok('线程数上限', `${threads} 个线程（≤ 16+6）`);
       else ko('线程数上限', `threads=${threads}`);
     } catch (e) {
       skip('线程数上限', e.message);

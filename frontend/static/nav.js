@@ -5,6 +5,78 @@
 {
   'use strict';
 
+  // ---------- 界面模式（v1.5.0-T004） ----------
+  // function = 功能模式（随手学）；plan = 计划模式（长期课规）
+  // <html data-ui-mode> 决定首页区块与顶栏入口的显隐
+  const UI_MODE_KEY = 'eng_ui_mode';
+  const UI_MODE_TEXT = { function: '功能模式', plan: '计划模式' };
+
+  function readLocalUiMode()
+  {
+    try
+    {
+      const v = localStorage.getItem(UI_MODE_KEY);
+      return v === 'plan' || v === 'function' ? v : 'function';
+    }
+    catch (e) { return 'function'; }
+  }
+
+  function writeLocalUiMode(mode)
+  {
+    try { localStorage.setItem(UI_MODE_KEY, mode); } catch (e) {}
+  }
+
+  // 首帧即写入，避免首页在脚本加载后才切换造成闪烁
+  document.documentElement.setAttribute('data-ui-mode', readLocalUiMode());
+  let uiModeLoggedIn = false;   // 由 renderUser 根据 /api/auth/me 校正
+
+  // ---------- 匿名标识（v1.5.0-T001） ----------
+  // 未登录用户在本地生成稳定假名，仅用于前端区分会话；本轮不上传、不落库
+  const ANON_KEY_STORAGE = 'eng_anon_key';
+
+  function ensureAnonKey()
+  {
+    try
+    {
+      if (localStorage.getItem(ANON_KEY_STORAGE)) return;
+      const key = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'anon-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem(ANON_KEY_STORAGE, key);
+    }
+    catch (e) {}
+  }
+  ensureAnonKey();
+
+  // ---------- 写操作 401 → 跳转登录页（带回跳地址） ----------
+  function installAuthRedirect()
+  {
+    if (window.__authRedirectInstalled) return;
+    window.__authRedirectInstalled = true;
+
+    const origFetch = window.fetch.bind(window);
+    const AUTH_PATHS = /\/api\/auth\/(login|register|logout|deregister)(\?|$)/;
+
+    window.fetch = function (input, init)
+    {
+      const url = typeof input === 'string' ? input : (input && input.url) || '';
+      const method = ((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+      const write = method === 'POST' || method === 'PUT' || method === 'DELETE' || method === 'PATCH';
+
+      return origFetch(input, init).then(res =>
+      {
+        if (res.status === 401 && write && !AUTH_PATHS.test(url)
+          && !/\/pages\/login\.html$/.test(location.pathname))
+        {
+          const back = location.pathname + location.search;
+          location.assign('/pages/login.html?redirect=' + encodeURIComponent(back));
+        }
+        return res;
+      });
+    };
+  }
+  installAuthRedirect();
+
   // ---------- 导航结构定义 ----------
 
   const NAV_HTML = `
@@ -18,8 +90,7 @@
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
     <div class="topnav-dropdown__menu" role="menu">
-      <a href="/pages/kp-entry.html" role="menuitem">知识点录入</a>
-      <a href="/pages/kp-detail.html" role="menuitem">知识点详情</a>
+      <a href="/pages/kp-entry.html" role="menuitem">知识点</a>
       <a href="/pages/wordbook.html" role="menuitem">单词本</a>
     </div>
     </div>
@@ -36,8 +107,8 @@
     </div>
 
     <a href="/" class="topnav__link">首页</a>
-    <a href="/pages/articles.html" class="topnav__link">文章阅读</a>
-    <a href="/pages/learning-center.html" class="topnav__link">学情中心</a>
+    <a href="/pages/articles.html" class="topnav__link topnav__link--plan">文章阅读<span class="soon-badge">即将开放</span></a>
+    <a href="/pages/learning-center.html" class="topnav__link topnav__link--plan">学情中心</a>
 
     <span class="topnav__incentive">
       <button type="button" class="topnav__incentive-item topnav__incentive-item--coin" id="nc-coin" title="圣殿宝库" data-treasury-open>🪙 <span>–</span></button>
@@ -46,6 +117,28 @@
     </span>
 
     <span class="topnav__user" id="nc-user"></span>
+
+    <div class="ui-mode" id="nc-ui-mode">
+      <button class="ui-mode__trigger" type="button" aria-haspopup="true" aria-expanded="false">
+        <span class="ui-mode__label" id="nc-ui-mode-label">功能模式</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="ui-mode__menu" role="menu">
+        <button class="ui-mode__option" type="button" role="menuitemradio" aria-checked="false" data-ui-mode-set="function">
+          <span class="ui-mode__option-title">功能模式</span>
+          <span class="ui-mode__option-desc">随手学：AI 讲解、定制练习、复习、小测、词表</span>
+        </button>
+        <button class="ui-mode__option" type="button" role="menuitemradio" aria-checked="false" data-ui-mode-set="plan">
+          <span class="ui-mode__option-title">计划模式</span>
+          <span class="ui-mode__option-desc">长期课规：本周课规、今日所得、登阶、留印</span>
+        </button>
+        <p class="ui-mode__note" id="nc-ui-mode-note">登录后可在设备间同步界面模式</p>
+        <div class="ui-mode__links">
+          <a href="/pages/articles.html">文章阅读</a>
+          <a href="/pages/learning-center.html">学情中心</a>
+        </div>
+      </div>
+    </div>
 
     <button class="theme-toggle" id="theme-toggle" type="button" title="切换主题">☀</button>
   </nav>
@@ -93,7 +186,6 @@
   const ACTIVE_MAP = [
     { path: '/', trigger: '.topnav__link[href="/"]',   activeSel: '.topnav__link[href="/"]' },
     { path: '/pages/kp-entry.html',       trigger: '.topnav-dropdown__trigger[data-group="study"]' },
-    { path: '/pages/kp-detail.html',      trigger: '.topnav-dropdown__trigger[data-group="study"]' },
     { path: '/pages/wordbook.html',       trigger: '.topnav-dropdown__trigger[data-group="study"]' },
     { path: '/pages/review.html',         trigger: '.topnav-dropdown__trigger[data-group="practice"]' },
     { path: '/pages/daily-quiz.html',     trigger: '.topnav-dropdown__trigger[data-group="practice"]' },
@@ -128,6 +220,80 @@
       }
     }
   }
+
+  // ---------- 界面模式：渲染 / 切换 / 账号同步 ----------
+
+  function syncModeLabel()
+  {
+    const mode = document.documentElement.getAttribute('data-ui-mode') || 'function';
+    const label = document.getElementById('nc-ui-mode-label');
+    if (label) label.textContent = UI_MODE_TEXT[mode] || UI_MODE_TEXT.function;
+    const trigger = document.querySelector('.ui-mode__trigger');
+    if (trigger)
+      trigger.setAttribute('aria-label', '当前界面：' + (UI_MODE_TEXT[mode] || UI_MODE_TEXT.function) + '，点击切换');
+    document.querySelectorAll('[data-ui-mode-set]').forEach(btn =>
+    {
+      const on = btn.getAttribute('data-ui-mode-set') === mode;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
+
+  // persistLocal：游客与登录用户均把当前值落到本机，供未登录时兜底
+  function applyUiMode(mode, persistLocal)
+  {
+    const next = mode === 'plan' ? 'plan' : 'function';
+    document.documentElement.setAttribute('data-ui-mode', next);
+    if (persistLocal) writeLocalUiMode(next);
+    syncModeLabel();
+    return next;
+  }
+
+  function closeModeMenu()
+  {
+    const box = document.getElementById('nc-ui-mode');
+    if (box) box.classList.remove('open');
+    const trigger = document.querySelector('.ui-mode__trigger');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleModeMenu()
+  {
+    const box = document.getElementById('nc-ui-mode');
+    if (!box) return;
+    const open = !box.classList.contains('open');
+    box.classList.toggle('open', open);
+    const trigger = box.querySelector('.ui-mode__trigger');
+    if (trigger) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  // 切换界面模式：先乐观更新；登录用户写账号，失败回滚
+  async function switchUiMode(mode)
+  {
+    const prev = document.documentElement.getAttribute('data-ui-mode') || 'function';
+    const next = applyUiMode(mode, true);
+    closeModeMenu();
+    if (prev === next || !uiModeLoggedIn) return;
+    try
+    {
+      const r = await fetch('/api/auth/profile',
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ui_mode: next })
+      });
+      if (!r.ok) throw new Error('save failed');
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'save failed');
+    }
+    catch (e)
+    {
+      applyUiMode(prev, true);
+      alert('界面模式保存失败，已恢复到「' + (UI_MODE_TEXT[prev] || prev) + '」。');
+    }
+  }
+  window.engSetUiMode = switchUiMode;
+  window.engGetUiMode = function () { return document.documentElement.getAttribute('data-ui-mode') || 'function'; };
 
   // ---------- 激励区 ----------
 
@@ -191,9 +357,22 @@
 
     if (!me || me.guest)
     {
-      slot.innerHTML = '<a href="/pages/login.html" class="topnav__login">登录</a>';
+      uiModeLoggedIn = false;
+      applyUiMode(readLocalUiMode(), false);   // 游客沿用本机偏好
+      const note = document.getElementById('nc-ui-mode-note');
+      if (note) note.classList.add('show');
+      slot.innerHTML =
+        '<a href="/pages/privacy.html" class="topnav__legal">隐私</a>' +
+        '<a href="/pages/terms.html" class="topnav__legal">协议</a>' +
+        '<a href="/pages/login.html" class="topnav__login">登录</a>';
       return;
     }
+
+    // 登录后以账号设置为准，并同步到本机（退出登录后游客态沿用）
+    uiModeLoggedIn = true;
+    applyUiMode(me.ui_mode === 'plan' ? 'plan' : 'function', true);
+    const modeNote = document.getElementById('nc-ui-mode-note');
+    if (modeNote) modeNote.classList.remove('show');
 
     const name = me.display_name || me.username || '';
     const safeName = escapeHtml(name);
@@ -201,6 +380,8 @@
     slot.innerHTML =
       '<span class="topnav__name">' + safeName + '</span>' +
       '<span class="topnav__divider"></span>' +
+      '<a href="/pages/privacy.html" class="topnav__legal">隐私</a>' +
+      '<a href="/pages/terms.html" class="topnav__legal">协议</a>' +
       '<a href="javascript:void(0)" class="topnav__logout">退出</a>' +
       '<a href="javascript:void(0)" class="topnav__deregister" title="删除账号及全部数据">注销</a>';
 
@@ -319,13 +500,32 @@
     }
   }
 
+  // ---------- AI 导航注入（v1.5.1-T005 T4） ----------
+  // 仅在含顶栏的页面加载；幂等，重复调用不会重复插入
+  function injectAiNav()
+  {
+    if (!document.getElementById('topbar-slot')) return;
+    if (window.__engAiNavLoaded || document.querySelector('link[data-ai-nav]')) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/static/ai-nav.css?v=20261118e';
+    link.setAttribute('data-ai-nav', '');
+    document.head.appendChild(link);
+    const script = document.createElement('script');
+    script.src = '/static/ai-nav.js?v=20261118e';
+    script.async = true;
+    document.body.appendChild(script);
+  }
+
   // ---------- 启动 ----------
 
   document.addEventListener('DOMContentLoaded', () =>
   {
+    injectAiNav();
     if (!inject()) return; // login.html 等无 .shell 的页面：跳过导航注入
 
     markActive();
+    syncModeLabel();
     renderIncentive();
     renderUser();
     // 预热注入抽屉壳层（.drawer-overlay 未加 .open 时不可见、不可点）
@@ -338,10 +538,21 @@
   // 事件委托（导航与抽屉均为动态注入，无行内事件）
   document.addEventListener('click', e =>
   {
+    if (e.target.closest('.ui-mode__trigger')) { toggleModeMenu(); return; }
+    if (e.target.closest('[data-ui-mode-set]'))
+    {
+      switchUiMode(e.target.closest('[data-ui-mode-set]').getAttribute('data-ui-mode-set'));
+      return;
+    }
+    if (!e.target.closest('#nc-ui-mode')) closeModeMenu();
+
     if (e.target.closest('[data-treasury-open]')) { openTreasury(); return; }
     if (e.target.closest('[data-treasury-close]')) { closeTreasury(); return; }
     if (e.target.closest('[data-treasury-retry]')) { loadTreasury(); return; }
     if (e.target.id === 'treasury-drawer') closeTreasury();   // 点遮罩关闭
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTreasury(); });
+  document.addEventListener('keydown', e =>
+  {
+    if (e.key === 'Escape') { closeTreasury(); closeModeMenu(); }
+  });
 })();

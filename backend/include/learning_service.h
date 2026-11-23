@@ -83,6 +83,17 @@ public:
     return rowToJson(rows[0]);
   }
 
+  // v1.5.0-T005：录入/教材升级后加入学习（已存在不重复建）
+  bool enrollKnowledge(int knowledgeId) {
+    if (userId() <= 0 || knowledgeId <= 0) return false;
+    auto wr = db_.exec(
+      "INSERT IGNORE INTO user_learning (user_id, knowledge_id, proficiency_level, review_mode, "
+      "review_times, error_times, next_review_time, last_review_time, create_time) VALUES ("
+      + std::to_string(userId()) + ", " + std::to_string(knowledgeId)
+      + ", 0, 'daily', 0, 0, NOW(), NULL, NOW())");
+    return wr.affected_rows > 0;
+  }
+
   // 原子任务1：答题自动更新熟练度
   // isCorrect=true: 不变（选题时统一调整）
   // isCorrect=false: proficiency -1
@@ -124,6 +135,21 @@ public:
       " WHERE user_id=" + std::to_string(userId()) +
       " AND knowledge_id=" + std::to_string(knowledgeId)
     ).affected_rows > 0;
+  }
+
+  // v1.5.1-T002：重练答对按幅度提升熟练度，返回新等级；-1=失败
+  int adjustProficiency(int knowledgeId, int delta) {
+    auto lr = getOrCreate(knowledgeId);
+    if (lr.isNull()) return -1;
+    int level = lr.getInt("proficiency_level") + delta;
+    if (level < 0) level = 0;
+    if (level > 5) level = 5;
+    db_.exec(
+      "UPDATE user_learning SET proficiency_level=" + std::to_string(level) +
+      " WHERE user_id=" + std::to_string(userId()) +
+      " AND knowledge_id=" + std::to_string(knowledgeId)
+    );
+    return level;
   }
 
   // 设置复习模式
@@ -348,6 +374,95 @@ public:
     result["error_times_sum"] = JsonValue::makeInt(et);
     result["distribution"] = JsonValue::makeArray(dist);
     return JsonValue::makeObject(result);
+  }
+
+  // v1.5.0-T005：正在学习列表
+  // filter: all=全部正在学习 / due=今日到期 / learning=已开始学习（review_times>0）
+  // sort:   due=下次复习升序（默认）/ proficiency=熟练度升序 / recent=最近复习降序
+  JsonValue studying(const std::string& filter, const std::string& sort, int page, int size) {
+    std::string order;
+    if (sort == "proficiency") order = "ul.proficiency_level ASC, ul.id ASC";
+    else if (sort == "recent") order = "ul.last_review_time IS NULL, ul.last_review_time DESC, ul.id DESC";
+    else order = "ul.next_review_time IS NULL, ul.next_review_time ASC, ul.id ASC";
+
+    std::string base =
+      " FROM user_learning ul JOIN knowledge_points kp ON kp.id=ul.knowledge_id"
+      " WHERE ul.user_id=" + std::to_string(userId()) +
+      " AND ul.is_active=1 AND ul.proficiency_level<5";
+    if (filter == "due")
+      base += " AND ul.next_review_time IS NOT NULL AND DATE(ul.next_review_time)<=CURDATE()";
+    else if (filter == "learning")
+      base += " AND ul.review_times>0";
+
+    int total = 0;
+    auto cnt = db_.query("SELECT COUNT(*) AS c" + base);
+    if (!cnt.empty()) total = std::stoi(cnt[0]["c"].empty() ? "0" : cnt[0]["c"]);
+
+    auto rows = db_.query(
+      "SELECT ul.id AS learning_id, ul.knowledge_id, ul.proficiency_level, ul.review_mode, "
+      "ul.review_times, ul.error_times, "
+      "DATE_FORMAT(ul.next_review_time, '%Y-%m-%d %H:%i:%s') AS next_review_time, "
+      "DATE_FORMAT(ul.last_review_time, '%Y-%m-%d %H:%i:%s') AS last_review_time, "
+      "COALESCE(NULLIF(kp.standard_content, ''), kp.user_input_content) AS word, "
+      "kp.origin, kp.difficulty, "
+      "(SELECT d.meaning FROM kp_definitions d WHERE d.knowledge_id=kp.id "
+      " ORDER BY d.display_order, d.id LIMIT 1) AS meaning, "
+      "(SELECT d.pos FROM kp_definitions d WHERE d.knowledge_id=kp.id "
+      " ORDER BY d.display_order, d.id LIMIT 1) AS pos"
+      + base + " ORDER BY " + order
+      + " LIMIT " + std::to_string((page - 1) * size) + ", " + std::to_string(size));
+
+    JsonArray a;
+    for (auto& row : rows) {
+      int lv = std::stoi(row["proficiency_level"].empty() ? "0" : row["proficiency_level"]);
+      JsonObject o;
+      o["learning_id"] = JsonValue::makeInt(std::stoll(row["learning_id"].empty() ? "0" : row["learning_id"]));
+      o["knowledge_id"] = JsonValue::makeInt(std::stoll(row["knowledge_id"].empty() ? "0" : row["knowledge_id"]));
+      o["word"] = JsonValue::makeString(row["word"]);
+      o["meaning"] = row["meaning"].empty() ? JsonValue::makeNull() : JsonValue::makeString(row["meaning"]);
+      o["pos"] = row["pos"].empty() ? JsonValue::makeNull() : JsonValue::makeString(row["pos"]);
+      o["proficiency_level"] = JsonValue::makeInt(lv);
+      o["proficiency_name"] = JsonValue::makeString(proficiencyName(lv));
+      o["review_mode"] = JsonValue::makeString(row["review_mode"]);
+      o["review_times"] = JsonValue::makeInt(std::stoi(row["review_times"].empty() ? "0" : row["review_times"]));
+      o["error_times"] = JsonValue::makeInt(std::stoi(row["error_times"].empty() ? "0" : row["error_times"]));
+      o["next_review_time"] = row["next_review_time"].empty() ? JsonValue::makeNull() : JsonValue::makeString(row["next_review_time"]);
+      o["last_review_time"] = row["last_review_time"].empty() ? JsonValue::makeNull() : JsonValue::makeString(row["last_review_time"]);
+      o["origin"] = JsonValue::makeString(row["origin"]);
+      o["difficulty"] = row["difficulty"].empty() ? JsonValue::makeNull() : JsonValue::makeInt(std::stoi(row["difficulty"]));
+      a.push_back(JsonValue::makeObject(o));
+    }
+    JsonObject res;
+    res["data"] = JsonValue::makeArray(a);
+    res["total"] = JsonValue::makeInt(total);
+    res["page"] = JsonValue::makeInt(page);
+    res["size"] = JsonValue::makeInt(size);
+    return JsonValue::makeObject(res);
+  }
+
+  // v1.5.0-T005：学习汇总
+  // to_learn=已加入学习的新词（未复习）/ learning=正在学习 / mastered=已满级 / due_today=今日到期
+  JsonValue summary() {
+    auto rows = db_.query(
+      "SELECT "
+      "SUM(CASE WHEN is_active=1 AND proficiency_level<5 THEN 1 ELSE 0 END) AS learning, "
+      "SUM(CASE WHEN is_active=1 AND proficiency_level>=5 THEN 1 ELSE 0 END) AS mastered, "
+      "SUM(CASE WHEN is_active=1 AND proficiency_level<5 AND review_times=0 THEN 1 ELSE 0 END) AS to_learn, "
+      "SUM(CASE WHEN is_active=1 AND proficiency_level<5 AND next_review_time IS NOT NULL "
+      " AND DATE(next_review_time)<=CURDATE() THEN 1 ELSE 0 END) AS due_today "
+      "FROM user_learning WHERE user_id=" + std::to_string(userId()));
+    auto num = [&](const char* key) {
+      if (rows.empty()) return 0;
+      auto it = rows[0].find(key);
+      if (it == rows[0].end() || it->second.empty()) return 0;
+      return std::stoi(it->second);
+    };
+    JsonObject res;
+    res["to_learn"] = JsonValue::makeInt(num("to_learn"));
+    res["learning"] = JsonValue::makeInt(num("learning"));
+    res["mastered"] = JsonValue::makeInt(num("mastered"));
+    res["due_today"] = JsonValue::makeInt(num("due_today"));
+    return JsonValue::makeObject(res);
   }
 
   // v1.3.0-T108：最近 N 天每日复习次数（基于 last_review_time）

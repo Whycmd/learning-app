@@ -9,6 +9,7 @@ const path = require('path');
 const http = require('http');
 const { spawn, spawnSync } = require('child_process');
 const { MYSQL_BIN, MYSQL_PW_FILE, SOCK, DB_NAME, API_HOST, API_PORT, AI_MOCK_MODE } = require('./_env');
+const { withSystemCookie } = require('./_system');
 
 let pass = 0, fail = 0, skipped = 0;
 const failures = [];
@@ -32,7 +33,7 @@ function api(port, method, urlPath, body) {
     const data = body ? JSON.stringify(body) : null;
     const req = http.request({
       host: API_HOST, port, method, path: urlPath,
-      headers: { 'Content-Type': 'application/json', 'Content-Length': data ? Buffer.byteLength(data) : 0 },
+      headers: withSystemCookie({ 'Content-Type': 'application/json', 'Content-Length': data ? Buffer.byteLength(data) : 0 }),
       timeout: 120000,
     }, res => {
       const chunks = [];

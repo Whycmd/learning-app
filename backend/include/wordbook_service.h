@@ -13,6 +13,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <cstdlib>
 #include <random>
 #include <unistd.h>
 
@@ -22,9 +23,11 @@ class WordbookService {
   Db& db_;
   KnowledgeService& kpSvc_;
   std::string wordTmpDir_;
+  std::string root_;
 public:
-  WordbookService(Db& db, KnowledgeService& kpSvc, const std::string& wordTmp)
-    : db_(db), kpSvc_(kpSvc), wordTmpDir_(wordTmp) {}
+  WordbookService(Db& db, KnowledgeService& kpSvc, const std::string& wordTmp,
+                  const std::string& root)
+    : db_(db), kpSvc_(kpSvc), wordTmpDir_(wordTmp), root_(root) {}
 
   // ============ 单词本 CRUD ============
 
@@ -218,7 +221,7 @@ public:
       for (auto kid : kpIds) {
         try {
           auto wr = db_.exec(
-            "INSERT INTO wordbook_entry (wordbook_id, knowledge_id, display_order) VALUES ("
+            "INSERT IGNORE INTO wordbook_entry (wordbook_id, knowledge_id, display_order) VALUES ("
             + std::to_string(wbId) + "," + std::to_string(kid) + "," + std::to_string(maxOrder++) + ")"
           );
           if (wr.affected_rows > 0) r.added++;
@@ -340,26 +343,55 @@ public:
     return path;
   }
 
-  // 导出 Word
+  // v1.5.0-T009 D09：导出单词卡（仅单词 + 释义，不含音标/例句）
   std::string exportWord(int64_t wbId, std::string& err) {
     auto wb = db_.query("SELECT id, name, entry_count FROM wordbook WHERE id="
                         + std::to_string(wbId) + " AND user_id="
                         + std::to_string(RequestContext::currentUserId()));
     if (wb.empty()) { err = "wordbook not found"; return ""; }
 
-    auto entryRows = db_.query(
-      "SELECT we.knowledge_id FROM wordbook_entry we "
-      "JOIN knowledge_points kp ON kp.id=we.knowledge_id "
+    auto rows = db_.query(
+      "SELECT kp.id AS knowledge_id, kp.standard_content, kp.user_input_content, "
+      "(SELECT meaning FROM kp_definitions d WHERE d.knowledge_id=kp.id "
+      " ORDER BY d.display_order,d.id LIMIT 1) AS meaning "
+      "FROM wordbook_entry we JOIN knowledge_points kp ON kp.id=we.knowledge_id "
       "WHERE we.wordbook_id=" + std::to_string(wbId) + " AND kp.is_solidified=1 "
-      "ORDER BY we.display_order ASC, we.id ASC"
-    );
-    if (entryRows.empty()) { err = "no solidified entries"; return ""; }
+      "ORDER BY we.display_order ASC, we.id ASC");
+    if (rows.empty()) { err = "no solidified entries"; return ""; }
+    if (rows.size() > 300) { err = "too many words"; return ""; }
 
-    std::vector<int64_t> ids;
-    for (auto& r : entryRows) ids.push_back(std::stoll(r["knowledge_id"]));
+    JsonArray arr;
+    for (auto& r : rows) {
+      std::string word = r["standard_content"].empty() ? r["user_input_content"]
+                                                        : r["standard_content"];
+      JsonObject o;
+      o["word"] = JsonValue::makeString(word);
+      o["meaning"] = JsonValue::makeString(r["meaning"]);
+      arr.push_back(JsonValue::makeObject(o));
+    }
+    JsonObject payload;
+    payload["title"] = JsonValue::makeString(wb[0]["name"]);
+    payload["id"] = JsonValue::makeInt(wbId);
+    payload["words"] = JsonValue::makeArray(arr);
 
-    // 复用 KnowledgeService 的批量导出
-    return kpSvc_.exportBatchWord(ids);
+    std::string tmpPath = wordTmpDir_ + "/wb_cards_" + std::to_string(wbId) + "_" +
+                          std::to_string((int64_t)::time(nullptr)) + ".json";
+    {
+      std::ofstream f(tmpPath);
+      if (!f) { err = "cannot write json file"; return ""; }
+      f << JsonValue::makeObject(payload).dump();
+    }
+
+    const char* nodeEnv = std::getenv("NODE_BIN");
+    std::string nodeBin = nodeEnv ? nodeEnv : "node";
+    std::string cmd = nodeBin + " " + root_ + "/scripts/gen_word_wordbook.js wordbook " +
+                      std::to_string(wbId) + " " + tmpPath + " " + wordTmpDir_;
+    int rc = std::system(cmd.c_str());
+    if (rc != 0) { err = "word card generation failed"; return ""; }
+
+    std::string outPath = wordTmpDir_ + "/wordbook_" + std::to_string(wbId) + ".docx";
+    if (::access(outPath.c_str(), F_OK) != 0) { err = "word card file not found"; return ""; }
+    return outPath;
   }
 
   // ============ 导入 ============

@@ -8,6 +8,31 @@
 
 namespace eng {
 
+// [CONFIG] 单个模型端点（主/备），数组顺序即切换顺序
+struct AiProviderConfig {
+  std::string name;                                  // 展示名，如 zhipu-primary
+  std::string base_url="http://127.0.0.1:5340/v1";
+  std::string api_key="local-offline-no-key";
+  std::string chat_model="qwen2.5-0.5b";
+  std::string provider_type="openai_compatible";      // openai_compatible | agnes
+};
+
+// [CONFIG] AI 队列参数（config/ai.json 的 queue 段）
+struct AiQueueConfig {
+  int max_size=1024;            // 队列上限，超出返回 429
+  int task_timeout_sec=180;     // 单任务累计超时
+  int retry_max=2;              // 队列层可重试次数
+  int backoff_base_sec=2;       // 指数退避基数：2/4/8
+  int avg_cost_cold_start_sec=30; // 冷启动平均耗时估计
+  // v1.5.0-T006：空闲队列（queue_level>0）最多占用的 worker 数
+  int idle_max_workers=1;
+  // v1.5.0-T006：空闲队列最大层级（1..N）
+  int idle_max_level=3;
+  // v1.5.0-T006：前端提示「转入空闲队列」的阈值
+  int idle_hint_min_items=5;
+  int idle_hint_min_eta_sec=60;
+};
+
 // AI 配置（各 Provider 共用）
 struct AiConfig {
   std::string base_url="http://127.0.0.1:5340/v1";
@@ -21,6 +46,15 @@ struct AiConfig {
   int retry_interval_sec=2;
   // [CONFIG] AI 批量任务并发数（config/ai.json），换模型时可直接调整
   int max_concurrency=2;
+  // [CONFIG] 主备模型数组；为空时由上面的顶层字段组成单 provider
+  std::vector<AiProviderConfig> providers;
+  // [CONFIG] 单模型连续失败 N 次后降级 cooldown 秒
+  int fail_threshold=3;
+  int degraded_cooldown_sec=600;
+  // [CONFIG] AI 生成词表每日次数上限（v1.5.0-T003），默认 5
+  int wordlist_daily_limit=5;
+  // [CONFIG] 队列参数
+  AiQueueConfig queue;
   // [TEST] AI Mock 模式：off(默认) | success | timeout | 5xx
   // 仅测试环境通过 ENG_AI_MOCK_MODE 开启，生产保持 off，不发起网络请求
   std::string mock_mode="off";
@@ -41,6 +75,10 @@ struct AiResponse {
   std::string body;         // 原始响应体
   std::string extractedJson; // 从响应中提取的 JSON 字符串
   bool ok = false;          // 是否成功
+  // v1.5.0-T011：usage 记账（响应无 usage 时保持 0，不臆造）
+  int promptTokens = 0;
+  int completionTokens = 0;
+  int totalTokens = 0;
 };
 
 // Provider 类型（需在使用前定义）

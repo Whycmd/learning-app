@@ -150,7 +150,7 @@ children.push(bullet('清理规则：软件启动时清空历史习题文件；�
 
 // 十、启动与部署
 children.push(h2('十、启动方式'));
-children.push(bullet('双击桌面「英语学习应用.command」：依次启动 MySQL → AI 网关 → C++ 后端，自动打开浏览器访问 http://127.0.0.1:8088/'));
+children.push(bullet('双击桌面「英语学习应用.command」：依次启动 MySQL → AI 网关 → C++ 后端，自动打开浏览器访问 http://127.0.0.1:8088/（公网演示为 http://123.56.205.221/）'));
 children.push(bullet('双击桌面「停止英语学习.command」：优雅停止全部服务'));
 children.push(bullet('配置文件：config/db.json（数据库）、config/ai.json（AI 模型与 Key）、config/app.json（端口、复习模式等）'));
 children.push(bullet('备份：数据备份导出为 .sql 文件存于 backups/ 目录'));

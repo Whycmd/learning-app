@@ -49,3 +49,5 @@ const TTS = (() => {
 
   return { speak, stop, speakRemote };
 })();
+// 挂到 window，供各模块通过 window.TTS 调用（v1.5.3-T003 修复）
+window.TTS = TTS;

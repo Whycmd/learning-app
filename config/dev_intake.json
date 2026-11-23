@@ -1,0 +1,7 @@
+{
+  "_comment": "v1.5.2-T001 DEV-INTAKE：AI 导航需求/Bug 沉淀参数；改本文件后重启后端生效。判定规则在 backend/include/prompts.h AI_NAV_SYSTEM；处置逻辑在 backend/include/dev_intake_service.h",
+  "confidence_threshold": 0.6,
+  "receipt_backlog": "您的建议我帮你记下来了（编号 #B{id}）。开发者安排更新时会逐条看这些反馈，合适的就会做进应用。",
+  "receipt_bug": "这个问题已经记录（编号 #G{id}），开发者看到会尽快排查，修复会随之后的版本更新生效。这段时间不影响你正常使用其他功能，抱歉给你添麻烦了。",
+  "receipt_triage": "你的反馈已记下（编号 #T{id}）。这条需要开发者确认一下具体情况，确认后就会安排处理。"
+}

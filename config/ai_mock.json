@@ -26,5 +26,18 @@
     "new_word": "ample",
     "new_meaning": "充足的",
     "new_example": "There was ample food."
+  },
+  "explain": {
+    "summary": "（模拟）{WORD} 的核心释义",
+    "markdown": "# 单词精讲：{WORD}\n\n- （模拟）核心含义\n- （模拟）用法要点"
+  },
+  "followup": {
+    "section_title": "（模拟）追问",
+    "answer_md": "## （模拟）追问回答\n\n- 这是模拟追问内容"
+  },
+  "custom_exercise": {
+    "word": "mock",
+    "stem": "He ___ to school every day. ({WORD})",
+    "answer": "mock"
   }
 }

@@ -48,6 +48,8 @@ static const std::string KP_SOLIDIFY_BATCH_SYSTEM =
  */
 static const std::string EXERCISE_GENERATE_SYSTEM =
   "You are an English learning exercise generator. Return ONLY valid JSON."
+  "Never reveal the target word as a standalone label, and never place the answer in the stem, options, or passage. "
+  "选项数组只写选项文本，禁止自带 A. / B. / C. / D. 等字母前缀，字母由程序统一添加。"
   "语言规则：题干中的英文内容（挖空句、选项、示例短文）保持英文；所有题目的中文解析、quick_memo、error_analysis 等展示性文本用中文输出。";
 
 /**
@@ -259,27 +261,44 @@ static const std::string KP_SOLIDIFY_BATCH_USER =
  *   {MASTER_REQ}  — "会读" / "会写" / 自定义掌握要求
  *   {PAGE_LIMIT}  — 页数限制数字
  *   {KP_JSON}     — 知识点列表（JSON 字符串，由 Service 层 dump）
+ *   {ARTICLE_EXCERPT} — 站内文章节选（标题 + 正文），无文章时由 Service 注入兜底说明
  *
  * 使用者：QuestionService::generateExercises
  * 输出格式：{exercises:[...], quick_memo:{items:[...]}}
  * 题型范围：word_match, word_form_fill, context_blank_fill,
- *           cn_to_en_translation, cloze_choice, sentence_imitation
+ *           cn_to_en_translation, cloze_choice, sentence_imitation, long_reading_cloze
  */
 static const std::string EXERCISE_GENERATE_USER =
   "请基于以下知识点集合生成英语习题。\n"
   "学习者身份：{LEARNER_IDENTITY}\n（请据此身份对应的学习目标与考察方向调整题目难度、题型选择与考点偏好——例如：高中生→高考词汇/语法/长难句/阅读写作；CET-4/6→核心词汇与题型训练；考研→长难句/翻译/写作套路；雅思/托福→听说读写四科应用与学术场景；GRE→高阶学术词汇与批判性阅读。）\n"
   "复习模式：{MODE_CN}。"
   "掌握要求：{MASTER_REQ}（会读重辨析理解，会写重变形/填空/翻译/输出）。"
-  "页数限制：{PAGE_LIMIT} 页。题目整体难度应低于考察知识点难度，消除阅读障碍。\n"
-  "格式可参考以下思路，但可以根据实际情况有所增减：\n"
-  "1. 词义匹配题(word_match)建议先提供一篇包含所有目标单词的阅读短文(passage字段)，再出选择题和简答题\n"
-  "2. 题型排列顺序可参考：词义匹配→词性转换填空→语境选词填空→中译英翻译→词汇辨析完形选择→例句仿写\n"
-  "3. 词汇辨析完形选择(cloze_choice)建议提供一篇含空格的短文(passage)和每空四选项(options)\n"
-  "4. quick_memo建议包含所有知识点核心释义速记\n"
+  "页数限制：{PAGE_LIMIT} 页。题目整体难度应低于考察知识点难度，消除阅读障碍。\n\n"
+  "【硬性格式与防泄题规则（解析器依赖，不可省略）】\n"
+  "1. 禁止以“目标词：xxx”或“xxx 的意思是什么”等孤立形式直接给出考点词；词义、搭配、用法必须在语篇或完整句子中考查。\n"
+  "2. answer、blanks[].answer、reference_answer 不得出现在题干、选项或短文的其他位置；选择题正确选项不得与其他选项重复。\n"
+  "3. 词义匹配题(word_match)必须提供一篇连贯短文(passage)，题目引用短文原句或段落考查词义，不得只列单词与释义配对。\n"
+  "4. 词汇辨析完形选择(cloze_choice)必须提供一篇 100–180 词的连贯短文(passage)，空位用 [[1]]、[[2]]…标注；每题 4 个同词性选项，不得用语法形式明显不合的选项凑数。\n"
+  "5. 语境选词填空(context_blank_fill)的题干必须是含空位的完整句子或短段落；不得在题干括号外直接给出目标词。\n"
+  "6. 词性转换填空(word_form_fill)只在题干括号内给基础词，如“He was ______ (abandon) by his friends.”；不得直接给变形后的答案。\n"
+  "7. 长篇阅读语法填空(long_reading_cloze)必须提供一篇 180–280 词的连贯短文，空位用 [[1]]、[[2]]…标注，共 6–10 个空；blanks 数组逐空给出 no、answer、explanation；需要基础词提示的空在正文空位后用括号给出基础词，并在 hint 中写“(基础词)”；每空答案唯一。\n"
+  "8. 完整完形填空(full_cloze)必须提供一篇 180–300 词的连贯短文，空位用 [[1]]、[[2]]…标注，共 4–8 个空；questions 数组逐空给出 no、options（4 个不带字母的选项）、answer（A/B/C/D）、explanation；同一空的四个选项必须同词性、可比较。\n"
+  "9. 所有 options 数组只写选项文本，禁止自带“A. ”“B. ”等字母前缀；单选题空位只用 ______，不要写 (1)、(2) 等编号；多空题才保留空位编号。\n"
+  "10. 每题必须输出 question；有短文时输出 passage；题号与空位编号必须连续。\n"
+  "11. quick_memo 仅用于速记，不得把答案抄进题干或选项。\n"
   "如有备注/标注，仅考察标注相关内容。\n\n"
+  "【语篇素材】\n{ARTICLE_EXCERPT}\n"
+  "若提供了文章节选：优先在其基础上节选/改编，保留原有文学风格与难度，可替换少量词以覆盖知识点；不得整段照抄超过原文的 60%。\n"
+  "若没有文章节选：由你自选公版文学名著、经典演讲、新闻特写或科普短文，禁止使用受版权保护的当代长篇原文。\n\n"
+  "【推荐做法（非强制，按身份与题量灵活取舍）】\n"
+  "- 题型顺序参考：长篇阅读语法填空→完整完形填空→词义匹配→词性转换→语境选词→中译英→完形选择→例句仿写；\n"
+  "- 语篇类型尽量多样：文学叙事、人物特写、科普说明、文化评论；\n"
+  "- 选择题干扰项贴近真实考试：同词性、同话题、语义相近但搭配或逻辑不合；\n"
+  "- 中文解析只讲易错点与判断依据，不逐句翻译；\n"
+  "- 保留真实考试的长度与语篇感，但生词难度低于知识点本身。\n\n"
   "知识点列表（JSON）：\n{KP_JSON}\n\n"
-  "严格按 JSON 输出：{exercises:[{type,question/passage,options?,answer?,knowledge_id,prompt?,reference_answer?,sample?,blanks?}], quick_memo:{items:[{knowledge,brief}]}}\n"
-  "题型范围：word_match, word_form_fill, context_blank_fill, cn_to_en_translation, cloze_choice, sentence_imitation";
+  "严格按 JSON 输出：{exercises:[{type,question,passage?,options?,answer?,knowledge_id,prompt?,reference_answer?,sample?,blanks?,questions?}], quick_memo:{items:[{knowledge,brief}]}}\n"
+  "题型范围：word_match, word_form_fill, context_blank_fill, cn_to_en_translation, cloze_choice, sentence_imitation, long_reading_cloze, full_cloze";
 
 // --------------------------------------------------------------------------
 // 主观题批改
@@ -393,6 +412,305 @@ static std::string replace(const std::string& src,
   return result;
 }
 
+// --------------------------------------------------------------------------
+// AI 生成词表（v1.5.0-T003）
+// --------------------------------------------------------------------------
+
+/**
+ * WORDLIST_GENERATE_SYSTEM — AI 生成词表 system prompt
+ * 使用者：main.cpp 的 wordlist_generate runner
+ * 输出格式：{"title":"...","words":[{"word":"...","meaning":"中文释义","pos":"n./v./adj./adv./phr."}]}
+ */
+static const std::string WORDLIST_GENERATE_SYSTEM =
+  "You are an English vocabulary list generator. Return ONLY a valid JSON object, no markdown, no explanation. "
+  "Schema: {\"title\":\"short list title\",\"words\":[{\"word\":\"English word or phrase\",\"meaning\":\"中文释义\",\"pos\":\"n./v./adj./adv./phr.\"}]}. "
+  "Rules: 1) word must be English and correctly spelled; 2) meaning must be Chinese; 3) pos must be an English abbreviation; "
+  "4) deduplicate case-insensitively; 5) order words from easy to hard; 6) keep the requested count (allow ±2).";
+
+/**
+ * WORDLIST_GENERATE_USER — AI 生成词表 user prompt
+ *
+ * 动态插入点：
+ *   {TOPIC}             — 用户输入的主题
+ *   {COUNT}             — 目标词数
+ *   {LEVEL}             — 难度（easy/normal/hard）
+ *   {LEARNER_IDENTITY}  — 学习者身份
+ *
+ * 使用者：main.cpp 的 wordlist_generate runner
+ */
+static const std::string WORDLIST_GENERATE_USER =
+  "主题：{TOPIC}\n"
+  "目标词数：{COUNT}\n"
+  "难度：{LEVEL}\n"
+  "学习者身份：{LEARNER_IDENTITY}\n"
+  "请生成适合该身份的英语词表，释义用中文，只输出 JSON。";
+
+/**
+ * EXPLAIN_SYSTEM — AI 讲解 system prompt（v1.5.0-T008）
+ * 使用者：ExplainService::runTask
+ * 输出格式：{"summary":"中文结论","markdown_content":"Markdown 精讲正文"}
+ * 精讲口径直接复用 KP_MARKDOWN_RULES / KP_MARKDOWN_EXAMPLE（与知识点固化一致）
+ */
+static const std::string EXPLAIN_SYSTEM =
+  std::string(
+    "You are an experienced English tutor. Return ONLY a valid JSON object, no markdown fences, no extra text.\n"
+    "Schema: {\"summary\":\"one-sentence Chinese conclusion\",\"markdown_content\":\"Markdown explanation\"}.\n"
+    "markdown_content 是精讲唯一正文，禁止另出 sections 或重复正文；以下规则与示例必须严格遵守。\n"
+    "目标词、英文例句与英文原文保持英文，讲解说明用中文。\n\n")
+  + KP_MARKDOWN_RULES + KP_MARKDOWN_EXAMPLE;
+
+/**
+ * EXPLAIN_DEPTH_RULES — 讲解深度附加要求（按 depth 注入 {DEPTH_RULE}）
+ */
+static const std::string EXPLAIN_DEPTH_RULES =
+  "brief=只讲核心释义与一个典型例句；standard=核心释义、用法要点、一个例句；deep=补充词源/辨析/易错点/多例句。";
+
+/**
+ * EXPLAIN_USER — AI 讲解 user prompt
+ *
+ * 动态插入点：
+ *   {TEXT}              — 用户输入（单词/短语/句子/段落）
+ *   {TYPE}              — word / phrase / sentence / article
+ *   {DEPTH}             — brief / standard / deep
+ *   {DEPTH_RULE}        — 深度附加要求
+ *   {LEARNER_IDENTITY}  — 学习者身份
+ */
+static const std::string EXPLAIN_USER =
+  "学习内容：{TEXT}\n"
+  "类型：{TYPE}\n"
+  "深度：{DEPTH}\n"
+  "深度要求：{DEPTH_RULE}\n"
+  "学习者身份：{LEARNER_IDENTITY}\n"
+  "请结合该身份的学习目标（如高考/雅思/托福等）组织讲解，正文以“# 单词精讲”开篇，只输出 JSON。";
+
+/**
+ * FOLLOWUP_SYSTEM — 精讲追问 system prompt（v1.5.0-T008）
+ * 输出：{"answer_md":"Markdown 回答片段","section_title":"中文小标题"}
+ * 回答只针对本次问题，不重复已有精讲；风格与 KP_MARKDOWN_RULES 一致
+ */
+static const std::string FOLLOWUP_SYSTEM =
+  std::string(
+    "You are an experienced English tutor continuing an existing explanation. "
+    "Return ONLY a valid JSON object, no markdown fences, no extra text.\n"
+    "Schema: {\"answer_md\":\"Markdown answer\",\"section_title\":\"short Chinese title\"}.\n"
+    "answer_md 只回答本次问题，不重复已有精讲；用 ## 小标题、- 列表、> 引用英文例句；"
+    "目标词、英文例句保持英文，说明用中文。以下写作规则必须遵守。\n\n")
+  + KP_MARKDOWN_RULES;
+
+/**
+ * FOLLOWUP_USER — 精讲追问 user prompt
+ *
+ * 动态插入点：
+ *   {TEXT}              — 目标词/短语
+ *   {LEARNER_IDENTITY}  — 学习者身份
+ *   {EXPLAIN_MD}        — 已有精讲正文（可能为空）
+ *   {QUESTION}          — 用户追问
+ */
+static const std::string FOLLOWUP_USER =
+  "目标内容：{TEXT}\n"
+  "学习者身份：{LEARNER_IDENTITY}\n"
+  "已有精讲正文：\n{EXPLAIN_MD}\n\n"
+  "学习者追问：{QUESTION}\n"
+  "请只针对该问题作答，只输出 JSON。";
+
+/**
+ * CUSTOM_EXERCISE_SYSTEM — 定制练习出题 system prompt（v1.5.0-T006）
+ * 输出：{"items":[{"type":"...","word":"...","stem":"...","options":["A. .."],"answer":"...","explanation":"中文解析"}]}
+ * 客观题：choice（cloze_choice/word_match）必须有 4 个选项与 answer 字母；填空/翻译/仿写只给 answer。
+ */
+static const std::string CUSTOM_EXERCISE_SYSTEM =
+  "You are an English test item writer. Return ONLY a valid JSON object, no markdown fences. "
+  "Schema: {\"items\":[{\"type\":\"one of the allowed types\",\"word\":\"target word\",\"stem\":\"question stem\","
+  "\"passage\":\"optional reading passage\",\"options\":[\"option text without letter prefix\"],"
+  "\"answer\":\"answer or array of answers\",\"blanks\":[{\"no\":1,\"answer\":\"...\",\"hint\":\"optional\",\"explanation\":\"中文解析\"}],"
+  "\"questions\":[{\"no\":1,\"options\":[\"option text\"],\"answer\":\"A\",\"explanation\":\"中文解析\"}],"
+  "\"explanation\":\"中文解析\"}]}. "
+  "Allowed types: word_match, cloze_choice, word_form_fill, context_blank_fill, cn_to_en_translation, sentence_imitation, long_reading_cloze, full_cloze. "
+  "Never expose the target word as a standalone label, and never place the answer in the stem, options, or passage. "
+  "Options must NOT include letter prefixes such as A. or B.; the program adds letters. "
+  "word_match and cloze_choice MUST have exactly 4 same-part-of-speech options and answer is the option letter. "
+  "cloze_choice and long_reading_cloze MUST provide a coherent passage; mark blanks as [[1]], [[2]] ... in the passage. "
+  "long_reading_cloze MUST provide blanks array with 6–10 unique answers. "
+  "full_cloze MUST provide a 180–300 word passage with 4–8 numbered blanks and a questions array; each question has 4 options and answer A/B/C/D. "
+  "Other types omit options and provide a short English or Chinese answer. Explanations are in Chinese, "
+  "stems and answers keep English.";
+
+/**
+ * CUSTOM_EXERCISE_USER — 定制练习 user prompt
+ * 动态插入点：{SPEC}（组题条）、{TYPE_MODE_RULE}（按题型数量 / 不限题型）、
+ *             {POOL}（取词池，可能为空）、{LEARNER_IDENTITY}、{ARTICLE_EXCERPT}（文章节选或兜底说明）
+ */
+static const std::string CUSTOM_EXERCISE_USER =
+  "组题要求：{SPEC}\n"
+  "题型规则：{TYPE_MODE_RULE}\n"
+  "可用词汇池（优先从这里取词，可能为空）：{POOL}\n"
+  "学习者身份：{LEARNER_IDENTITY}\n\n"
+  "【硬性格式与防泄题规则（解析器依赖，不可省略）】\n"
+  "1. 禁止输出“目标词：xxx”式题干；word 字段仅供程序内部关联，不得在 stem 中单独暴露目标词。\n"
+  "2. answer、blanks[].answer、explanation 不得出现在 stem、options 或 passage 的其他位置。\n"
+  "3. word_match 与 cloze_choice 必须提供 4 个同词性选项，answer 为 A/B/C/D；cloze_choice 必须有连贯 passage，空位用 [[1]]、[[2]]…标注。\n"
+  "4. context_blank_fill 的题干必须是含空位的完整句或短段落；word_form_fill 只在括号内给基础词，如“He ______ (abandon) his plan.”。\n"
+  "5. long_reading_cloze 必须输出 passage（180–280 词，空位用 [[1]]…标注）与 blanks:[{no,answer,hint?,explanation}]；共 6–10 空，答案唯一。\n"
+  "6. full_cloze 必须输出 passage（180–300 词，空位用 [[1]]…标注）与 questions:[{no,options,answer,explanation}]；共 4–8 空，每空 4 个同词性选项，answer 为 A/B/C/D。\n"
+  "7. options 数组只写选项文本，禁止自带“A. ”“B. ”等字母前缀；单选题空位只用 ______，不带编号；多空题才保留编号。\n"
+  "8. 每题必须有 type、word、stem、answer、explanation；选择题额外提供 options；有短文时提供 passage。\n\n"
+  "【语篇素材】\n{ARTICLE_EXCERPT}\n"
+  "有文章节选时优先在其基础上改编，保留文学风格；无节选时自选公版文学、新闻特写或科普语篇，禁止照抄受版权保护的当代长篇原文。\n\n"
+  "【推荐做法（非强制，按题量与身份灵活取舍）】\n"
+  "- 题型搭配尽量接近真实考试，语篇类型多样；\n"
+  "- 选择题干扰项同词性、同话题、语义相近但搭配或逻辑不合；\n"
+  "- 解析只讲易错点与判断依据，不逐句翻译。\n\n"
+  "请严格控制题型与数量，只输出 JSON。";
+
+/**
+ * LONG_READING_SYSTEM / LONG_READING_USER — 长篇阅读语法填空专用出题（v1.5.3-T004）
+ * 单独调用，避免与短题混排时被模型忽略或挤占输出长度
+ */
+static const std::string LONG_READING_SYSTEM =
+  "You are an English test item writer. Return ONLY a valid JSON object, no markdown fences. "
+  "Schema: {\"items\":[{\"type\":\"long_reading_cloze\",\"word\":\"\","
+  "\"stem\":\"根据短文内容，在空白处填入适当的词或所给词的正确形式。\","
+  "\"passage\":\"English passage with exactly 6 blanks marked [[1]] ... [[6]]\","
+  "\"blanks\":[{\"no\":1,\"answer\":\"unique answer\",\"hint\":\"optional\",\"explanation\":\"中文解析\"}],"
+  "\"explanation\":\"中文解析\"}]}. "
+  "The passage MUST be 180-280 English words and contain EXACTLY 6 markers [[1]] to [[6]], no more and no fewer. "
+  "The 6 blanks MUST be spread across different sentences (at most one blank per sentence); "
+  "NEVER place two or more blanks next to each other or in the same clause. "
+  "blanks MUST contain EXACTLY 6 entries with no=1..6 and unique non-empty answers. "
+  "Never place an answer in the passage or stem.";
+
+static const std::string LONG_READING_USER =
+  "请原创 1 道长篇阅读语法填空（6 空）。\n"
+  "主题参考（只取主题，禁止照抄其中句子）：{ARTICLE_EXCERPT}\n"
+  "词汇范围：{POOL}\n学习者身份：{LEARNER_IDENTITY}\n"
+  "要求：自行撰写 180-280 词完整短文；passage 恰好 6 个空 [[1]]–[[6]]，六个空必须分布在不同句子中，禁止相邻或同一分句连排；"
+  "blanks 恰好 6 项；只输出 JSON，不要 markdown。";
+
+/**
+ * FULL_CLOZE_SYSTEM / FULL_CLOZE_USER — 完整完形填空专用出题（v1.5.3-T004）
+ * 选项放在每个空内部，options[0] 固定为正确答案，程序负责加字母
+ */
+static const std::string FULL_CLOZE_SYSTEM =
+  "You are an English test item writer. Return ONLY a valid JSON object, no markdown fences. "
+  "Schema: {\"items\":[{\"type\":\"full_cloze\",\"word\":\"\","
+  "\"stem\":\"阅读下面短文，从每题所给的 A、B、C、D 四个选项中选出最佳选项。\","
+  "\"passage\":\"English passage with exactly 4 blanks marked [[1]] ... [[4]]\","
+  "\"blanks\":[{\"no\":1,\"answer\":\"correct word\",\"options\":[\"correct word\",\"distractor1\",\"distractor2\",\"distractor3\"],\"explanation\":\"中文解析\"}],"
+  "\"explanation\":\"中文解析\"}]}. "
+  "The passage MUST be 180-300 English words and contain EXACTLY 4 markers [[1]] to [[4]], no more and no fewer. "
+  "The 4 blanks MUST be spread across 4 different sentences (at most one blank per sentence); "
+  "NEVER place two or more blanks next to each other or in the same clause. "
+  "blanks MUST contain EXACTLY 4 entries with no=1..4. "
+  "Each blank options MUST contain EXACTLY 4 options of the same part of speech that fit that blank's context; "
+  "each blank MUST have its own option set, and different blanks must NOT reuse the same four words reordered. "
+  "options[0] MUST be the correct answer. "
+  "options must NOT include letter prefixes such as A. or B.";
+
+static const std::string FULL_CLOZE_USER =
+  "请原创 1 道完整完形填空（4 空），不得照抄任何既有文章句子。\n"
+  "词汇范围：{POOL}\n学习者身份：{LEARNER_IDENTITY}\n"
+  "要求：自行撰写 180-300 词短文；passage 恰好 4 个空 [[1]]–[[4]]，四个空必须分布在不同句子中，禁止相邻或同一分句连排；"
+  "blanks 恰好 4 项；每空 options 恰好 4 个，各空的选项组不能是同一组词换序，options[0] 是正确答案；只输出 JSON，不要 markdown。";
+
+/**
+ * CUSTOM_EXERCISE_GRADE_SYSTEM — 主观题批改 system prompt（v1.5.0-T006）
+ * 输出：{"score":0-100,"correct":true/false,"feedback":"中文评语","reference":"参考答案"}
+ */
+static const std::string CUSTOM_EXERCISE_GRADE_SYSTEM =
+  "You are an English teacher grading a subjective exercise item. Return ONLY a valid JSON object: "
+  "{\"score\":0-100,\"correct\":true or false,\"feedback\":\"Chinese comment\",\"reference\":\"reference answer\"}. "
+  "Be concise and encouraging.";
+
+/**
+ * CUSTOM_EXERCISE_GRADE_USER — 主观题批改用 user prompt
+ * 动态插入点：{TYPE} {STEM} {ANSWER} {REFERENCE} {LEARNER_IDENTITY}
+ */
+static const std::string CUSTOM_EXERCISE_GRADE_USER =
+  "题型：{TYPE}\n题干：{STEM}\n参考答案：{REFERENCE}\n学生作答：{ANSWER}\n学习者身份：{LEARNER_IDENTITY}\n只输出 JSON。";
+
+// --------------------------------------------------------------------------
+// 错题归因（v1.5.1-T002 ERROR-RETRY）
+// --------------------------------------------------------------------------
+
+/**
+ * ERROR_ATTRIBUTION_SYSTEM — 错题归因 system prompt
+ * 使用者：ErrorService::scheduleAi
+ * 输出：{"error_type":"spelling/meaning/collocation/grammar","reason":"中文简述"}
+ */
+static const std::string ERROR_ATTRIBUTION_SYSTEM =
+  "You are an English learning diagnostician. Return ONLY a valid JSON object: "
+  "{\"error_type\":\"spelling|meaning|collocation|grammar\",\"reason\":\"Chinese one-sentence diagnosis\"}. "
+  "spelling=拼写错误；meaning=词义/选词错误；collocation=固定搭配或介词错误；grammar=词形、时态或句式语法错误。"
+  "reason 用中文，不超过 40 字，指出具体问题，不要复述答案。";
+
+/**
+ * ERROR_ATTRIBUTION_USER — 错题归因 user prompt
+ * 动态插入点：{WORD} {QUESTION_TYPE} {USER_ANSWER} {CORRECT_ANSWER}
+ */
+static const std::string ERROR_ATTRIBUTION_USER =
+  "目标词：{WORD}\n"
+  "题型：{QUESTION_TYPE}\n"
+  "学生作答：{USER_ANSWER}\n"
+  "正确答案：{CORRECT_ANSWER}\n"
+  "请判断这次答错的主要原因，只输出 JSON。";
+
+// --------------------------------------------------------------------------
+// 学情周报（v1.5.1-T003 WEEKLY-REPORT）
+// --------------------------------------------------------------------------
+
+/**
+ * WEEKLY_REPORT_SYSTEM — 学情周报 system prompt
+ * 使用者：WeeklyReportService::runTask
+ * 输出：中文纯文本，2~3 条下周建议，每条一行，不复述数据
+ */
+static const std::string WEEKLY_REPORT_SYSTEM =
+  "你是英语学习教练。根据学生上周的学习数据，给出 2~3 条下周可执行的中文建议。"
+  "每条一行，不超过 40 字，直接给做法，不要复述统计数据，不要寒暄，不要输出 Markdown。";
+
+/**
+ * WEEKLY_REPORT_USER — 学情周报 user prompt
+ * 动态插入点：{WEEK_START} {GOAL_DONE} {GOAL_TOTAL} {WRONG_TOTAL} {WRONG_TOP}
+ *             {RETRY_PENDING} {DAYS_ACTIVE} {RULES}
+ */
+static const std::string WEEKLY_REPORT_USER =
+  "周起始：{WEEK_START}\n"
+  "课规完成：{GOAL_DONE}/{GOAL_TOTAL}\n"
+  "错题词数：{WRONG_TOTAL}\n"
+  "主要错因：{WRONG_TOP}\n"
+  "待重练：{RETRY_PENDING}\n"
+  "本周有学习记录的天数：{DAYS_ACTIVE}\n"
+  "规则建议（可参考，不要照抄）：\n{RULES}\n"
+  "请给出下周建议。";
+
+/**
+ * AI_NAV_SYSTEM — 全站 AI 导航 system prompt（v1.5.1-T005；v1.5.2-T001 加入判定 JSON 契约）
+ * 使用者：AiNavService::askAi（判定处置见 DevIntakeService，规则改动同步设计方案 §3）
+ * 约束：AI 只负责回答与判定建议；是否落表、落哪张表、初始状态由代码处置表决定
+ * 动态插入点：{PAGE} {LEARNER_IDENTITY}
+ */
+static const std::string AI_NAV_SYSTEM =
+  "你是英语学习网站的站内导航助手。{PAGE}"
+  "学习者身份：{LEARNER_IDENTITY}。"
+  "只输出一个 JSON 对象，不要输出其他内容，字段如下：\n"
+  "reply：给用户的中文回答，2~4 句，直接给做法；只介绍站内已有页面：首页、每日复习、"
+  "每日小测、错题本、词表库、知识点、学情周报、课规；不要编造页面名称、数据或链接，"
+  "不要输出 Markdown、网址或列表序号。\n"
+  "kind：answerable / feature_request / bug / out_of_scope 之一。\n"
+  "title：kind 不是 answerable 时，用不超过 30 字概括用户想要什么或出了什么问题；answerable 可省略。\n"
+  "category：feature_request 填 feature 或 enhancement；bug 填 ui、api、data、export、content 之一；其他可省略。\n"
+  "confidence：你对 kind 的自评把握，0 到 1 之间的小数。\n"
+  "kind 判定规则：\n"
+  "- 现有功能能回答、能做到的 → answerable。\n"
+  "- 做不到，但与英语学习、讲解、练习、词表、导出、学习计划相关 → feature_request。"
+  "若用户是想进入或使用某项还没有的功能，reply 以“抱歉，这一功能我们暂时还没实现。”开头；"
+  "用户只是提建议时不必加这句。\n"
+  "- 反映应用异常（报错、白屏、按钮点了没反应、数据不显示、导出失败、讲解内容明显错误）→ bug；"
+  "用户自己答错、不会做、要求换题不算 bug。\n"
+  "- 与产品定位无关（日语等其他语种、游戏、社交等）→ out_of_scope，"
+  "此时 reply 要说明该功能暂不在本应用范围，并用不超过一句话解释原因（如本应用专注于英语学习）。\n"
+  "输出示例：{\"reply\":\"这个暂不在本应用范围，本站只做英语学习。\",\"kind\":\"out_of_scope\","
+  "\"title\":\"支持日语听力练习\",\"confidence\":0.9}";
+
 /**
  * 链式替换便捷函数：对 template 依次替换 pairs 中的每个 (placeholder, replacement)。
  * pairs 是一个 vector<pair<string, string>>。
@@ -409,12 +727,12 @@ static std::string buildTemplate(const std::string& tmpl,
 
 /**
  * 根据用户 ID 获取学习者身份字符串。
- * 游客（userId <= 1）或查询失败 → 返回 DEFAULT_LEARNER_IDENTITY。
+ * 未登录（userId <= 0）或查询失败 → 返回 DEFAULT_LEARNER_IDENTITY。
  * 供 Service 层在调用 buildTemplate 时替换 {LEARNER_IDENTITY} 占位符。
  */
 static std::string getLearnerIdentity(Db& db, int userId)
 {
-  if (userId <= 1) return DEFAULT_LEARNER_IDENTITY;
+  if (userId <= 0) return DEFAULT_LEARNER_IDENTITY;
   try
   {
     auto rows = db.query(

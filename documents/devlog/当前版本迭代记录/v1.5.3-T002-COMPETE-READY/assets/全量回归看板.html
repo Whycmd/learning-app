@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全量回归 · 36/36 · 英语点金</title>
+<style>
+  :root{
+    --bg:#0a0e0c;
+    --panel:#111713;
+    --panel-2:#0d1310;
+    --line:rgba(232,227,214,.12);
+    --line-strong:rgba(232,227,214,.22);
+    --paper:#e8e3d6;
+    --muted:#8a948d;
+    --mint:#7bf1a8;
+    --mint-dim:rgba(123,241,168,.14);
+    --amber:#e8c07a;
+    --mono:"SF Mono","Menlo","Consolas",monospace;
+    --sans:"PingFang SC","Hiragino Sans GB","Noto Sans SC",sans-serif;
+    --serif:"Songti SC","STSong","Noto Serif SC",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(1100px 600px at 78% -10%,rgba(123,241,168,.10),transparent 60%),
+      radial-gradient(900px 500px at -10% 110%,rgba(232,192,122,.06),transparent 55%),
+      var(--bg);
+    color:var(--paper);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;opacity:.5;
+    background-image:
+      linear-gradient(rgba(232,227,214,.035) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(232,227,214,.035) 1px,transparent 1px);
+    background-size:44px 44px;
+    mask-image:radial-gradient(circle at 50% 40%,#000 30%,transparent 85%);
+  }
+  .stage{position:relative;height:100vh;padding:34px 44px 26px;display:flex;flex-direction:column;gap:20px;max-width:1560px;margin:0 auto}
+
+  header{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .mark{
+    width:40px;height:40px;border:1px solid var(--line-strong);border-radius:9px;
+    display:grid;place-items:center;font-family:var(--mono);font-size:12px;color:var(--mint);
+    background:linear-gradient(145deg,rgba(123,241,168,.12),transparent);
+    letter-spacing:.5px;
+  }
+  .brand h1{font-size:17px;font-weight:600;letter-spacing:.12em}
+  .brand p{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.08em}
+  .status{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .pill{
+    display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;
+    border:1px solid rgba(123,241,168,.35);background:var(--mint-dim);color:var(--mint);
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+  }
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px var(--mint);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .hero{display:grid;grid-template-columns:1.05fr 1fr;gap:20px;align-items:stretch}
+  .card{
+    border:1px solid var(--line);border-radius:14px;background:linear-gradient(160deg,var(--panel),var(--panel-2));
+    position:relative;overflow:hidden;
+  }
+  .card::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(115deg,rgba(255,255,255,.035),transparent 38%);
+  }
+
+  .score{padding:26px 30px 24px;display:flex;flex-direction:column;justify-content:space-between;min-height:214px}
+  .score .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--muted)}
+  .score .big{display:flex;align-items:baseline;gap:14px;margin:6px 0 2px}
+  .score .num{font-family:var(--serif);font-size:92px;line-height:.92;letter-spacing:-.04em}
+  .score .slash{font-family:var(--mono);font-size:26px;color:var(--muted)}
+  .score .den{font-family:var(--serif);font-size:42px;color:var(--muted)}
+  .score .sub{font-size:13px;color:var(--muted);letter-spacing:.06em}
+  .score .sub b{color:var(--paper);font-weight:600}
+
+  .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .mini .cell{background:var(--panel);padding:20px 18px;display:flex;flex-direction:column;justify-content:space-between;min-height:104px}
+  .mini .k{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted)}
+  .mini .v{font-family:var(--serif);font-size:34px;line-height:1}
+  .mini .v small{font-family:var(--sans);font-size:12px;color:var(--muted);margin-left:5px;letter-spacing:.04em}
+  .mini .v.ok{color:var(--mint)}
+
+  .main{display:grid;grid-template-columns:1.18fr .82fr;gap:20px;flex:1;min-height:0}
+  .panel{display:flex;flex-direction:column;min-height:0}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line)}
+  .panel-head h2{font-size:12px;font-weight:500;letter-spacing:.16em;color:var(--muted)}
+  .panel-head span{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em}
+
+  .terminal{flex:1;display:flex;flex-direction:column;min-height:0}
+  .term-body{padding:16px 20px 18px;font-family:var(--mono);font-size:12.5px;line-height:1.95;overflow:hidden}
+  .term-body .cmd{color:var(--paper)}
+  .term-body .cmd::before{content:"❯ ";color:var(--mint)}
+  .term-body .dim{color:var(--muted)}
+  .term-body .ok{color:var(--mint)}
+  .term-body .warn{color:var(--amber)}
+  .term-body .final{margin-top:10px;padding:10px 12px;border:1px solid rgba(123,241,168,.28);background:rgba(123,241,168,.06);border-radius:8px;color:var(--mint)}
+  .cursor{display:inline-block;width:7px;height:13px;background:var(--mint);vertical-align:-2px;animation:blink 1.1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+
+  .coverage{padding:16px 18px 10px;display:grid;grid-template-columns:1fr 1fr;gap:2px 18px;align-content:start}
+  .cov{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px dashed rgba(232,227,214,.08);font-size:12.5px;color:#cdc8bb}
+  .cov .tick{width:16px;height:16px;border-radius:50%;border:1px solid rgba(123,241,168,.4);display:grid;place-items:center;color:var(--mint);font-size:9px;flex:none;background:rgba(123,241,168,.07)}
+
+  .online{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;border-top:1px solid var(--line);padding-top:16px}
+  .metric{display:flex;flex-direction:column;gap:6px}
+  .metric .mk{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--muted)}
+  .metric .mv{font-size:15px;letter-spacing:.02em}
+  .metric .mv b{font-family:var(--mono);color:var(--mint);font-weight:500}
+  .metric .mv span{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:6px}
+
+  footer{display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.06em;padding-top:2px}
+  footer .left{display:flex;gap:16px;align-items:center}
+  footer .sep{width:22px;height:1px;background:var(--line-strong)}
+
+  .fade{opacity:0;transform:translateY(10px);animation:fade .7s cubic-bezier(.2,.7,.2,1) forwards}
+  .d1{animation-delay:.05s}.d2{animation-delay:.13s}.d3{animation-delay:.21s}.d4{animation-delay:.29s}.d5{animation-delay:.37s}
+  @keyframes fade{to{opacity:1;transform:none}}
+
+  @media (max-width:1100px){
+    .stage{padding:24px;gap:14px}
+    .hero{grid-template-columns:1fr}
+    .main{grid-template-columns:1fr}
+    .score .num{font-size:68px}
+    .online{grid-template-columns:repeat(2,1fr)}
+    body{overflow:auto}
+    .stage{height:auto;min-height:100vh}
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <header class="fade d1">
+    <div class="brand">
+      <div class="mark">36</div>
+      <div>
+        <h1>全量回归结果</h1>
+        <p>ENGLISH · LEARNING APP / v1.5.3</p>
+      </div>
+    </div>
+    <div class="status">
+      <span>2026-11-21 · 本机</span>
+      <span class="pill"><i class="dot"></i>PASS</span>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="card score fade d2">
+      <div class="eyebrow">AUTOMATED REGRESSION · 36 SUITES</div>
+      <div class="big">
+        <span class="num">36</span><span class="slash">/</span><span class="den">36</span>
+      </div>
+      <div class="sub"><b>全部通过</b> · 0 失败 · 开发库行数未变化</div>
+    </div>
+    <div class="mini fade d3">
+      <div class="cell"><span class="k">SUITES</span><span class="v">36<small>套件</small></span></div>
+      <div class="cell"><span class="k">FAILED</span><span class="v ok">0<small>失败</small></span></div>
+      <div class="cell"><span class="k">ISOLATION</span><span class="v ok">✓<small>数据隔离</small></span></div>
+    </div>
+  </section>
+
+  <section class="main">
+    <div class="card panel fade d4">
+      <div class="panel-head">
+        <h2>RUN LOG</h2><span>node tests/run_all.js</span>
+      </div>
+      <div class="terminal">
+        <div class="term-body">
+          <div class="cmd">node tests/run_all.js</div>
+          <div class="dim">▶ stage9_auth.test.js · 多用户认证</div>
+          <div class="ok">  ✓ 用户数据隔离 · 固化复用 · 越权防护</div>
+          <div class="ok">  ✓ 41 通过 / 0 失败</div>
+          <div class="dim">▶ stage21 ~ stage35 · 队列 / 词表 / 课规 / 周报 / 错题 / 导览</div>
+          <div class="ok">  ✓ 逐套件执行完成</div>
+          <div class="dim">▶ isolate</div>
+          <div class="ok">  ✓ 开发库 english_learning 行数未变化</div>
+          <div class="final">=== 结果: 36 通过, 0 失败, 共 36 套件 === <span class="cursor"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card panel fade d5">
+      <div class="panel-head">
+        <h2>COVERAGE</h2><span>关键链路</span>
+      </div>
+      <div class="coverage">
+        <div class="cov"><span class="tick">✓</span>认证与数据隔离</div>
+        <div class="cov"><span class="tick">✓</span>知识点与固化</div>
+        <div class="cov"><span class="tick">✓</span>AI 讲解与队列</div>
+        <div class="cov"><span class="tick">✓</span>词表与单词本</div>
+        <div class="cov"><span class="tick">✓</span>复习与每日小测</div>
+        <div class="cov"><span class="tick">✓</span>课规与学情周报</div>
+        <div class="cov"><span class="tick">✓</span>错题归因与重练</div>
+        <div class="cov"><span class="tick">✓</span>导出与打印</div>
+        <div class="cov"><span class="tick">✓</span>运维与成本统计</div>
+        <div class="cov"><span class="tick">✓</span>前端页面与导航</div>
+        <div class="cov"><span class="tick">✓</span>新手引导与导览</div>
+        <div class="cov"><span class="tick">✓</span>部署与静态资源</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="online fade d5">
+    <div class="metric"><span class="mk">ONLINE HEALTH</span><span class="mv"><b>200</b><span>0.106s</span></span></div>
+    <div class="metric"><span class="mk">GZIP</span><span class="mv"><b>生效</b><span>Vary: Accept-Encoding</span></span></div>
+    <div class="metric"><span class="mk">DEMO ACCOUNTS</span><span class="mv"><b>3 / 3</b><span>登录通过</span></span></div>
+    <div class="metric"><span class="mk">AI EXPLAIN · L1</span><span class="mv"><b>0.104s</b><span>source = l1</span></span></div>
+  </section>
+
+  <footer class="fade d5">
+    <div class="left">
+      <span>英语点金 v1.5.3</span><i class="sep"></i>
+      <span>COMPETE-READY · T5</span>
+    </div>
+    <span>数据来源：本机全量回归 + 线上复验</span>
+  </footer>
+
+</div>
+</body>
+</html>

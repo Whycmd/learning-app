@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>T001 课规面板 · UX 设计图 v7（待确认）</title>
+<style>
+  :root{
+    --ink:#1c1917; --ink-soft:#44403c; --muted:#78716c;
+    --line:rgba(28,25,23,.09); --line-strong:rgba(28,25,23,.14);
+    --paper:#faf7f2; --paper-deep:#f0ebe3; --surface:#fffdf8;
+    --accent:#b45309; --accent-wash:rgba(180,83,9,.07);
+    --gold:#d4a843; --gold-wash:rgba(212,168,67,.16);
+    --vermillion:#c0392b; --vermillion-wash:rgba(192,57,43,.08);
+    --success:#059669;
+    --r-lg:18px; --r-md:12px; --r-sm:8px; --r-pill:999px;
+    --sh-card:0 12px 40px rgba(28,25,23,.07),0 2px 8px rgba(28,25,23,.04);
+    --sh-float:0 22px 50px rgba(28,25,23,.18);
+    --font-display:"Songti SC","STSong","Noto Serif SC",Georgia,serif;
+    --font-body:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.6 var(--font-body)}
+  button{font:inherit}
+  .wrap{max-width:1240px;margin:0 auto;padding:32px 24px 64px}
+  h1{font:600 24px/1.3 var(--font-display);margin:0 0 6px}
+  .lead{color:var(--muted);margin:0 0 20px}
+  .board{display:grid;grid-template-columns:1.25fr .85fr;gap:28px;align-items:start}
+  .board h2{font:600 15px/1.4 var(--font-body);margin:0 0 10px;color:var(--ink-soft)}
+  .hint{font-size:12px;color:var(--muted);margin:8px 0 0}
+  .browser{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-card);overflow:hidden}
+  .chrome{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--paper-deep)}
+  .dot{width:9px;height:9px;border-radius:50%;background:rgba(28,25,23,.16)}
+  .url{flex:1;font-size:11px;color:var(--muted);background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:var(--r-pill);padding:3px 12px}
+  .viewport{position:relative;height:640px;overflow:hidden;background:var(--paper)}
+  .faux-top{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--surface);font-size:12px;color:var(--muted)}
+  .faux-top b{color:var(--ink);font:600 13px var(--font-display)}
+  .mode{margin-left:auto;border:1px solid var(--line-strong);border-radius:var(--r-pill);padding:3px 10px;display:flex;gap:6px;font-size:11px;color:var(--muted)}
+  .mode span{padding:2px 8px;border-radius:var(--r-pill)}
+  .mode .on{background:var(--accent);color:#fff}
+  .reopen{display:none}
+  .faux-home{padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:14px;opacity:.55}
+  .faux-card{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:14px;min-height:92px}
+  .faux-card h3{margin:0 0 6px;font-size:12px;color:var(--ink-soft)}
+  .skeleton{height:8px;border-radius:var(--r-pill);background:rgba(28,25,23,.08);margin:8px 0}
+  .skeleton.s2{width:70%}
+  .scrim{position:absolute;inset:0;background:rgba(28,25,23,.28)}
+  .drawer{position:absolute;top:0;right:0;bottom:0;width:412px;background:var(--surface);box-shadow:var(--sh-float);display:flex;flex-direction:column}
+  .drawer-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .drawer-head h3{margin:0;font:600 16px var(--font-display)}
+  .close{margin-left:auto;width:30px;height:30px;border:1px solid var(--line-strong);border-radius:50%;background:transparent;color:var(--ink-soft);font-size:15px;line-height:1;cursor:pointer}
+  .close:hover{background:var(--paper-deep)}
+  .body{padding:14px 18px 20px;overflow:auto;flex:1}
+  .card{border:1px solid var(--line-strong);border-left:3px solid var(--gold);border-radius:var(--r-md);padding:12px 14px;background:#fffefb;margin-bottom:12px}
+  .card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .card-top strong{font:600 15px/1.4 var(--font-display)}
+  .badge{font-size:10px;padding:1px 7px;border-radius:var(--r-pill);background:var(--gold-wash);color:#8a6212;border:1px solid rgba(212,168,67,.45)}
+  .badge.on{background:var(--accent);color:#fff;border-color:transparent}
+  .badge.expired{background:var(--vermillion-wash);color:var(--vermillion);border-color:rgba(192,57,43,.3)}
+  .card-meta{font-size:11px;color:var(--muted);margin:6px 0 10px}
+  .ops{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{font-size:11px;padding:5px 11px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:transparent;color:var(--ink-soft);cursor:pointer;transition:background .12s}
+  .btn:hover{background:var(--paper-deep)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:#9a3412}
+  .btn.danger{color:var(--vermillion);border-color:rgba(192,57,43,.3);background:var(--vermillion-wash)}
+  .btn.danger:hover{background:rgba(192,57,43,.16)}
+  .section{display:flex;align-items:center;gap:8px;margin:14px 0 8px}
+  .section h4{margin:0;font:600 13px var(--font-body)}
+  .section .tip{margin-left:auto;font-size:10px;color:var(--muted)}
+  .task{border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px;background:#fff}
+  .task-top{display:flex;align-items:center;gap:8px;font-size:12px}
+  .task-top .name{font-weight:600}
+  .task-top .num{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+  .task-top input{width:56px;font:inherit;font-size:12px;padding:1px 4px;border:1px solid var(--line-strong);border-radius:4px}
+  .bar{height:6px;border-radius:var(--r-pill);background:rgba(28,25,23,.08);margin:8px 0 6px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:var(--r-pill);background:var(--accent)}
+  .task-foot{display:flex;gap:10px;align-items:center;font-size:10px;color:var(--muted);flex-wrap:wrap}
+  .reward{font-size:10px;color:#8a6212}
+  .claim{margin:0 0 10px;font-size:11px;color:var(--success);background:rgba(5,150,105,.07);border:1px solid rgba(5,150,105,.25);border-radius:var(--r-sm);padding:6px 10px}
+  .subnote{margin:-2px 0 10px;font-size:10px;color:var(--muted)}
+  .subnote.tight{margin:0 0 8px}
+  .bottom-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .note{font-size:11px;color:var(--muted);margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+  .confirm-del{margin-top:8px;border:1px solid rgba(192,57,43,.3);background:var(--vermillion-wash);border-radius:var(--r-sm);padding:8px 10px;font-size:11px;display:none;gap:8px;align-items:center;flex-wrap:wrap}
+  .confirm-del.show{display:flex}
+  .edit-form{display:none;border-top:1px dashed var(--line);margin-top:10px;padding-top:10px;gap:6px;grid-template-columns:1fr 1fr}
+  .edit-form.show{display:grid}
+  .edit-form label{font-size:10px;color:var(--muted);display:block;margin-bottom:2px}
+  .edit-form input,.edit-form select{width:100%;font:inherit;font-size:11px;padding:4px 6px;border:1px solid var(--line-strong);border-radius:4px;background:#fff}
+  .edit-form .full{grid-column:1/-1}
+  .other{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;font-size:12px;color:var(--ink-soft)}
+  .other-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .other .t{font-weight:600}
+  .other .s{font-size:10px;color:var(--vermillion)}
+  .other-meta{font-size:10px;color:var(--muted);margin:6px 0 8px}
+  .new-form{display:none;border:1px solid var(--line-strong);border-radius:var(--r-md);padding:12px;margin-bottom:12px;background:#fffefb}
+  .new-form.show{display:block}
+  .new-form h4{margin:0 0 10px;font:600 13px var(--font-body)}
+  .new-form .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  .new-form label{display:block;font-size:10px;color:var(--muted);margin-bottom:2px}
+  .new-form input,.new-form select{width:100%;font:inherit;font-size:11px;padding:5px 6px;border:1px solid var(--line-strong);border-radius:4px;background:#fff}
+  .new-form .full{grid-column:1/-1}
+  .phone{width:320px;margin:0 auto;border:1px solid var(--line-strong);border-radius:28px;background:var(--surface);box-shadow:var(--sh-card);overflow:hidden}
+  .phone .notch{height:22px;background:var(--paper-deep);display:flex;align-items:center;justify-content:center}
+  .phone .notch i{width:70px;height:5px;border-radius:var(--r-pill);background:rgba(28,25,23,.18)}
+  .phone-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .phone-head .back{border:0;background:transparent;font-size:16px;color:var(--ink-soft);cursor:pointer;padding:0 4px}
+  .phone-head h3{margin:0;font:600 15px var(--font-display)}
+  .phone-head .close{margin-left:auto;width:auto;height:auto;border:0;border-radius:0;font-size:11px;color:var(--muted)}
+  .phone-body{padding:12px 14px;height:560px;overflow:auto}
+  .phone .card{padding:10px 12px}
+  .ann{display:flex;gap:10px;margin-top:16px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:rgba(255,253,248,.7)}
+  .ann ol{margin:0;padding-left:18px}
+  .ann li{margin:0 0 6px;font-size:12px;color:var(--ink-soft)}
+  .ann li b{color:var(--ink)}
+  .review{margin-top:22px;border:1px solid var(--line-strong);border-radius:var(--r-md);background:#fffefb;padding:16px 18px}
+  .review h3{margin:0 0 10px;font-size:13px}
+  .review table{width:100%;border-collapse:collapse;font-size:12px}
+  .review td{border-top:1px solid var(--line);padding:7px 6px;vertical-align:top;color:var(--ink-soft)}
+  .review td:first-child{width:150px;color:var(--muted)}
+  @media (max-width:960px){.board{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>课规面板 · UX 设计图 v7</h1>
+  <p class="lead">v1.5.1-T001 · 页面只保留体验用语；不设数量上限；同一信息只出现一次；每项完成 +5 金桂（打开面板时兑现），三项全部完成时未领的一并到账并再 +15。</p>
+
+  <div class="board">
+    <section>
+      <h2>桌面端：首页右侧抽屉</h2>
+      <div class="browser">
+        <div class="chrome"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="url">127.0.0.1:8088/index.html</span></div>
+        <div class="viewport">
+          <div class="faux-top">
+            <b>学习圣殿</b>
+            <span>首页</span><span>文章阅读</span><span>学情中心</span><span>知识点</span><span>单词本</span><span>复习</span><span>小测</span>
+            <span class="mode"><span>功能模式</span><span class="on">计划模式</span></span>
+            <button class="btn reopen" data-act="open-drawer">打开课规面板</button>
+          </div>
+          <div class="faux-home">
+            <div class="faux-card"><h3>本周课规</h3><div class="skeleton"></div><div class="skeleton s2"></div></div>
+            <div class="faux-card"><h3>今日所得</h3><div class="skeleton"></div><div class="skeleton s2"></div></div>
+            <div class="faux-card" style="grid-column:span 2"><h3>圣殿 · 称谓与朱砂印</h3><div class="skeleton"></div><div class="skeleton s2"></div></div>
+          </div>
+          <div class="scrim"></div>
+
+          <aside class="drawer panel-root">
+            <div class="drawer-head">
+              <h3>课规</h3>
+              <button class="close" data-act="close-drawer" aria-label="关闭">×</button>
+            </div>
+            <div class="body">
+              <div class="card">
+                <div class="card-top">
+                  <span class="badge on">正在执行</span>
+                  <strong>雅思 7.0</strong>
+                  <span class="badge">有效期至 2027-01-15</span>
+                </div>
+                <div class="card-meta">每天可用 30 分钟 · 每天学习新词 10 个 · 雅思核心词表</div>
+                <div class="ops">
+                  <button class="btn primary" data-act="toggle-edit">修改</button>
+                  <button class="btn danger" data-act="ask-delete">删除</button>
+                </div>
+                <div class="confirm-del" data-role="del-confirm">
+                  <span>删除后不可恢复，确定删除？</span>
+                  <button class="btn danger" data-act="confirm-delete">确定删除</button>
+                  <button class="btn" data-act="cancel-delete">取消</button>
+                </div>
+                <div class="edit-form" data-role="edit-form">
+                  <div><label>课规名称</label><input value="雅思 7.0"></div>
+                  <div><label>有效期至</label><input type="date" value="2027-01-15"></div>
+                  <div><label>每天可用分钟</label><input type="number" value="30"></div>
+                  <div><label>每天学习新词个数</label><input type="number" value="10"></div>
+                  <div class="full"><label>绑定词表</label><select><option>雅思核心词表</option><option>不绑定词表</option></select></div>
+                  <div class="full ops"><button class="btn primary" data-act="save-edit">保存</button><button class="btn" data-act="toggle-edit">取消</button></div>
+                </div>
+
+                <div class="section"><h4>本周进度</h4><span class="tip">已完成 1 / 3</span></div>
+                <div class="claim">打开本面板时兑现已完成的任务：本次到账 5 金桂。</div>
+                <div class="subnote">本周内换过课规：本课规从切换当天起计任务，之前的不再累计。</div>
+                <div class="task" data-task="review">
+                  <div class="task-top"><span class="name">复习</span><span class="num"><span data-role="cur">12</span> / <span data-role="target">30</span> 条</span></div>
+                  <div class="bar"><i style="width:40%"></i></div>
+                  <div class="task-foot"><button class="btn" data-act="edit-target">修改目标数量</button><span class="reward">完成 +5 金桂</span></div>
+                </div>
+                <div class="task" data-task="new_words">
+                  <div class="task-top"><span class="name">学习新词</span><span class="num"><span data-role="cur">4</span> / <span data-role="target">10</span> 个</span></div>
+                  <div class="bar"><i style="width:40%"></i></div>
+                  <div class="task-foot"><button class="btn" data-act="edit-target">修改目标数量</button><span class="reward">完成 +5 金桂</span></div>
+                </div>
+                <div class="task" data-task="quiz_count">
+                  <div class="task-top"><span class="name">完成小测</span><span class="num"><span data-role="cur">2</span> / <span data-role="target">2</span> 次</span></div>
+                  <div class="bar"><i style="width:100%"></i></div>
+                  <div class="task-foot"><button class="btn" data-act="edit-target">修改目标数量</button><span class="reward">完成 +5 金桂</span></div>
+                </div>
+                <div class="note">三项全部完成时未领的一并到账，再 +15 · 未达成不惩罚</div>
+              </div>
+
+              <div class="section"><h4>其他课规</h4></div>
+              <div class="other" data-other>
+                <div class="other-head"><span class="t">雅思 6.5</span><span class="s">已到期 3 天</span></div>
+                <div class="other-meta">有效期至 2026-11-13 · 每天可用 20 分钟 · 每天学习新词 5 个 · 雅思核心词表</div>
+                <div class="ops">
+                  <button class="btn" data-act="switch-current">设为正在执行</button>
+                  <button class="btn" data-act="edit-other">修改</button>
+                  <button class="btn danger" data-act="delete-other">删除</button>
+                </div>
+              </div>
+              <div class="other" data-other>
+                <div class="other-head"><span class="t">每周读完 2 篇外刊</span></div>
+                <div class="other-meta">有效期至 2027-02-28 · 每天可用 15 分钟 · 每天学习新词 3 个 · 不绑定词表</div>
+                <div class="ops">
+                  <button class="btn" data-act="switch-current">设为正在执行</button>
+                  <button class="btn" data-act="edit-other">修改</button>
+                  <button class="btn danger" data-act="delete-other">删除</button>
+                </div>
+              </div>
+
+              <div class="bottom-actions">
+                <button class="btn primary" data-act="new-curriculum">设定新课规</button>
+                <button class="btn" data-act="next-week">提前定下周</button>
+              </div>
+              <div class="new-form" data-role="next-week-form">
+                <h4>下周任务</h4>
+                <div class="row">
+                  <div><label>复习（条）</label><input type="number" value="30"></div>
+                  <div><label>学习新词（个）</label><input type="number" value="10"></div>
+                </div>
+                <div class="row"><div><label>完成小测（次）</label><input type="number" value="2"></div><div></div></div>
+                <p class="subnote tight">下周一自动生效，本周任务不受影响。</p>
+                <div class="ops"><button class="btn primary" data-act="save-next-week">保存</button><button class="btn" data-act="next-week">取消</button></div>
+              </div>
+              <div class="new-form" data-role="new-form">
+                <h4>设定新课规</h4>
+                <div class="row"><div><label>课规名称</label><input placeholder="例如：雅思 7.0"></div><div><label>有效期至</label><input type="date"></div></div>
+                <div class="row"><div><label>每天可用分钟</label><input type="number" value="30"></div><div><label>每天学习新词个数</label><input type="number" value="10"></div></div>
+                <div class="row"><div class="full"><label>绑定词表</label><select><option>不绑定词表</option><option>雅思核心词表</option></select></div></div>
+                <div class="ops"><button class="btn primary" data-act="save-new">保存</button><button class="btn" data-act="new-curriculum">取消</button></div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <p class="hint">所有按钮均可点击；关闭后右上角出现「打开课规面板」。</p>
+    </section>
+
+    <section>
+      <h2>移动端：全屏上滑抽屉</h2>
+      <div class="phone panel-root">
+        <div class="notch"><i></i></div>
+        <div class="phone-head"><button class="back" data-act="close-drawer">‹</button><h3>课规</h3><button class="close" data-act="close-drawer">关闭</button></div>
+        <div class="phone-body">
+          <div class="card">
+            <div class="card-top"><span class="badge on">正在执行</span><strong>雅思 7.0</strong></div>
+            <div class="card-meta">有效期至 2027-01-15 · 每天 30 分钟 · 新词 10 个</div>
+            <div class="ops"><button class="btn primary" data-act="toggle-edit">修改</button><button class="btn danger" data-act="ask-delete">删除</button></div>
+            <div class="confirm-del" data-role="del-confirm">
+              <span>删除后不可恢复，确定删除？</span>
+              <button class="btn danger" data-act="confirm-delete">确定删除</button>
+              <button class="btn" data-act="cancel-delete">取消</button>
+            </div>
+            <div class="section"><h4>本周进度</h4><span class="tip">已完成 1 / 3</span></div>
+            <div class="claim">打开本面板时兑现已完成的任务：本次到账 5 金桂。</div>
+            <div class="subnote">本周内换过课规：本课规从切换当天起计任务，之前的不再累计。</div>
+            <div class="task" data-task="review">
+              <div class="task-top"><span class="name">复习</span><span class="num"><span data-role="cur">12</span> / <span data-role="target">30</span> 条</span></div>
+              <div class="bar"><i style="width:40%"></i></div>
+              <div class="task-foot"><button class="btn" data-act="edit-target">修改目标数量</button><span class="reward">完成 +5 金桂</span></div>
+            </div>
+            <div class="task" data-task="new_words">
+              <div class="task-top"><span class="name">学习新词</span><span class="num"><span data-role="cur">4</span> / <span data-role="target">10</span> 个</span></div>
+              <div class="bar"><i style="width:40%"></i></div>
+              <div class="task-foot"><button class="btn" data-act="edit-target">修改目标数量</button><span class="reward">完成 +5 金桂</span></div>
+            </div>
+            <div class="note">三项全部完成时未领的一并到账，再 +15 · 未达成不惩罚</div>
+          </div>
+          <div class="section"><h4>其他课规</h4></div>
+          <div class="other" data-other>
+            <div class="other-head"><span class="t">雅思 6.5</span><span class="s">已到期 3 天</span></div>
+            <div class="other-meta">有效期至 2026-11-13 · 每天 20 分钟 · 新词 5 个</div>
+            <div class="ops"><button class="btn" data-act="switch-current">设为正在执行</button><button class="btn danger" data-act="delete-other">删除</button></div>
+          </div>
+          <div class="bottom-actions">
+            <button class="btn primary" data-act="new-curriculum">设定新课规</button>
+            <button class="btn" data-act="next-week">提前定下周</button>
+          </div>
+          <div class="new-form" data-role="next-week-form">
+            <h4>下周任务</h4>
+            <div class="row">
+              <div><label>复习（条）</label><input type="number" value="30"></div>
+              <div><label>学习新词（个）</label><input type="number" value="10"></div>
+            </div>
+            <div class="row"><div><label>完成小测（次）</label><input type="number" value="2"></div><div></div></div>
+            <p class="subnote tight">下周一自动生效，本周任务不受影响。</p>
+            <div class="ops"><button class="btn primary" data-act="save-next-week">保存</button><button class="btn" data-act="next-week">取消</button></div>
+          </div>
+        </div>
+      </div>
+      <p class="hint">同一面板模块；<code>/pages/plan.html</code> 深链直接以整页形态打开。</p>
+    </section>
+  </div>
+
+  <div class="ann">
+    <div>
+      <b style="font-size:12px">设计原则落地</b>
+      <ol>
+        <li><b>只说体验用语</b>：页面不出现「续期」「转为副课规」「名额」等技术词；到期只显示「已到期 3 天」。</li>
+        <li><b>不限制数量</b>：去掉「最多 2 个」和名额提示，其他课规可继续添加。</li>
+        <li><b>不用主/副</b>：正在使用的标「正在执行」，其余自然列在「其他课规」；本周三项不再区分重点。</li>
+        <li><b>同一信息只出现一次</b>：名称、有效期、进度、奖励规则各只出现一次。</li>
+        <li><b>功能可见、操作方便</b>：修改 / 删除 / 设为正在执行 / 修改目标数量 / 设定新课规 / 提前定下周均为直接可见按钮。</li>
+        <li><b>金桂规则</b>：每项完成 +5，打开本面板时兑现（可补领）；三项全部完成的瞬间，未领的一并到账并再 +15。单课规每周合计 30。</li>
+        <li><b>任务不依赖面板</b>：进度在后台随真实学习累加，不打开面板也能完成；面板只影响 5 金桂的领取时机。</li>
+        <li><b>其他课规</b>：直接显示名称、状态、有效期、每天可用分钟、每天新词个数、绑定词表与操作；不重复显示本周进度（周进度只属于正在执行的课规）。</li>
+        <li><b>提前定下周</b>：底部「提前定下周」可设下周三项任务，下周一自动生效，本周任务不受影响。</li>
+        <li><b>换课规说明</b>：周内换课规后，进度区出现一行小字，说明从切换当天起计任务、之前的不再累计。</li>
+        <li><b>防刷 · 指标可判定</b>：任务由 AI 周计划生成，可以是任意指标，但必须登记口径与数据来源（如复习去重词条数、非重复小测次数）；未登记来源的指标不计分。</li>
+        <li><b>防刷 · 门槛动态</b>：门槛按使用者近况用公式算出并快照到本周，改小目标值不会降低门槛；周报负责下周校准。</li>
+        <li><b>防刷 · 周内换计划</b>：同一自然周只有「正在执行」的计划产生任务；周内换了计划，新计划从切换时刻起计新任务，奖励依次 ×0.5、×0.25，全周封顶 60；学习事件只计入发生时正在执行的那个计划。</li>
+        <li><b>防刷 · 只认真实学习</b>：打开页面、刷新、切换课规、重复提交均不计进度。</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="review">
+    <h3>需要你确认的移除与变更项（确认后才执行）</h3>
+    <table>
+      <tr><td>旧「设定课规」抽屉</td><td>移除外壳，能力并入本面板；文案字段沿用旧文案。</td></tr>
+      <tr><td>旧单条课规进度条</td><td>替换为 3 条本周进度。</td></tr>
+      <tr><td>「归档」</td><td>改为「删除」。</td></tr>
+      <tr><td>「续期」</td><td>页面不出现该词，改为自动延长有效期。</td></tr>
+      <tr><td>「主课规 / 副课规 / 子目标」</td><td>页面不出现，改用「正在执行」「其他课规」。</td></tr>
+      <tr><td>「本周重点 / 设为重点」</td><td>取消，三项任务等权，各 +5 金桂。</td></tr>
+      <tr><td>数量上限</td><td>取消 2 个上限与名额提示。</td></tr>
+      <tr><td>提前定下周</td><td>面板底部新增入口，可设下周三项任务，下周一自动生效。</td></tr>
+      <tr><td>换课规提示</td><td>周内换课规后，进度区显示一行说明：从切换当天起计任务。</td></tr>
+      <tr><td>金币规则</td><td>由「重点 +30、其他各 +10」改为「每项 +5、全完成再 +15」；每项 5 金桂打开面板时兑现，三项全部完成瞬间未领的一并到账。</td></tr>
+      <tr><td>任务指标</td><td>不再固定三种，改为任意可判定指标（由 AI 周计划生成，必须登记口径与数据来源）。</td></tr>
+      <tr><td>奖励门槛</td><td>由固定下限改为按使用者近况用公式计算的动态门槛，本周快照、周报校准；改小目标值不降低门槛。</td></tr>
+      <tr><td>多计划并存</td><td>同一自然周只有「正在执行」的计划产生任务与奖励；周内换计划后新计划按 ×0.5、×0.25 递减，全周封顶 60；历史计划奖励记录保留。</td></tr>
+      <tr><td>「课规有成」印</td><td>保留，三项全部完成时落印；不再单独作为金币条件重复展示。</td></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+(function(){
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest('button[data-act]');
+    if(!btn) return;
+    const act = btn.dataset.act;
+    const root = btn.closest('.panel-root') || document;
+
+    if(act === 'close-drawer'){
+      const drawer = btn.closest('.drawer');
+      if(drawer) drawer.style.display = 'none';
+      const scrim = document.querySelector('.scrim');
+      if(scrim) scrim.style.display = 'none';
+      const reopen = document.querySelector('.reopen');
+      if(reopen) reopen.style.display = 'inline-block';
+      return;
+    }
+    if(act === 'open-drawer'){
+      const drawer = document.querySelector('.drawer');
+      if(drawer) drawer.style.display = 'flex';
+      const scrim = document.querySelector('.scrim');
+      if(scrim) scrim.style.display = 'block';
+      btn.style.display = 'none';
+      return;
+    }
+    if(act === 'ask-delete'){
+      btn.closest('.card').querySelector('[data-role="del-confirm"]').classList.add('show');
+      return;
+    }
+    if(act === 'cancel-delete'){
+      btn.closest('[data-role="del-confirm"]').classList.remove('show');
+      return;
+    }
+    if(act === 'confirm-delete'){
+      const card = btn.closest('.card');
+      card.innerHTML = '<div class="card-meta">课规已删除（演示）。</div>';
+      return;
+    }
+    if(act === 'toggle-edit'){
+      const form = btn.closest('.card').querySelector('[data-role="edit-form"]');
+      if(form) form.classList.toggle('show');
+      return;
+    }
+    if(act === 'save-edit'){
+      const card = btn.closest('.card');
+      const form = card.querySelector('[data-role="edit-form"]');
+      const name = form.querySelector('input').value || '未命名课规';
+      card.querySelector('strong').textContent = name;
+      form.classList.remove('show');
+      return;
+    }
+    if(act === 'edit-target'){
+      const task = btn.closest('.task');
+      const num = task.querySelector('.num');
+      if(num.querySelector('input')) return;
+      const target = num.querySelector('[data-role="target"]');
+      const input = document.createElement('input');
+      input.type = 'number'; input.min = '1'; input.value = target.textContent;
+      target.replaceWith(input);
+      input.focus();
+      input.addEventListener('blur', function(){
+        const v = Math.max(1, parseInt(input.value, 10) || 1);
+        const span = document.createElement('span');
+        span.dataset.role = 'target';
+        span.textContent = String(v);
+        input.replaceWith(span);
+        const cur = parseInt(task.querySelector('[data-role="cur"]').textContent, 10) || 0;
+        task.querySelector('.bar i').style.width = Math.min(100, Math.round(cur / v * 100)) + '%';
+      });
+      return;
+    }
+    if(act === 'delete-other'){
+      const item = btn.closest('[data-other]');
+      item.parentNode.removeChild(item);
+      return;
+    }
+    if(act === 'edit-other'){
+      const item = btn.closest('[data-other]');
+      const t = item.querySelector('.t');
+      const input = document.createElement('input');
+      input.value = t.textContent;
+      input.style.cssText = 'flex:1;min-width:120px;font:inherit;font-size:12px;padding:2px 6px;border:1px solid rgba(28,25,23,.14);border-radius:4px';
+      t.replaceWith(input);
+      input.focus();
+      input.addEventListener('blur', function(){
+        const span = document.createElement('span');
+        span.className = 't';
+        span.textContent = input.value || '未命名课规';
+        input.replaceWith(span);
+      });
+      return;
+    }
+    if(act === 'switch-current'){
+      root.querySelectorAll('.badge.on').forEach(function(b){
+        if(b.textContent === '正在执行') b.remove();
+      });
+      const item = btn.closest('[data-other]');
+      const head = item.querySelector('.other-head');
+      head.querySelector('.s') && head.querySelector('.s').remove();
+      const badge = document.createElement('span');
+      badge.className = 'badge on';
+      badge.textContent = '正在执行';
+      head.insertBefore(badge, head.firstChild);
+      btn.remove();
+      return;
+    }
+    if(act === 'next-week'){
+      const form = root.querySelector('[data-role="next-week-form"]') || document.querySelector('[data-role="next-week-form"]');
+      if(form) form.classList.toggle('show');
+      return;
+    }
+    if(act === 'save-next-week'){
+      const form = btn.closest('[data-role="next-week-form"]');
+      form.classList.remove('show');
+      const done = document.createElement('p');
+      done.className = 'subnote';
+      done.textContent = '下周任务已保存，下周一自动生效（演示）。';
+      form.parentNode.insertBefore(done, form);
+      return;
+    }
+    if(act === 'new-curriculum'){
+      const form = root.querySelector('[data-role="new-form"]') || document.querySelector('[data-role="new-form"]');
+      if(form) form.classList.toggle('show');
+      return;
+    }
+    if(act === 'save-new'){
+      const form = btn.closest('[data-role="new-form"]');
+      const name = form.querySelector('input').value || '未命名课规';
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = '<div class="card-top"><span class="badge">新课规</span><strong></strong><span class="badge">有效期待填写</span></div>' +
+        '<div class="card-meta">保存后即可查看本周进度。</div>';
+      card.querySelector('strong').textContent = name;
+      form.parentNode.insertBefore(card, form);
+      form.classList.remove('show');
+      return;
+    }
+  });
+})();
+</script>
+</body>
+</html>

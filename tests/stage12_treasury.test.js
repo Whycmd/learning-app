@@ -31,6 +31,7 @@ function api(method, urlPath, body, timeoutMs=30000) {
     const data = body ? JSON.stringify(body) : null;
     const headers = { 'Content-Type': 'application/json',
                       'Content-Length': data ? Buffer.byteLength(data) : 0 };
+    require('./_system').withSystemCookie(headers);
     const req = http.request({
       host: u.hostname, port: u.port, method, path: u.pathname + u.search,
       headers, timeout: timeoutMs
@@ -56,6 +57,7 @@ function resetTestUser() {
   try { runMysql("DELETE FROM user_seal WHERE user_id=1"); } catch(e) {}
   try { runMysql("DELETE FROM user_title WHERE user_id=1"); } catch(e) {}
   try { runMysql("DELETE FROM user_weekly_goal WHERE user_id=1"); } catch(e) {}
+  try { runMysql("DELETE FROM user_goals WHERE user_id=1"); } catch(e) {}
   try { runMysql("DELETE FROM user_coin WHERE user_id=1"); } catch(e) {}
 }
 
@@ -113,6 +115,10 @@ async function main() {
     else ko('current_title 为字符串', JSON.stringify(d));
     if (d && d.weekly_goal) ok('weekly_goal 字段存在');
     else ko('weekly_goal 字段存在', JSON.stringify(d));
+    if (d && Array.isArray(d.weekly_plans)) ok('weekly_plans 为数组');
+    else ko('weekly_plans 为数组', JSON.stringify(d));
+    if (d && d.week_reward && typeof d.week_reward.cap === 'number') ok('week_reward 含封顶');
+    else ko('week_reward 含封顶', JSON.stringify(d && d.week_reward));
   } catch(e) { ko('GET /api/treasury', e.message); }
 
   // ---- 3. 首次余额应为 0 ----
@@ -288,17 +294,31 @@ async function main() {
   if (!fs.existsSync(treasuryHtmlPath)) ok('treasury.html 已移除（改为抽屉浮层）');
   else ko('treasury.html 已移除（改为抽屉浮层）', '文件仍存在');
 
-  // 设定课规已迁至仪表盘页（index.html）
+  // 设定课规已迁至共享计划面板（v1.5.1-T001）
   const indexPath = path.join(ROOT, 'frontend/index.html');
   if (fs.existsSync(indexPath)) {
     const index = fs.readFileSync(indexPath, 'utf8');
-    if (index.includes('id="goal-drawer"')) ok('index.html 含课规抽屉 #goal-drawer');
-    else ko('index.html 含课规抽屉 #goal-drawer', '未找到');
+    if (index.includes('/static/plan-panel.js')) ok('index.html 引入共享计划面板');
+    else ko('index.html 引入共享计划面板', '未找到');
     if (index.includes('data-goal-open')) ok('index.html 含课规设定入口 data-goal-open');
     else ko('index.html 含课规设定入口 data-goal-open', '未找到');
-    if (index.includes('/api/treasury/weekly-goal')) ok('index.html 调用 /api/treasury/weekly-goal');
-    else ko('index.html 调用 /api/treasury/weekly-goal', '未找到');
+    if (!index.includes('id="goal-drawer"')) ok('旧课规抽屉已移除');
+    else ko('旧课规抽屉已移除', '仍存在 #goal-drawer');
   } else ko('index.html 存在', '未找到');
+
+  const panelPath = path.join(ROOT, 'frontend/static/plan-panel.js');
+  if (fs.existsSync(panelPath)) {
+    const panel = fs.readFileSync(panelPath, 'utf8');
+    if (panel.includes('/api/treasury/weekly-goal')) ok('计划面板调用 /api/treasury/weekly-goal');
+    else ko('计划面板调用 /api/treasury/weekly-goal', '未找到');
+  } else ko('plan-panel.js 存在', '未找到');
+
+  const planPagePath = path.join(ROOT, 'frontend/pages/plan.html');
+  if (fs.existsSync(planPagePath)) {
+    const page = fs.readFileSync(planPagePath, 'utf8');
+    if (page.includes('data-plan-page="1"')) ok('plan.html 深链薄壳存在');
+    else ko('plan.html 深链薄壳存在', '未找到挂载点');
+  } else ko('plan.html 存在', '未找到');
 
   // ---- 15. 配置文件检查 ----
   console.log('\n[15] config/rewards.json');

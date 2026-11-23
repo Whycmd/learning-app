@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <utility>
 #include <ctime>
 #include <fstream>
@@ -78,14 +79,12 @@ public:
   CreateResult create(const std::string& userInput, const std::string& remark="") {
     CreateResult r;
     if (userInput.empty()) { r.error = "user_input_content empty"; return r; }
-    // 未固化不查重；已固化语义查重
-    // 简化：仅检查已固化知识点中是否存在相同 user_input 或 standard
-    // PRD §3.5: 未固化不查重，允许重复录入
+    // 未固化不查重（PRD §3.5）；词级唯一键在固化/批量升级时生效
     std::ostringstream sql;
-    sql << "INSERT INTO knowledge_points (user_id, user_input_content, remark, is_solidified, create_time) "
+    sql << "INSERT INTO knowledge_points (user_id, user_input_content, remark, is_solidified, origin, create_time) "
         << "VALUES (" << RequestContext::currentUserId() << ", '" << Db::escape(userInput) << "', "
         << (remark.empty() ? "NULL" : "'" + Db::escape(remark) + "'") << ", "
-        << "0, NOW())";
+        << "0, 'manual', NOW())";
     try {
       auto wr = db_.exec(sql.str());
       r.id = wr.last_insert_id;
@@ -97,11 +96,196 @@ public:
     }
   }
 
+  // ============ v1.5.0-T005：批量录入（粘贴/文件/AI/教材升级共用） ============
+
+  struct PreviewResult {
+    int input = 0;
+    int unique = 0;
+    int existing = 0;
+    int to_create = 0;
+    bool need_confirm = false;
+  };
+
+  PreviewResult preview(const std::vector<std::string>& words) {
+    PreviewResult r;
+    std::set<std::string> keys;
+    for (auto& w : words) {
+      r.input++;
+      std::string k = normalizeKey(w);
+      if (!k.empty()) keys.insert(k);
+    }
+    r.unique = (int)keys.size();
+    auto existingMap = existingKeys(RequestContext::currentUserId());
+    for (auto& k : keys) if (existingMap.count(k)) r.existing++;
+    r.to_create = r.unique - r.existing;
+    r.need_confirm = r.to_create > kBatchConfirmLimit;
+    return r;
+  }
+
+  struct BulkItem {
+    std::string word;
+    std::string meaning;
+    std::string pos;
+    int64_t item_id = 0;
+  };
+
+  struct BulkResult {
+    int created = 0;
+    int skipped = 0;
+    int learning_created = 0;
+    int definitions_written = 0;
+    bool ok = false;
+    std::string error;
+  };
+
+  // joinStudy=true 时同步建学情；sourceRef>0 表示来自词表（教材词升级为知识点）
+  BulkResult bulk(const std::vector<BulkItem>& items, bool joinStudy, int64_t sourceRef,
+                  bool confirm) {
+    BulkResult r;
+    int uid = RequestContext::currentUserId();
+    if (uid <= 0) { r.error = "login required"; return r; }
+
+    std::vector<BulkItem> uniq;
+    std::set<std::string> seen;
+    for (auto& it : items) {
+      std::string k = normalizeKey(it.word);
+      if (k.empty() || !seen.insert(k).second) continue;
+      uniq.push_back(it);
+    }
+    if (uniq.empty()) { r.ok = true; return r; }
+
+    auto existingMap = existingKeys(uid);
+    int existing = 0;
+    for (auto& it : uniq) if (existingMap.count(normalizeKey(it.word))) existing++;
+    int toCreate = (int)uniq.size() - existing;
+    if (toCreate > kBatchConfirmLimit && !confirm) {
+      r.error = "need_confirm";
+      return r;
+    }
+
+    bool isWordlist = sourceRef > 0;
+    std::string origin = isWordlist ? "wordlist" : "manual";
+    bool ok = db_.transaction([&]() -> bool {
+      for (auto& it : uniq) {
+        std::string k = normalizeKey(it.word);
+        // v1.5.0-T008：批量录入不再提前标记「已有精讲」，等 AI 精讲正文落库后才置 1
+        int64_t kpId = 0;
+        auto found = existingMap.find(k);
+        if (found != existingMap.end()) {
+          // 复用已有知识点，并补齐归一化键（含此前未固化的手工录入）
+          kpId = found->second;
+          r.skipped++;
+          db_.exec("UPDATE IGNORE knowledge_points SET normalized_key='" + Db::escape(k)
+                   + "' WHERE id=" + std::to_string(kpId) + " AND normalized_key IS NULL");
+        } else {
+          std::ostringstream ins;
+          ins << "INSERT IGNORE INTO knowledge_points (user_id, user_input_content, standard_content, "
+                 "normalized_key, identity_snapshot, is_solidified, origin, source_ref, solidify_time, create_time) "
+                 "VALUES (" << uid << ",'" << Db::escape(it.word) << "',NULL,'" << Db::escape(k)
+              << "','',0,'" << origin << "',"
+              << (isWordlist ? std::to_string(sourceRef) : "NULL") << ",NULL,NOW())";
+          auto wr = db_.exec(ins.str());
+          if (wr.affected_rows > 0) {
+            kpId = wr.last_insert_id;
+            r.created++;
+            existingMap[k] = kpId;
+          } else {
+            auto rows = db_.query("SELECT id FROM knowledge_points WHERE user_id=" + std::to_string(uid)
+                                  + " AND normalized_key='" + Db::escape(k) + "' LIMIT 1");
+            if (rows.empty()) continue;
+            kpId = std::stoll(rows[0]["id"]);
+            r.skipped++;
+          }
+        }
+
+        if (!it.meaning.empty()) {
+          auto cnt = db_.query("SELECT COUNT(*) AS c FROM kp_definitions WHERE knowledge_id="
+                               + std::to_string(kpId));
+          int has = cnt.empty() ? 0 : std::stoi(cnt[0]["c"]);
+          if (has == 0) {
+            std::ostringstream d;
+            d << "INSERT INTO kp_definitions (knowledge_id,pos,meaning,display_order) VALUES ("
+              << kpId << "," << (it.pos.empty() ? "NULL" : "'" + Db::escape(it.pos) + "'")
+              << ",'" << Db::escape(it.meaning) << "',0)";
+            db_.exec(d.str());
+            r.definitions_written++;
+          }
+        }
+
+        if (it.item_id > 0) {
+          db_.exec("UPDATE wordlist_items SET knowledge_id=" + std::to_string(kpId)
+                   + ", is_solidified=0 WHERE id=" + std::to_string(it.item_id));
+        }
+
+        if (joinStudy) {
+          auto lw = db_.exec(
+            "INSERT IGNORE INTO user_learning (user_id, knowledge_id, proficiency_level, review_mode, "
+            "review_times, error_times, next_review_time, last_review_time, create_time) VALUES ("
+            + std::to_string(uid) + "," + std::to_string(kpId)
+            + ",0,'daily',0,0,NOW(),NULL,NOW())");
+          if (lw.affected_rows > 0) r.learning_created++;
+        }
+      }
+      return true;
+    });
+    if (!ok) { r.error = "transaction failed"; return r; }
+    r.ok = true;
+    return r;
+  }
+
+private:
+  static const int kBatchConfirmLimit = 30;
+
+  // v1.5.0-T009：把搭配中的目标词替换为挖空；未命中则原样返回
+  static std::string blankOutWord(const std::string& phrase, const std::string& word) {
+    if (word.empty() || phrase.empty()) return phrase;
+    std::string lp, lw;
+    for (char c : phrase) lp.push_back((char)std::tolower((unsigned char)c));
+    for (char c : word) lw.push_back((char)std::tolower((unsigned char)c));
+    size_t pos = lp.find(lw);
+    while (pos != std::string::npos) {
+      bool leftOk = pos == 0 || !std::isalnum((unsigned char)phrase[pos - 1]);
+      size_t end = pos + lw.size();
+      bool rightOk = end >= phrase.size() || !std::isalnum((unsigned char)phrase[end]);
+      if (leftOk && rightOk) return phrase.substr(0, pos) + "______" + phrase.substr(end);
+      pos = lp.find(lw, pos + 1);
+    }
+    return phrase;
+  }
+
+  // v1.5.0-T009：把自测题并入导出 JSON 对象
+  static std::string injectSelfTests(std::string json, const JsonValue& tests) {
+    if (json.empty() || json.back() != '}') return json;
+    json.pop_back();
+    json += ",\"self_tests\":" + tests.dump() + "}";
+    return json;
+  }
+
+  // 归一化键 → 知识点 id；未固化的手工录入按内容归一化后参与匹配
+  std::map<std::string, int64_t> existingKeys(int uid) {
+    std::map<std::string, int64_t> m;
+    if (uid <= 0) return m;
+    auto rows = db_.query(
+      "SELECT id,normalized_key,user_input_content,standard_content FROM knowledge_points WHERE user_id="
+      + std::to_string(uid) + " ORDER BY id ASC");
+    for (auto& r : rows) {
+      std::string k = r["normalized_key"];
+      if (k.empty()) {
+        std::string base = r["standard_content"].empty() ? r["user_input_content"] : r["standard_content"];
+        k = normalizeKey(base);
+      }
+      if (!k.empty() && !m.count(k)) m[k] = std::stoll(r["id"]);
+    }
+    return m;
+  }
+
+public:
+
   // 列表（分页）
   std::vector<Row> list(int page=1, int size=20, bool onlyUnsolidified=false) {
     std::ostringstream sql;
     sql << "SELECT id, user_input_content, standard_content, difficulty, master_require, remark, "
-           "is_solidified, DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s') AS create_time, "
+           "is_solidified, visibility, DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s') AS create_time, "
            "DATE_FORMAT(solidify_time, '%Y-%m-%d %H:%i:%s') AS solidify_time "
            "FROM knowledge_points WHERE user_id=" << RequestContext::currentUserId();
     if (onlyUnsolidified) sql << " AND is_solidified=0";
@@ -113,7 +297,7 @@ public:
   JsonValue detail(int64_t id) {
     std::ostringstream sql;
     sql << "SELECT id, user_input_content, standard_content, difficulty, master_require, remark, "
-           "is_solidified, DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s') AS create_time, "
+           "is_solidified, visibility, DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s') AS create_time, "
            "DATE_FORMAT(solidify_time, '%Y-%m-%d %H:%i:%s') AS solidify_time "
            "FROM knowledge_points WHERE id=" << id
            << " AND user_id=" << RequestContext::currentUserId();
@@ -128,6 +312,7 @@ public:
     obj["master_require"] = r["master_require"].empty() ? JsonValue::makeNull() : JsonValue::makeString(r["master_require"]);
     obj["remark"] = r["remark"].empty() ? JsonValue::makeNull() : JsonValue::makeString(r["remark"]);
     obj["is_solidified"] = JsonValue::makeInt(std::stoi(r["is_solidified"]));
+    obj["visibility"] = JsonValue::makeString(r["visibility"].empty() ? "private" : r["visibility"]);
     obj["create_time"] = JsonValue::makeString(r["create_time"]);
     obj["solidify_time"] = r["solidify_time"].empty() ? JsonValue::makeNull() : JsonValue::makeString(r["solidify_time"]);
 
@@ -155,6 +340,41 @@ public:
     return JsonValue::makeObject(obj);
   }
 
+  // v1.5.0-T008：查重（同一用户、同一归一化键）
+  struct CheckResult {
+    bool exists = false;
+    int64_t id = 0;
+    int is_solidified = 0;
+    std::string visibility = "private";
+    std::string normalized_key;
+  };
+  CheckResult check(const std::string& text, int uid) {
+    CheckResult r;
+    r.normalized_key = normalizeKey(text);
+    if (r.normalized_key.empty() || uid <= 0) return r;
+    auto rows = db_.query(
+      "SELECT id,is_solidified,IFNULL(visibility,'private') AS visibility FROM knowledge_points "
+      "WHERE user_id=" + std::to_string(uid) + " AND normalized_key='" + Db::escape(r.normalized_key) +
+      "' ORDER BY is_solidified DESC, id ASC LIMIT 1");
+    // 兜底：历史手工录入可能没有 normalized_key，按内容归一化匹配
+    if (rows.empty()) {
+      auto all = db_.query(
+        "SELECT id,is_solidified,IFNULL(visibility,'private') AS visibility,user_input_content,standard_content "
+        "FROM knowledge_points WHERE user_id=" + std::to_string(uid)
+        + " AND (normalized_key IS NULL OR normalized_key='') ORDER BY id ASC");
+      for (auto& row : all) {
+        std::string base = row["standard_content"].empty() ? row["user_input_content"] : row["standard_content"];
+        if (normalizeKey(base) == r.normalized_key) { rows.push_back(row); break; }
+      }
+    }
+    if (rows.empty()) return r;
+    r.exists = true;
+    r.id = std::stoll(rows[0]["id"]);
+    r.is_solidified = std::stoi(rows[0]["is_solidified"]);
+    r.visibility = rows[0]["visibility"].empty() ? "private" : rows[0]["visibility"];
+    return r;
+  }
+
   // 原子任务2：AI 一键批量固化（仅未固化知识点）
   struct SolidifyResult {
     int total=0, success=0, failed=0;
@@ -163,7 +383,9 @@ public:
   };
   SolidifyResult solidifyAll() {
     SolidifyResult r;
-    auto unsolidified = db_.query("SELECT id, user_input_content, remark FROM knowledge_points WHERE is_solidified=0 AND user_id="
+    // v1.5.0-T005：固化候选只取手工录入（教材词已固化，不参与）
+    auto unsolidified = db_.query("SELECT id, user_input_content, remark FROM knowledge_points "
+                                  "WHERE is_solidified=0 AND origin='manual' AND user_id="
                                   + std::to_string(RequestContext::currentUserId()) + " ORDER BY id");
     r.total = unsolidified.size();
     for (auto& row : unsolidified) {
@@ -183,30 +405,68 @@ public:
     return r;
   }
 
+  // L1 复用归一化键：去 ASCII 标点、转小写、合并连续空白、去首尾空白
+  // 与 scripts/sql/11_ai_queue.sql 回填规则保持一致
+  static std::string normalizeKey(const std::string& s)
+  {
+    std::string lowered;
+    for (char c : s)
+    {
+      if (c >= 'A' && c <= 'Z') { lowered.push_back((char)(c - 'A' + 'a')); continue; }
+      // ASCII 标点（含引号、括号、连字符等）剔除
+      if ((c >= 33 && c <= 47) || (c >= 58 && c <= 64) ||
+          (c >= 91 && c <= 96) || (c >= 123 && c <= 126)) continue;
+      lowered.push_back(c);
+    }
+    std::string out;
+    bool prevSpace = false;
+    for (char c : lowered)
+    {
+      if (c == ' ' || c == '\t' || c == '\r' || c == '\n')
+      {
+        if (!out.empty() && !prevSpace) out.push_back(' ');
+        prevSpace = true;
+      }
+      else { out.push_back(c); prevSpace = false; }
+    }
+    if (!out.empty() && out.back() == ' ') out.pop_back();
+    return out;
+  }
+
   // 跨用户缓存判定结果（solidifyOne / solidifyBatch 共用）
   enum class CacheHit { Miss, Merged, Copied };
 
-  // 全局查重：相同 standard_content 的已固化词条（不限 user_id）
+  // L1 复用：normalized_key 相同且 identity_snapshot 相同（同身份秒回复用）
   // Copied：他人固化内容已复制到当前 kp；Merged：自己已有副本，当前 kp 已删除合并
   // Miss：无缓存可用（复制失败也按 Miss 处理，回退到 AI 流程）
   CacheHit tryCrossUserCache(int64_t id, const std::string& userInput,
                              const std::string& remark, std::string& err)
   {
-    // 同时查 standard_content 和 user_input_content（AI 可能润色 standard_content，
-    // 但 user_input_content 是用户原始输入，更稳定）
+    int uid = RequestContext::currentUserId();
+    std::string nk = normalizeKey(userInput);
+    std::string identity = prompts::getLearnerIdentity(db_, uid);
     // 优先同用户副本：命中自己的已固化词条才应合并，避免被他人词条抢先复制成重复记录
     auto dup = db_.query(
-      "SELECT id, user_id FROM knowledge_points WHERE "
-      "(standard_content='" + Db::escape(userInput) + "' "
-      " OR user_input_content='" + Db::escape(userInput) + "') "
-      "AND is_solidified=1 AND id<>" + std::to_string(id) +
-      " ORDER BY (user_id=" + std::to_string(RequestContext::currentUserId()) + ") DESC, id ASC LIMIT 1"
+      "SELECT id, user_id FROM knowledge_points WHERE normalized_key='" + Db::escape(nk) + "' "
+      "AND identity_snapshot='" + Db::escape(identity) + "' AND is_solidified=1 AND id<>"
+      + std::to_string(id) + " ORDER BY (user_id=" + std::to_string(uid) + ") DESC, id ASC LIMIT 1"
     );
+    // 历史数据兜底：仅身份为空时按原始内容精确匹配（已回填身份的历史记录不走此路）
+    if (dup.empty() && identity.empty())
+    {
+      dup = db_.query(
+        "SELECT id, user_id FROM knowledge_points WHERE "
+        "(standard_content='" + Db::escape(userInput) + "' "
+        " OR user_input_content='" + Db::escape(userInput) + "') "
+        "AND identity_snapshot='' AND is_solidified=1 AND id<>" + std::to_string(id) +
+        " ORDER BY (user_id=" + std::to_string(uid) + ") DESC, id ASC LIMIT 1"
+      );
+    }
     if (dup.empty()) return CacheHit::Miss;
 
     int64_t dupId = std::stoll(dup[0]["id"]);
     int dupOwner = std::stoi(dup[0]["user_id"]);
-    if (dupOwner == RequestContext::currentUserId())
+    if (dupOwner == uid)
     {
       db_.exec("DELETE FROM knowledge_points WHERE id=" + std::to_string(id));
       err = "merged into kp#" + dup[0]["id"];
@@ -232,19 +492,16 @@ public:
     if (hit == CacheHit::Copied) { r.effective_id = id; r.ok = true; return r; }
     // Miss：继续 AI 流程
 
-    // AI 响应缓存检查：ai_tasks 表中是否有 done 状态、相同输入的任务
+    // AI 响应缓存检查已移除（v1.5.0-T002）：L1 复用由 normalized_key + identity_snapshot 承担
     std::string cacheKey = userInput + "||" + remark;
-    auto cached = db_.query(
-      "SELECT result FROM ai_tasks WHERE task_type='solidify_kp' AND status='done' "
-      "AND ref_id=" + std::to_string(id) + " AND payload='" + Db::escape(cacheKey) + "' LIMIT 1"
-    );
 
-    // 记录 AI 任务（pending）
+    // 记录 AI 任务（pending）；kind/lane 用于与通用队列区分
     int64_t taskId = 0;
     try {
       auto wr = db_.exec(
-        "INSERT INTO ai_tasks (task_type, ref_id, status, payload) VALUES ('solidify_kp', "
-        + std::to_string(id) + ", 'pending', '" + Db::escape(cacheKey) + "')"
+        "INSERT INTO ai_tasks (task_type, ref_id, status, payload, user_id, kind, lane) VALUES ('solidify_kp', "
+        + std::to_string(id) + ", 'pending', '" + Db::escape(cacheKey) + "', "
+        + std::to_string(RequestContext::currentUserId()) + ", 'solidify_kp', 'sync')"
       );
       taskId = wr.last_insert_id;
     } catch (...) {}
@@ -282,7 +539,7 @@ public:
         {{"role","system"},{"content",prompts::KP_SOLIDIFY_SYSTEM}},
         {{"role","user"},{"content",userPrompt}}
       };
-      auto resp = ai_.postChat(msgs, true, 3072, 0.3);
+      auto resp = ai_.postChat(msgs, true, 3072, 0.3, "solidify");
       if (!resp.ok) { callErr = "AI call failed: " + resp.body; return false; }
       try {
         if (resp.extractedJson.empty()) { callErr = "AI returned no JSON"; return false; }
@@ -351,7 +608,8 @@ public:
       db_.exec(
         "UPDATE knowledge_points dst JOIN knowledge_points src ON src.id=" + std::to_string(srcId)
         + " SET dst.standard_content=src.standard_content, dst.difficulty=src.difficulty, "
-          "dst.master_require=src.master_require, dst.is_solidified=1, dst.solidify_time=NOW() "
+          "dst.master_require=src.master_require, dst.normalized_key=src.normalized_key, "
+          "dst.identity_snapshot=src.identity_snapshot, dst.is_solidified=1, dst.solidify_time=NOW() "
         + " WHERE dst.id=" + std::to_string(dstId)
       );
       // 清 dst 旧子表
@@ -439,13 +697,13 @@ public:
       err = "AI content mismatch: got '" + stdContent + "', expected '" + userInput + "'";
       return false;
     }
-    // 同时查 standard_content 和 user_input_content（AI 可能润色 standard_content，
-    // 但 user_input_content 是用户原始输入，更稳定）
+    // L1 判定键：same normalized_key + same identity_snapshot（同用户已固化副本则合并）
+    std::string nk = normalizeKey(stdContent);
+    std::string identity = prompts::getLearnerIdentity(db_, RequestContext::currentUserId());
     auto dup = db_.query(
-      "SELECT id, user_id FROM knowledge_points WHERE "
-      "(standard_content='" + Db::escape(stdContent) + "' "
-      " OR user_input_content='" + Db::escape(userInput) + "') "
-      "AND is_solidified=1 AND id<>" + std::to_string(id) + " LIMIT 1"
+      "SELECT id, user_id FROM knowledge_points WHERE normalized_key='" + Db::escape(nk) + "' "
+      "AND identity_snapshot='" + Db::escape(identity) + "' AND is_solidified=1 AND id<>"
+      + std::to_string(id) + " LIMIT 1"
     );
     if (!dup.empty() && std::stoi(dup[0]["user_id"]) == RequestContext::currentUserId())
     {
@@ -469,7 +727,9 @@ public:
       up << "UPDATE knowledge_points SET standard_content='" << Db::escape(stdContent)
          << "', difficulty=" << difficulty
          << ", master_require='" << Db::escape(master)
-         << "', is_solidified=1, solidify_time=NOW() WHERE id=" << id;
+         << "', normalized_key='" << Db::escape(nk)
+         << "', identity_snapshot='" << Db::escape(identity)
+         << "' WHERE id=" << id;
       if (db_.exec(up.str()).affected_rows == 0 && db_.query("SELECT id FROM knowledge_points WHERE id=" + std::to_string(id)).empty()) return false;
 
       // 清旧子表（兼容重固化）
@@ -607,17 +867,105 @@ public:
           addExtra("related_words", flexStr("related_words"));
         }
       }
+      // v1.5.0-T008：只有精讲正文（markdown_content）落库成功才算「精讲已生成」
+      bool hasMd = !db_.query(
+        "SELECT 1 AS x FROM kp_extras WHERE knowledge_id=" + std::to_string(id)
+        + " AND extra_type='markdown_content' AND content<>'' LIMIT 1").empty();
+      db_.exec("UPDATE knowledge_points SET is_solidified=" + std::string(hasMd ? "1" : "0")
+               + ", solidify_time=" + (hasMd ? "NOW()" : "NULL")
+               + " WHERE id=" + std::to_string(id));
       return true;
     });
     if (!txOk) { err = "transaction failed"; return false; }
     return true;
   }
 
+  // v1.5.0-T009 D06：自测题本地抽取（只读结构化子表，不调 AI、不批改）
+  // 每类素材最多 1 道，按「释义→搭配→同义词→反义词→例句」凑 1–5 道；
+  // 总数 ≥5 时最多 1 道客观题（优先搭配挖空），其余全部主观题。
+  JsonValue buildSelfTests(int64_t kpId) {
+    JsonArray out;
+    auto kpRows = db_.query(
+      "SELECT IFNULL(NULLIF(standard_content,''),user_input_content) AS w FROM knowledge_points WHERE id="
+      + std::to_string(kpId));
+    std::string word = kpRows.empty() ? "" : kpRows[0]["w"];
+
+    auto defs = db_.query(
+      "SELECT IFNULL(pos,'') AS pos,IFNULL(meaning,'') AS meaning,IFNULL(example,'') AS example "
+      "FROM kp_definitions WHERE knowledge_id=" + std::to_string(kpId) + " ORDER BY display_order,id");
+    auto cols = db_.query(
+      "SELECT IFNULL(collocation,'') AS collocation FROM kp_collocations WHERE knowledge_id="
+      + std::to_string(kpId) + " ORDER BY display_order,id");
+    auto syns = db_.query(
+      "SELECT IFNULL(synonym,'') AS synonym FROM kp_synonyms WHERE knowledge_id="
+      + std::to_string(kpId) + " ORDER BY display_order,id");
+    auto ants = db_.query(
+      "SELECT IFNULL(antonym,'') AS antonym FROM kp_antonyms WHERE knowledge_id="
+      + std::to_string(kpId) + " ORDER BY display_order,id");
+
+    auto add = [&](const char* type, bool objective, const std::string& prompt,
+                   const std::string& answer) {
+      JsonObject o;
+      o["type"] = JsonValue::makeString(type);
+      o["kind"] = JsonValue::makeString(objective ? "objective" : "subjective");
+      o["prompt"] = JsonValue::makeString(prompt);
+      o["answer"] = JsonValue::makeString(answer);
+      out.push_back(JsonValue::makeObject(o));
+    };
+
+    std::string meaning = defs.empty() ? "" : defs[0]["meaning"];
+    std::string pos = defs.empty() ? "" : defs[0]["pos"];
+    // 1) 释义默写
+    if (!meaning.empty()) {
+      add("meaning", false,
+          "请写出「" + word + "」的常用中文释义" + (pos.empty() ? "" : "（词性：" + pos + "）") + "。",
+          meaning);
+    }
+    // 2) 搭配挖空
+    std::string coll = cols.empty() ? "" : cols[0]["collocation"];
+    if (!coll.empty()) {
+      std::string blanked = blankOutWord(coll, word);
+      std::string prompt = (blanked == coll)
+        ? "请补全「" + word + "」的常用固定搭配。"
+        : "请补全固定搭配：" + blanked + "。";
+      add("collocation", false, prompt, coll);
+    }
+    // 3) 同义替换
+    std::string syn = syns.empty() ? "" : syns[0]["synonym"];
+    if (!syn.empty()) add("synonym", false, "请写出「" + word + "」的一个同义词。", syn);
+    // 4) 反义替换
+    std::string ant = ants.empty() ? "" : ants[0]["antonym"];
+    if (!ant.empty()) add("antonym", false, "请写出「" + word + "」的一个反义词。", ant);
+    // 5) 例句翻译
+    std::string example;
+    for (auto& d : defs) if (!d["example"].empty()) { example = d["example"]; break; }
+    if (!example.empty()) {
+      std::string ans = "例句：" + example + (meaning.empty() ? "" : "\n参考词义：" + meaning);
+      add("example", false, "请将下列例句翻译成中文：" + example, ans);
+    }
+
+    // 总数 ≥5 时最多 1 道客观题：优先把搭配挖空标为客观题
+    if (out.size() >= 5) {
+      for (size_t i = 0; i < out.size(); i++) {
+        if (out[i].getString("type") == "collocation") {
+          JsonObject o;
+          o["type"] = JsonValue::makeString("collocation");
+          o["kind"] = JsonValue::makeString("objective");
+          o["prompt"] = JsonValue::makeString(out[i].getString("prompt"));
+          o["answer"] = JsonValue::makeString(out[i].getString("answer"));
+          out[i] = JsonValue::makeObject(o);
+          break;
+        }
+      }
+    }
+    return JsonValue::makeArray(out);
+  }
+
   // 原子任务2.5：导出知识点 Word（调 Node.js 子进程生成 .docx）
   std::string exportWord(int64_t kpId) {
     auto detailJson = detail(kpId);
     if (detailJson.isNull()) return "";
-    std::string jsonStr = detailJson.dump();
+    std::string jsonStr = injectSelfTests(detailJson.dump(), buildSelfTests(kpId));
     // 调 Node.js 子进程：node scripts/gen_word_kp.js <kpId> <jsonPath>
     // 写临时 JSON 到 word_tmp
     std::string tmpPath = wordTmpDir_ + "/kp_" + std::to_string(kpId) + "_" + std::to_string(::time(nullptr)) + ".json";
@@ -712,7 +1060,7 @@ public:
     std::string aiErr;
     bool parsed = false;
     for (int attempt = 0; attempt < 2 && !parsed; attempt++) {
-      auto resp = ai_.postChat(msgs, true, maxTokens, 0.3);
+      auto resp = ai_.postChat(msgs, true, maxTokens, 0.3, "solidify");
       if (!resp.ok) { aiErr = "AI batch call failed: " + resp.body; continue; }
       if (resp.extractedJson.empty()) { aiErr = "AI returned no JSON"; continue; }
       try {
@@ -781,7 +1129,7 @@ public:
       auto detailJson = detail(id);
       if (detailJson.isNull()) continue;
       if (!first) jsonStr += ",";
-      jsonStr += detailJson.dump();
+      jsonStr += injectSelfTests(detailJson.dump(), buildSelfTests(id));
       first = false;
     }
     jsonStr += "]";

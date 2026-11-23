@@ -106,6 +106,8 @@ services:
     volumes:
       # 导出的 Word 文件落到宿主的 word_tmp/，方便直接用 Word 打开
       - ./word_tmp:/app/word_tmp
+      # 每日 mysqldump 备份（v1.5.0-T011）：落到宿主 backups/，容器重建不丢
+      - ./backups:/app/backups
     networks:
       - elf
 

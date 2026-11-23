@@ -10,6 +10,20 @@ MYSQL_PW_FILE="$MYSQL_HOME/.root_pw"
 LOCALAI_PID="$RUN_DIR/localai.pid"
 MYSQL_PID="$RUN_DIR/mysqld.pid"
 LOG_ROTATE_PID="$RUN_DIR/log_rotate.pid"
+BACKUP_PID="$RUN_DIR/backup_daily.pid"
+
+# 停止每日备份守护（v1.5.0-T011）
+if [ -f "$BACKUP_PID" ] && kill -0 "$(cat "$BACKUP_PID")" 2>/dev/null; then
+  kill "$(cat "$BACKUP_PID")" 2>/dev/null
+  sleep 1
+  if kill -0 "$(cat "$BACKUP_PID")" 2>/dev/null; then
+    kill -9 "$(cat "$BACKUP_PID")" 2>/dev/null
+  fi
+  echo "[backup] stopped"
+else
+  echo "[backup] not running"
+fi
+rm -f "$BACKUP_PID"
 
 # 停止日志轮转守护
 if [ -f "$LOG_ROTATE_PID" ] && kill -0 "$(cat "$LOG_ROTATE_PID")" 2>/dev/null; then

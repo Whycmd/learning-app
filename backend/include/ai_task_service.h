@@ -56,13 +56,18 @@ public:
     sql << " ORDER BY id DESC LIMIT 200";
     auto rows = db_.query(sql.str());
     std::vector<TaskInfo> out;
+    auto toI64 = [](const std::string& s, int64_t def = 0) {
+      if (s.empty()) return def;
+      try { return (int64_t)std::stoll(s); } catch (...) { return def; }
+    };
     for (auto& r : rows) {
       TaskInfo t;
-      t.id = std::stoll(r["id"]);
+      t.id = toI64(r["id"]);
       t.task_type = r["task_type"];
-      t.ref_id = std::stoll(r["ref_id"]);
+      // v1.5.0-T002：新队列任务不写 ref_id（可为 NULL），避免 stoll 抛异常
+      t.ref_id = toI64(r["ref_id"]);
       t.status = r["status"];
-      t.retry_times = std::stoi(r["retry_times"]);
+      t.retry_times = (int)toI64(r["retry_times"]);
       t.error_msg = r["error_msg"];
       t.create_time = r["create_time"];
       out.push_back(t);

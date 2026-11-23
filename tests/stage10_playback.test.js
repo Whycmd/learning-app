@@ -127,10 +127,16 @@ async function main() {
   if (fs.existsSync(wordbookPath)) ok('wordbook.html 文件存在');
   else ko('wordbook.html 文件存在', '文件未找到');
 
-  // 检查kp-detail.html是否引用tts.js
-  const kpDetailContent = fs.readFileSync(kpDetailPath, 'utf8');
-  if (kpDetailContent.includes('/static/tts.js')) ok('kp-detail.html 引用tts.js');
-  else ko('kp-detail.html 引用tts.js', '未找到引用');
+  // v1.5.0-T006：详情已并入 kp-entry，TTS 由 ai-tutor.js 按需加载
+  const kpEntryPath = path.join(ROOT, 'frontend/pages/kp-entry.html');
+  if (fs.existsSync(kpEntryPath) && fs.readFileSync(kpEntryPath, 'utf8').includes('/static/ai-tutor.js'))
+    ok('kp-entry.html 引入 ai-tutor.js');
+  else ko('kp-entry.html 引入 ai-tutor.js', '未找到引用');
+
+  const aiTutorPath = path.join(ROOT, 'frontend/static/ai-tutor.js');
+  if (fs.existsSync(aiTutorPath) && fs.readFileSync(aiTutorPath, 'utf8').includes('/static/tts.js'))
+    ok('ai-tutor.js 懒加载 tts.js');
+  else ko('ai-tutor.js 懒加载 tts.js', '未找到引用');
 
   // 检查wordbook.html是否引用tts.js
   const wordbookContent = fs.readFileSync(wordbookPath, 'utf8');

@@ -3,103 +3,223 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>知识点录入 · 学习圣殿</title>
+<title>知识点 · 学习圣殿</title>
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/style.css">
-<link rel="stylesheet" href="/static/components.css">
+<link rel="stylesheet" href="/static/components.css?v=20261121">
+<link rel="stylesheet" href="/static/ai-tutor.css">
 <script src="/static/theme.js"></script>
 <script src="/static/nav.js"></script>
 </head>
 <body>
 <div id="topbar-slot"></div>
 
-<!-- T104：知识点录入页 · 套用圣殿设计系统 v2 -->
+<!-- v1.5.0-T006：知识点单页（录入 + 固化 + 列表 + 行内详情 + AI 讲解） -->
 <div class="page">
 
   <div class="dougong-bar">
     <svg viewBox="0 0 400 32"><path d="M0 32 L40 18 L60 28 L80 12 L100 24 L120 8 L140 20 L160 4 L180 16 L200 0 L220 16 L240 4 L260 20 L280 8 L300 24 L320 12 L340 28 L360 18 L400 32Z" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/></svg>
   </div>
 
-  <h1 class="section-title">录入知识点</h1>
-  <p class="section-sub">单条录入 · 批量 AI 固化 · 实时查重</p>
+  <h1 class="section-title">知识点</h1>
+  <p class="section-sub">查 · 录 · 讲 · 查看详情</p>
 
-  <!-- 一、录入表单 -->
-  <div class="wing-card">
-    <div class="wing-card__cap">
-      <span class="wing-card__ico">
-        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-      </span>
-      <span class="wing-card__title">新建词条</span>
-      <span class="wing-card__meta" id="entry-meta">支持单词 / 短语</span>
+  <div class="segmented tutor-tabs" id="page-tabs">
+    <button type="button" data-tab="entry" class="is-active">录入与词条</button>
+    <button type="button" data-tab="explain">AI 讲解</button>
+  </div>
+
+  <p class="state-line" id="guest-tip" hidden>
+    当前为游客：可浏览词条，录入 / 生成精讲 / 导出需先登录。
+  </p>
+
+  <!-- ==================== 页签一：录入与词条 ==================== -->
+  <div id="panel-entry">
+
+    <!-- 一、录入表单 -->
+    <div class="wing-card">
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+        </span>
+        <span class="wing-card__title">新建词条</span>
+        <span class="wing-card__meta" id="entry-meta">支持单词 / 短语</span>
+      </div>
+      <div class="u-prose">
+        <label class="field-label">单词或短语</label>
+        <input class="input" id="content" placeholder="查、录、讲：输入单词或短语，例如 abandon">
+        <div class="entry-match" id="entry-match" hidden></div>
+        <label class="field-label">备注（可选）</label>
+        <input class="input" id="remark" placeholder="例如：重点考察被动语态">
+        <div class="u-row-sm u-mt-md">
+          <button class="btn btn-primary" id="btn-add-explain" type="button">录入并讲解</button>
+          <button class="btn btn-secondary" id="btn-add" type="button">仅录入</button>
+          <button class="btn btn-secondary" id="btn-clear" type="button">清空</button>
+        </div>
+        <p class="state-line" id="add-msg"></p>
+      </div>
     </div>
-    <div class="u-prose">
-      <label class="field-label">单词或短语</label>
-      <input class="input" id="content" placeholder="例如：abandon / keep ... off">
-      <label class="field-label">备注（可选）</label>
-      <input class="input" id="remark" placeholder="例如：重点考察被动语态">
+
+    <!-- 二、AI 一键生成精讲 -->
+    <div class="wing-card">
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/><circle cx="12" cy="12" r="4"/></svg>
+        </span>
+        <span class="wing-card__title">AI 一键生成精讲</span>
+        <span class="wing-card__meta">分片并发 · 边生成边可见</span>
+      </div>
+      <p class="notice text-sm">
+        点击后后台<strong>分片并发</strong>处理所有待生成精讲的知识点；下方会实时显示已生成的词条，不必等全部完成。
+      </p>
+      <div class="u-row-sm">
+        <button class="btn btn-primary" id="btn-solidify">一键生成精讲</button>
+        <button class="btn btn-secondary" id="btn-export-batch" type="button">批量导出 Word</button>
+      </div>
+      <p class="state-line" id="op-msg"></p>
+      <div id="job-panel" style="display:none;margin-top:12px">
+        <p class="state-line" id="job-status"></p>
+        <div style="height:8px;background:#e7e5e4;border-radius:999px;overflow:hidden">
+          <div id="job-bar" style="height:100%;width:0;background:#a16207;transition:width .3s"></div>
+        </div>
+        <div id="job-done" style="margin-top:10px"></div>
+        <div id="job-failed" class="state-line state-line--danger"></div>
+        <button class="btn btn-secondary" id="btn-resume" style="display:none;margin-top:8px">继续未完成任务</button>
+      </div>
+    </div>
+
+    <!-- 三、知识点列表（行内展开详情） -->
+    <div class="wing-card">
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M3 4h3v16H3zM18 4h3v16h-3z"/></svg>
+        </span>
+        <span class="wing-card__title">语言包 · 知识点</span>
+        <span class="wing-card__meta" id="kp-count">–</span>
+      </div>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#78716c" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="filter" placeholder="搜索知识点">
+      </div>
+
+      <div class="wing-card" id="detail-missing" hidden>
+        <p class="state-line" id="detail-missing-msg"></p>
+        <p class="u-mt-md"><a class="btn btn-secondary" href="/pages/wordbook.html">去单词本页「开始学习」</a></p>
+      </div>
+
+      <div id="kp-list"></div>
+    </div>
+
+  </div>
+
+  <!-- ==================== 页签二：AI 讲解 ==================== -->
+  <div id="panel-explain" hidden>
+
+    <div class="wing-card">
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/><circle cx="12" cy="12" r="4"/></svg>
+        </span>
+        <span class="wing-card__title">AI 讲解</span>
+        <span class="wing-card__meta">查 · 录 · 讲共用同一入口</span>
+      </div>
+      <label class="field-label">要讲解的内容</label>
+      <textarea class="input tutor-input" id="ex-text" rows="3"
+        placeholder="输入单词 / 短语 / 长难句，例如：abandon / keep ... off / It was not until ... that ..."></textarea>
       <div class="u-row-sm u-mt-md">
-        <button class="btn btn-primary" id="btn-add">录入知识点</button>
-        <button class="btn btn-secondary" id="btn-clear" type="button">清空</button>
+        <span class="text-sm u-muted">深度</span>
+        <div class="segmented ex-depth" id="ex-depth">
+          <button type="button" data-depth="brief">简明</button>
+          <button type="button" data-depth="standard" class="is-active">标准</button>
+          <button type="button" data-depth="deep">深度</button>
+        </div>
+        <span class="state-line" id="ex-type"></span>
       </div>
-      <p class="state-line" id="add-msg"></p>
-    </div>
-  </div>
-
-  <!-- 二、AI 固化 -->
-  <div class="wing-card">
-    <div class="wing-card__cap">
-      <span class="wing-card__ico">
-        <svg viewBox="0 0 24 24"><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/><circle cx="12" cy="12" r="4"/></svg>
-      </span>
-      <span class="wing-card__title">AI 一键固化</span>
-      <span class="wing-card__meta">分片并发 · 边生成边可见</span>
-    </div>
-    <p class="notice text-sm">
-      点击后后台<strong>分片并发</strong>处理所有待固化知识点；下方会实时显示已生成的词条，不必等全部完成。
-    </p>
-    <div class="u-row-sm">
-      <button class="btn btn-primary" id="btn-solidify">一键 AI 固化</button>
-      <button class="btn btn-secondary" id="btn-export-batch" type="button">批量导出 Word</button>
-    </div>
-    <p class="state-line" id="op-msg"></p>
-    <div id="job-panel" style="display:none;margin-top:12px">
-      <p class="state-line" id="job-status"></p>
-      <div style="height:8px;background:#e7e5e4;border-radius:999px;overflow:hidden">
-        <div id="job-bar" style="height:100%;width:0;background:#a16207;transition:width .3s"></div>
+      <div class="u-row-sm u-mt-md">
+        <button class="btn btn-primary" id="ex-submit" type="button">生成讲解</button>
+        <span class="state-line">Ctrl / ⌘ + Enter 快捷提交</span>
       </div>
-      <div id="job-done" style="margin-top:10px"></div>
-      <div id="job-failed" class="state-line state-line--danger"></div>
-      <button class="btn btn-secondary" id="btn-resume" style="display:none;margin-top:8px">继续未完成任务</button>
-    </div>
-  </div>
+      <p class="state-line" id="ex-msg"></p>
 
-  <!-- 三、知识点列表 -->
-  <div class="wing-card">
-    <div class="wing-card__cap">
-      <span class="wing-card__ico">
-        <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M3 4h3v16H3zM18 4h3v16h-3z"/></svg>
-      </span>
-      <span class="wing-card__title">语言包 · 知识点</span>
-      <span class="wing-card__meta" id="kp-count">–</span>
+      <div class="ex-queue" id="ex-queue" hidden>
+        <span id="ex-queue-text"></span>
+        <span class="kp-expand__spacer"></span>
+        <button class="btn btn-secondary u-btn-sm" id="ex-expedite" type="button" hidden>加急</button>
+        <button class="btn btn-secondary u-btn-sm" id="ex-defer" type="button" hidden>转入空闲队列</button>
+      </div>
     </div>
-    <div class="search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#78716c" stroke-width="2" width="18" height="18"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="filter" placeholder="搜索知识点">
+
+    <div class="wing-card" id="ex-result" hidden>
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </span>
+        <span class="wing-card__title">讲解结果</span>
+        <span class="wing-card__meta" id="ex-result-meta"></span>
+      </div>
+
+      <div class="ex-summary" id="ex-summary"></div>
+      <p class="state-line" id="ex-l1-hint" hidden>本条命中已有精讲，未调用 AI。</p>
+
+      <div class="md-content ex-md-body" id="ex-md"></div>
+
+      <div class="u-row-sm u-mt-md">
+        <button class="btn btn-secondary u-btn-sm" id="ex-regenerate" type="button">重新生成</button>
+        <button class="btn btn-secondary u-btn-sm" id="ex-export-word" type="button">导出 Word</button>
+        <button class="btn btn-secondary u-btn-sm" id="ex-save-kp" type="button">保存为词条</button>
+        <span id="ex-wb-wrap" hidden>
+          <select class="input u-btn-sm" id="ex-wb-select"></select>
+          <button class="btn btn-secondary u-btn-sm" id="ex-to-wb" type="button">加入单词本</button>
+        </span>
+      </div>
+      <p class="state-line" id="ex-act-msg"></p>
+      <p class="state-line" id="ex-public-tip" hidden></p>
+      <p class="state-line" id="ex-guest-tip" hidden>游客可生成讲解；登录后可保存为词条、加入单词本并查看最近讲解。</p>
+
+      <div class="ex-followup" id="ex-followup" hidden>
+        <div class="ex-followup__title">继续追问</div>
+        <div id="ex-followup-list"></div>
+        <div class="u-row-sm u-mt-md">
+          <input class="input" id="ex-followup-input" placeholder="例如：这个搭配在写作里怎么用？">
+          <button class="btn btn-secondary u-btn-sm" id="ex-followup-send" type="button">追问</button>
+        </div>
+        <p class="state-line" id="ex-followup-msg"></p>
+      </div>
     </div>
-    <div id="kp-list"></div>
+
+    <div class="wing-card" id="ex-history-card" hidden>
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5l3 2"/></svg>
+        </span>
+        <span class="wing-card__title">最近讲解</span>
+        <span class="wing-card__meta">点击可回看</span>
+      </div>
+      <div id="ex-history"></div>
+    </div>
+
   </div>
 
 </div>
 
+<script src="/static/export-estimator.js"></script>
+<script src="/static/ai-tutor.js"></script>
 <script>
 (function ()
 {
   'use strict';
 
   let kps = [];
+  let lastList = [];
+  let expandedId = 0;
   let jobId = null;
   let pollTimer = null;
   let shownIds = new Set();
+  // v1.5.0-T002：预计等待本地倒计时（每秒减 1，轮询到更小值才对齐，不回升）
+  let currentJob = null;
+  let etaLeft = 0;
+  let etaTimer = null;
+  let me = { guest: true, user_id: 0 };
 
   const TERMINAL = ['done', 'partial', 'failed', 'interrupted'];
 
@@ -110,6 +230,47 @@
     e.className = 'state-line' + (cls ? ' ' + cls : '');
     e.textContent = t || '';
   }
+
+  function esc(s)
+  {
+    return String(s || '').replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function loginTip(msgId, tip)
+  {
+    const el = document.getElementById(msgId);
+    if (!el) return;
+    const back = encodeURIComponent(location.pathname + location.search);
+    el.className = 'state-line state-line--danger';
+    el.innerHTML = esc(tip) + ' · <a href="/pages/login.html?redirect=' + back + '">去登录</a>';
+  }
+
+  function needLogin(msgId, tip)
+  {
+    if (!me.guest) return false;
+    loginTip(msgId, tip);
+    return true;
+  }
+
+  // ---------- 页签 ----------
+
+  function activateTab(name)
+  {
+    document.querySelectorAll('#page-tabs button').forEach(b =>
+      b.classList.toggle('is-active', b.dataset.tab === name));
+    document.getElementById('panel-entry').hidden = name !== 'entry';
+    document.getElementById('panel-explain').hidden = name !== 'explain';
+    if (name === 'explain' && window.AITutor) window.AITutor.initExplain();
+  }
+
+  document.getElementById('page-tabs').addEventListener('click', e =>
+  {
+    const btn = e.target.closest('button[data-tab]');
+    if (btn) activateTab(btn.dataset.tab);
+  });
+
+  // ---------- 列表 ----------
 
   async function load()
   {
@@ -127,24 +288,33 @@
   function render()
   {
     const q = (document.getElementById('filter').value || '').toLowerCase();
-    const list = kps.filter(k =>
+    lastList = kps.filter(k =>
       (k.standard_content || k.user_input_content || '').toLowerCase().includes(q));
-    const el = document.getElementById('kp-list');
-    if (!list.length) { el.innerHTML = '<p class="state-line">暂无匹配知识点。</p>'; return; }
 
-    el.innerHTML = list.map(k =>
+    const el = document.getElementById('kp-list');
+    if (!lastList.length)
+    {
+      // v1.5.3-T003：查无结果空态 = 说明 + 动作（带入当前输入，走「录入并讲解」）
+      el.innerHTML = q
+        ? '<p class="state-line">这个词还不在你的词库。</p>' +
+          '<button class="btn btn-primary u-btn-sm u-mt-md" type="button" data-act="add-explain-it">录入并讲解它</button>'
+        : '<p class="state-line">暂无匹配知识点。</p>';
+      expandedId = 0;
+      return;
+    }
+
+    el.innerHTML = lastList.map(k =>
     {
       const solid = k.is_solidified === 1;
       const word = k.standard_content || k.user_input_content;
-      const detailUrl = '/pages/kp-detail.html?id=' + k.id;
       return `
-      <div class="pack">
+      <div class="pack kp-row" data-row="${k.id}">
         <div class="pack__head">
-          <a class="pack__title" href="${detailUrl}">${word}</a>
+          <button class="pack__title pack__title--btn" data-act="detail" data-id="${k.id}">${esc(word)}</button>
           <button class="pack__icon-btn" title="查看详情" data-act="detail" data-id="${k.id}">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
           </button>
-          <button class="pack__icon-btn" title="单个固化" data-act="solidify" data-id="${k.id}">
+          <button class="pack__icon-btn" title="生成精讲" data-act="solidify" data-id="${k.id}">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/><circle cx="12" cy="12" r="4"/></svg>
           </button>
           <button class="pack__icon-btn" title="导出 Word" data-act="export" data-id="${k.id}">
@@ -152,43 +322,155 @@
           </button>
         </div>
         <div class="pack__badges">
-          <span class="pill pill--ai">${solid ? '已固化' : '待固化'}</span>
+          <span class="pill pill--ai">${solid ? '精讲已生成' : '待生成精讲'}</span>
           ${solid
-            ? `<span class="pill pill--ai">AI · ${k.master_require || ''}</span><span class="pill">难度 ${k.difficulty || '-'}</span>`
-            : `<span class="pill">未 AI 固化</span>`}
+            ? `<span class="pill pill--ai">AI · ${esc(k.master_require || '')}</span><span class="pill">难度 ${esc(k.difficulty || '-')}</span>`
+            : `<span class="pill">待生成精讲</span>`}
         </div>
-      </div>`;
+      </div>
+      <div class="kp-expand" data-expand="${k.id}" hidden></div>`;
     }).join('');
+
+    // 保持展开状态（搜索过滤后若仍存在）
+    if (expandedId && lastList.some(k => Number(k.id) === expandedId)) openExpand(expandedId, false);
+    else expandedId = 0;
   }
 
-  function attachHandlers()
+  // ---------- 行内详情 ----------
+
+  function expandBox(id)
   {
-    document.getElementById('btn-add').addEventListener('click', addKp);
-    document.getElementById('btn-clear').addEventListener('click', () =>
-    {
-      document.getElementById('content').value = '';
-      document.getElementById('remark').value = '';
-      document.getElementById('content').focus();
-    });
-    document.getElementById('btn-solidify').addEventListener('click', solidifyAll);
-    document.getElementById('btn-resume').addEventListener('click', resumeJob);
-    document.getElementById('btn-export-batch').addEventListener('click', exportBatch);
-    document.getElementById('filter').addEventListener('input', render);
-
-    document.getElementById('kp-list').addEventListener('click', e =>
-    {
-      const btn = e.target.closest('[data-act]');
-      if (!btn) return;
-      const id = btn.dataset.id;
-      const act = btn.dataset.act;
-      if (act === 'solidify') solidifyOne(id);
-      else if (act === 'export') exportOne(id);
-      else if (act === 'detail') location.assign('/pages/kp-detail.html?id=' + id);
-    });
+    return document.querySelector('.kp-expand[data-expand="' + id + '"]');
   }
+
+  function closeExpand()
+  {
+    if (!expandedId) return;
+    const box = expandBox(expandedId);
+    if (box) { box.hidden = true; box.innerHTML = ''; }
+    const row = document.querySelector('.kp-row[data-row="' + expandedId + '"]');
+    if (row) row.classList.remove('is-open');
+    expandedId = 0;
+    syncUrl();
+  }
+
+  async function openExpand(id, scroll)
+  {
+    const box = expandBox(id);
+    if (!box) return;
+    if (expandedId && expandedId !== Number(id)) closeExpand();
+    expandedId = Number(id);
+
+    const row = document.querySelector('.kp-row[data-row="' + id + '"]');
+    if (row) row.classList.add('is-open');
+    box.hidden = false;
+    box.innerHTML = '<div class="wing-card"><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div></div>';
+
+    const idx = lastList.findIndex(k => Number(k.id) === Number(id));
+    const prev = idx > 0 ? lastList[idx - 1] : null;
+    const next = idx >= 0 && idx < lastList.length - 1 ? lastList[idx + 1] : null;
+    const bar = document.createElement('div');
+    bar.className = 'kp-expand__bar';
+    bar.innerHTML =
+      `<button class="btn btn-secondary u-btn-sm" data-nav="prev" type="button" ${prev ? '' : 'disabled'}>← 上一条</button>` +
+      `<button class="btn btn-secondary u-btn-sm" data-nav="next" type="button" ${next ? '' : 'disabled'}>下一条 →</button>` +
+      '<span class="kp-expand__spacer"></span>' +
+      '<button class="btn btn-secondary u-btn-sm" data-nav="close" type="button">收起</button>';
+
+    let d = null;
+    try
+    {
+      const r = await fetch('/api/kp/' + id, { cache: 'no-store' });
+      d = await r.json();
+      if (!r.ok) d = null;
+    }
+    catch (e) { d = null; }
+
+    if (d && !d.error)
+    {
+      if (window.AITutor) await window.AITutor.ensureLibs();
+      box.innerHTML = '';
+      box.appendChild(bar);
+      const body = document.createElement('div');
+      body.className = 'kp-expand__body';
+      body.innerHTML = window.AITutor ? window.AITutor.renderKpDetail(d) : '<p class="state-line">详情组件未加载</p>';
+      box.appendChild(body);
+      if (window.AITutor) window.AITutor.bindTts(body);
+    }
+    else
+    {
+      box.innerHTML = '<div class="wing-card"><p class="state-line state-line--danger">加载失败：词条不存在或无权查看。</p></div>';
+    }
+
+    if (scroll) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    syncUrl();
+  }
+
+  function syncUrl()
+  {
+    const u = new URL(location.href);
+    if (expandedId) u.searchParams.set('id', String(expandedId));
+    else u.searchParams.delete('id');
+    history.replaceState(null, '', u.toString());
+  }
+
+  function stepExpand(dir)
+  {
+    const idx = lastList.findIndex(k => Number(k.id) === Number(expandedId));
+    if (idx < 0) return;
+    const target = lastList[idx + dir];
+    if (target) openExpand(target.id, true);
+  }
+
+  document.getElementById('kp-list').addEventListener('click', e =>
+  {
+    const nav = e.target.closest('[data-nav]');
+    if (nav)
+    {
+      if (nav.dataset.nav === 'close') closeExpand();
+      else if (nav.dataset.nav === 'prev') stepExpand(-1);
+      else if (nav.dataset.nav === 'next') stepExpand(1);
+      return;
+    }
+
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const act = btn.dataset.act;
+    if (act === 'detail')
+    {
+      if (Number(expandedId) === Number(id)) closeExpand();
+      else openExpand(id, false);
+    }
+    else if (act === 'solidify') solidifyOne(id);
+    else if (act === 'export') exportOne(id, btn);
+    else if (act === 'add-explain-it')
+    {
+      const content = document.getElementById('content');
+      content.value = (document.getElementById('filter').value || '').trim();
+      content.focus();
+      addKpThenExplain();
+    }
+  });
+
+  // ---------- 录入 / 固化 / 导出 ----------
+
+  document.getElementById('btn-add').addEventListener('click', addKp);
+  document.getElementById('btn-add-explain').addEventListener('click', addKpThenExplain);
+  document.getElementById('btn-clear').addEventListener('click', () =>
+  {
+    document.getElementById('content').value = '';
+    document.getElementById('remark').value = '';
+    document.getElementById('content').focus();
+  });
+  document.getElementById('btn-solidify').addEventListener('click', solidifyAll);
+  document.getElementById('btn-resume').addEventListener('click', resumeJob);
+  document.getElementById('btn-export-batch').addEventListener('click', exportBatch);
+  document.getElementById('filter').addEventListener('input', render);
 
   async function addKp()
   {
+    if (needLogin('add-msg', '录入需先登录，当前输入已保留')) return;
     const content = document.getElementById('content').value.trim();
     const remark = document.getElementById('remark').value.trim();
     if (!content) { setMsg('add-msg', 'state-line--danger', '请输入单词或短语'); return; }
@@ -207,10 +489,125 @@
         document.getElementById('remark').value = '';
         load();
       }
+      else setMsg('add-msg', 'state-line--danger', j.error || '录入失败');
+    }
+    catch (e) { setMsg('add-msg', 'state-line--danger', '网络异常'); }
+  }
+
+  // ---------- v1.5.0-T008：查 + 录 + 讲同框 ----------
+
+  // 与后端 KnowledgeService::normalizeKey 同规则：转小写、剔除 ASCII 标点、空白折叠
+  function normalizeKey(s)
+  {
+    let out = '';
+    for (const ch of String(s || ''))
+    {
+      const c = ch.codePointAt(0);
+      if (c >= 65 && c <= 90) { out += String.fromCharCode(c + 32); continue; }
+      if ((c >= 33 && c <= 47) || (c >= 58 && c <= 64) ||
+          (c >= 91 && c <= 96) || (c >= 123 && c <= 126)) continue;
+      out += ch;
+    }
+    return out.replace(/[ \t\r\n]+/g, ' ').trim();
+  }
+
+  let matchTimer = null;
+
+  function findLocal(text)
+  {
+    const key = normalizeKey(text);
+    if (!key) return null;
+    return kps.find(k => normalizeKey(k.standard_content || k.user_input_content) === key) || null;
+  }
+
+  function renderMatch()
+  {
+    const box = document.getElementById('entry-match');
+    if (!box) return;
+    const text = document.getElementById('content').value.trim();
+    if (!text) { box.hidden = true; box.innerHTML = ''; return; }
+    const hit = findLocal(text);
+    box.hidden = false;
+    if (hit)
+    {
+      const word = hit.standard_content || hit.user_input_content;
+      const solid = hit.is_solidified === 1;
+      box.innerHTML =
+        '<div class="entry-match__row">' +
+          '<span class="pill pill--ai">已收录</span>' +
+          '<b class="entry-match__word">' + esc(word) + '</b>' +
+          '<span class="pill">' + (solid ? '精讲已生成' : '待生成精讲') + '</span>' +
+          '<button class="btn btn-secondary u-btn-sm" type="button" data-mact="open" data-id="' + hit.id + '">查看精讲</button>' +
+          '<button class="btn btn-secondary u-btn-sm" type="button" data-mact="explain" data-word="' + esc(word) + '">AI 重新讲解</button>' +
+        '</div>';
+    }
+    else
+    {
+      box.innerHTML =
+        '<div class="entry-match__row">' +
+          '<span class="state-line">未收录</span>' +
+          '<button class="btn btn-primary u-btn-sm" type="button" data-mact="add-explain">录入并讲解</button>' +
+        '</div>';
+    }
+  }
+
+  document.getElementById('content').addEventListener('input', () =>
+  {
+    clearTimeout(matchTimer);
+    matchTimer = setTimeout(renderMatch, 120);
+  });
+
+  document.getElementById('entry-match').addEventListener('click', e =>
+  {
+    const b = e.target.closest('button[data-mact]');
+    if (!b) return;
+    if (b.dataset.mact === 'open') { activateTab('entry'); openExpand(Number(b.dataset.id), true); }
+    else if (b.dataset.mact === 'explain') gotoExplain(b.dataset.word);
+    else if (b.dataset.mact === 'add-explain') addKpThenExplain();
+  });
+
+  function gotoExplain(text)
+  {
+    activateTab('explain');
+    document.getElementById('ex-text').value = text;
+    document.getElementById('ex-submit').click();
+  }
+
+  // 录入并讲解：点按时才请求后端查重复核，未收录才新建词条
+  async function addKpThenExplain()
+  {
+    if (needLogin('add-msg', '登录后可录入并讲解')) return;
+    const content = document.getElementById('content').value.trim();
+    const remark = document.getElementById('remark').value.trim();
+    if (!content) { setMsg('add-msg', 'state-line--danger', '请输入单词或短语'); return; }
+    setMsg('add-msg', '', '查重中…');
+    try
+    {
+      const cr = await fetch('/api/kp/check', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: content })
+      });
+      const cj = await cr.json();
+      if (!cr.ok) { setMsg('add-msg', 'state-line--danger', cj.error || '查重失败'); return; }
+      if (!cj.exists)
+      {
+        const r = await fetch('/api/kp', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_input_content: content, remark })
+        });
+        const j = await r.json();
+        if (!(r.ok && (j.ok || j.id))) { setMsg('add-msg', 'state-line--danger', j.error || '录入失败'); return; }
+        setMsg('add-msg', 'state-line--success', '已录入（#' + j.id + '），正在生成精讲…');
+        load();
+      }
       else
       {
-        setMsg('add-msg', 'state-line--danger', j.error || '录入失败');
+        setMsg('add-msg', '', '词条已存在，直接生成精讲…');
       }
+      document.getElementById('content').value = '';
+      document.getElementById('remark').value = '';
+      document.getElementById('entry-match').hidden = true;
+      gotoExplain(content);
     }
     catch (e) { setMsg('add-msg', 'state-line--danger', '网络异常'); }
   }
@@ -230,16 +627,61 @@
     document.getElementById('btn-resume').style.display = 'none';
   }
 
+  function fmtEta(sec)
+  {
+    const s = Number(sec || 0);
+    if (s <= 0) return '';
+    if (s < 60) return s + ' 秒';
+    return Math.ceil(s / 60) + ' 分钟';
+  }
+
+  function jobLine(j, etaSec)
+  {
+    const label = {
+      pending: '排队中', queued: '排队中', running: '正在生成', done: '已完成',
+      partial: '部分完成', failed: '失败', interrupted: '已中断'
+    }[j.status] || j.status;
+    let line = `${label}：完成 ${j.done}/${j.total}，失败 ${j.failed}（${j.progress}%）`;
+    if (j.queue_position > 0) line += `，前方 ${j.queue_position} 个任务`;
+    const eta = fmtEta(etaSec);
+    if (eta) line += `，预计等待 ${eta}`;
+    else if (j.status === 'queued') line += '，马上开始';
+    else if (j.status === 'running') line += '，即将完成';
+    return line;
+  }
+
+  // 任务进行中时每秒本地递减，避免两次轮询之间数字长时间不变
+  function syncEtaTimer()
+  {
+    const live = currentJob && (currentJob.status === 'queued' || currentJob.status === 'running');
+    if (live)
+    {
+      if (!etaTimer)
+        etaTimer = setInterval(() =>
+        {
+          if (!currentJob) return;
+          if (etaLeft > 0) etaLeft = Math.max(0, etaLeft - 1);
+          document.getElementById('job-status').textContent = jobLine(currentJob, etaLeft);
+        }, 1000);
+    }
+    else if (etaTimer)
+    {
+      clearInterval(etaTimer);
+      etaTimer = null;
+    }
+  }
+
   function renderJob(j)
   {
     showJobPanel(true);
-    const label = {
-      pending: '排队中', running: '正在生成', done: '已完成',
-      partial: '部分完成', failed: '失败', interrupted: '已中断'
-    }[j.status] || j.status;
+    const serverEta = Number(j.eta_sec || 0);
+    // 同一任务：只接受更小的估计值（不回升）；新任务重新取服务端值
+    if (currentJob && currentJob.job_id === j.job_id) etaLeft = Math.min(etaLeft, serverEta);
+    else etaLeft = serverEta;
+    currentJob = j;
     document.getElementById('job-status').className = 'state-line';
-    document.getElementById('job-status').textContent =
-      `${label}：完成 ${j.done}/${j.total}，失败 ${j.failed}（${j.progress}%）`;
+    document.getElementById('job-status').textContent = jobLine(j, etaLeft);
+    syncEtaTimer();
     document.getElementById('job-bar').style.width = Math.max(0, Math.min(100, j.progress || 0)) + '%';
 
     const box = document.getElementById('job-done');
@@ -250,7 +692,7 @@
       const kp = kps.find(k => Number(k.id) === Number(id));
       const row = document.createElement('div');
       const a = document.createElement('a');
-      a.href = '/pages/kp-detail.html?id=' + id;
+      a.href = '/pages/kp-entry.html?id=' + id;
       a.textContent = '✓ ' + (kp ? (kp.standard_content || kp.user_input_content) : ('#' + id));
       a.style.marginRight = '10px';
       row.appendChild(a);
@@ -268,6 +710,9 @@
   function stopPolling()
   {
     if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    if (etaTimer) { clearInterval(etaTimer); etaTimer = null; }
+    currentJob = null;
+    etaLeft = 0;
   }
 
   function startPolling(id)
@@ -292,8 +737,8 @@
         if (TERMINAL.includes(j.status))
         {
           stopPolling();
-          if (j.status === 'done') setMsg('op-msg', 'state-line--success', `固化完成：${j.done}/${j.total}`);
-          else setMsg('op-msg', 'state-line--danger', `固化结束（${j.status}）：成功 ${j.done}，失败 ${j.failed}`);
+          if (j.status === 'done') setMsg('op-msg', 'state-line--success', `精讲生成完成：${j.done}/${j.total}`);
+          else setMsg('op-msg', 'state-line--danger', `任务结束（${j.status}）：成功 ${j.done}，失败 ${j.failed}`);
           load();
           return;
         }
@@ -310,6 +755,7 @@
 
   async function restoreActiveJob()
   {
+    if (me.guest) return;
     try
     {
       const r = await fetch('/api/kp/solidify/jobs?limit=10', { cache: 'no-store' });
@@ -332,6 +778,7 @@
   async function resumeJob()
   {
     if (!jobId) return;
+    if (needLogin('op-msg', '登录后可继续未完成任务')) return;
     const btn = document.getElementById('btn-resume');
     btn.disabled = true;
     try
@@ -351,9 +798,10 @@
 
   async function solidifyAll()
   {
+    if (needLogin('op-msg', '登录后可生成精讲')) return;
     const btn = document.getElementById('btn-solidify');
     btn.disabled = true;
-    setMsg('op-msg', '', '正在提交批量固化任务…');
+    setMsg('op-msg', '', '正在提交批量精讲任务…');
     try
     {
       const r = await fetch('/api/kp/solidify/async', { method: 'POST' });
@@ -361,7 +809,7 @@
       if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
       if (!j.total)
       {
-        setMsg('op-msg', 'state-line--success', '没有待固化的知识点。');
+        setMsg('op-msg', 'state-line--success', '没有待生成精讲的知识点。');
         load();
         return;
       }
@@ -371,20 +819,21 @@
       startPolling(j.job_id);
       load();
     }
-    catch (e) { setMsg('op-msg', 'state-line--danger', '提交失败：' + e.message); }
+    catch (e) { setMsg('op-msg', 'state-line--danger', /队列|429|queue/i.test(e.message) ? '队列已满，请稍后重试。' : '提交失败：' + e.message); }
     btn.disabled = false;
   }
 
   async function solidifyOne(id)
   {
-    // 单条固化是一次同步 AI 调用，模型需要生成完整六板块 JSON，
+    if (needLogin('op-msg', '登录后可生成精讲')) return;
+    // 单条生成是一次同步 AI 调用，模型需要生成完整精讲 JSON，
     // 通常耗时 15~30 秒。这里用秒表持续刷新提示，避免用户以为页面卡死。
     const t0 = Date.now();
     let finished = false;
     const tick = () => {
       if (finished) return;
       const sec = Math.floor((Date.now() - t0) / 1000);
-      setMsg('op-msg', '', '固化中… 已用 ' + sec + ' 秒（AI 正在生成释义、词根、搭配、同义词等内容，通常 15~30 秒）');
+      setMsg('op-msg', '', '生成精讲中… 已用 ' + sec + ' 秒（AI 正在生成精讲正文，通常 15~30 秒）');
     };
     tick();
     const timer = setInterval(tick, 1000);
@@ -398,15 +847,12 @@
         const eff = Number(j.id);
         const cost = (Date.now() - t0) / 1000;
         if (eff && eff !== Number(id))
-          setMsg('op-msg', 'state-line--success', '固化成功（' + cost.toFixed(1) + ' 秒），已合并到已有词条 #' + eff);
+          setMsg('op-msg', 'state-line--success', '精讲已生成（' + cost.toFixed(1) + ' 秒），已合并到已有词条 #' + eff);
         else
-          setMsg('op-msg', 'state-line--success', '固化成功（' + cost.toFixed(1) + ' 秒）');
+          setMsg('op-msg', 'state-line--success', '精讲已生成（' + cost.toFixed(1) + ' 秒）');
         load();
       }
-      else
-      {
-        setMsg('op-msg', 'state-line--danger', j.error || '固化失败');
-      }
+      else setMsg('op-msg', 'state-line--danger', j.error || '生成失败');
     }
     catch (e) { setMsg('op-msg', 'state-line--danger', '网络异常'); }
     finally
@@ -421,8 +867,14 @@
     window.open('/api/word/download?path=' + encodeURIComponent(path), '_blank');
   }
 
-  async function exportOne(id)
+  async function exportOne(id, btn)
   {
+    if (needLogin('op-msg', '登录后可导出 Word')) return;
+    const kp = kps.find(k => String(k.id) === String(id)) || {};
+    const chars = String(kp.standard_content || kp.user_input_content || '').length;
+    const est = ExportEstimator.explanation(1, chars);
+    if (!await ExportEstimator.confirm({ title: '导出讲义', pages: est.pages, chars: est.chars })) return;
+    if (btn) btn.disabled = true;
     setMsg('op-msg', '', '生成 Word 中…');
     try
     {
@@ -433,16 +885,22 @@
         setMsg('op-msg', 'state-line--success', '已生成，开始下载');
         download(j.word_path);
       }
-      else
-      {
-        setMsg('op-msg', 'state-line--danger', j.error || '生成失败');
-      }
+      else setMsg('op-msg', 'state-line--danger', j.error || '导出服务暂不可用，请重试');
     }
-    catch (e) { setMsg('op-msg', 'state-line--danger', '网络异常'); }
+    catch (e) { setMsg('op-msg', 'state-line--danger', '导出服务暂不可用，请重试'); }
+    finally { if (btn) btn.disabled = false; }
   }
 
   async function exportBatch()
   {
+    if (needLogin('op-msg', '登录后可批量导出 Word')) return;
+    if (!kps.length) return setMsg('op-msg', 'state-line--danger', '暂无可导出内容');
+    const chars = kps.reduce((n, k) =>
+      n + String(k.standard_content || k.user_input_content || '').length, 0);
+    const est = ExportEstimator.explanation(kps.length, chars);
+    if (!await ExportEstimator.confirm({ title: '导出全部讲义', pages: est.pages, chars: est.chars })) return;
+    const btn = document.getElementById('btn-export-batch');
+    btn.disabled = true;
     setMsg('op-msg', '', '批量生成合并 Word 中…');
     try
     {
@@ -450,21 +908,88 @@
       const j = await r.json();
       if (j.word_path)
       {
-        setMsg('op-msg', 'state-line--success',
-          `已合并 ${j.count} 个知识点，开始下载`);
+        setMsg('op-msg', 'state-line--success', `已合并 ${j.count} 个知识点，开始下载`);
         download(j.word_path);
       }
-      else
-      {
-        setMsg('op-msg', 'state-line--danger', j.error || '生成失败');
-      }
+      else setMsg('op-msg', 'state-line--danger', j.error || '导出服务暂不可用，请重试');
     }
-    catch (e) { setMsg('op-msg', 'state-line--danger', '网络异常'); }
+    catch (e) { setMsg('op-msg', 'state-line--danger', '导出服务暂不可用，请重试'); }
+    finally { btn.disabled = false; }
   }
 
-  attachHandlers();
-  load().then(restoreActiveJob);
+  // ---------- 深链：?id= / ?tab= ----------
+
+  async function applyUrl()
+  {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    const id = params.get('id');
+
+    if (tab === 'explain') activateTab('explain');
+
+    if (id)
+    {
+      activateTab('entry');
+      const inList = kps.some(k => String(k.id) === String(id));
+      if (inList)
+      {
+        await openExpand(Number(id), true);
+        return;
+      }
+      // 不在当前账号列表：给出可行动提示
+      const box = document.getElementById('detail-missing');
+      const msg = document.getElementById('detail-missing-msg');
+      box.hidden = false;
+      let found = false;
+      try
+      {
+        const r = await fetch('/api/kp/' + encodeURIComponent(id), { cache: 'no-store' });
+        const d = await r.json();
+        found = r.ok && d && !d.error;
+        if (found) msg.textContent = '词条「' + (d.standard_content || d.user_input_content || ('#' + id)) + '」不在当前账号。';
+      }
+      catch (e) {}
+      if (!found) msg.textContent = '词条 #' + id + ' 不存在或无权查看（共用教材词需要先「开始学习」）。';
+      else msg.textContent += '该词条属于共用词表，尚未加入你的学习档案，因此暂无个人讲解。';
+    }
+  }
+
+  // ---------- 启动 ----------
+
+  async function boot()
+  {
+    try
+    {
+      const r = await fetch('/api/auth/me', { cache: 'no-store' });
+      const j = await r.json();
+      me = { guest: !!j.guest, user_id: j.user_id || 0 };
+    }
+    catch (e) {}
+
+    document.getElementById('guest-tip').hidden = !me.guest;
+    await load();
+    await applyUrl();
+    if (me.guest) return;
+    restoreActiveJob();
+  }
+
+  boot();
 })();
+</script>
+<script src="/static/tour.js"></script>
+<script>
+// v1.5.3-T003 页面内导览（首次自动播放；?tour=1 重放）
+Tour.init({
+  key: 'eng_tour_kp_v1',
+  steps: [
+    { target: '#content', title: '录入即讲解',
+      text: '输入单词、短语或句子，点「录入并讲解」：既存入圣殿，也让 AI 现场讲解。' },
+    { target: '#page-tabs', title: 'AI 讲解页签',
+      text: '切到「AI 讲解」可让 AI 讲任意内容，讲完还能继续追问。' },
+    { target: '#kp-list', title: '知识点列表',
+      text: '已固化的词条会自动进入复习循环，按遗忘曲线提醒你复习。' }
+  ]
+});
 </script>
 </body>
 </html>

@@ -6,7 +6,7 @@
 <title>学情中心 · 英语学习</title>
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/style.css">
-<link rel="stylesheet" href="/static/components.css">
+<link rel="stylesheet" href="/static/components.css?v=20261121">
 <script src="/static/theme.js"></script>
 <script src="/static/nav.js"></script>
 </head>
@@ -21,6 +21,14 @@
 
   <h1 class="section-title">学情中心</h1>
   <p class="section-sub">学习数据统计 · 熟练度分布 · 近 30 天学习趋势</p>
+
+  <!-- v1.5.1-T003：概览 / 学情周报（同页页签，不新增页面） -->
+  <div class="lc-tabs" role="tablist">
+    <button class="lc-tab is-active" data-tab="overview" role="tab">概览</button>
+    <button class="lc-tab" data-tab="weekly" role="tab">学情周报</button>
+  </div>
+
+  <div class="lc-tab-panel" id="lc-panel-overview">
 
   <!-- 电脑端左右两栏（对齐设计稿 03-设计稿-学情中心.html） -->
   <div class="lc-grid">
@@ -112,6 +120,18 @@
         <div class="u-muted u-flex-row" id="chart-legend"></div>
       </div>
 
+      <!-- v1.5.1-T002：错题本入口，放在右栏图表下方，不新增页签 -->
+      <a class="wing-card lc-wb-entry" href="/pages/wrongbook.html">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </span>
+          <span class="wing-card__title">错题本</span>
+          <span class="wing-card__meta" id="lc-wb-meta">—</span>
+        </div>
+        <p class="u-muted lc-note">按错因归因 · 今日待重练词可直接进入</p>
+      </a>
+
     </div><!-- /lc-col 右栏 -->
 
   </div><!-- /lc-grid -->
@@ -123,6 +143,82 @@
       数据维护
     </button>
   </div>
+
+  </div><!-- /lc-panel-overview -->
+
+  <!-- ============ 学情周报（v1.5.1-T003） ============ -->
+  <div class="lc-tab-panel" id="lc-panel-weekly" hidden>
+    <div class="wing-card wr-card">
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h6"/></svg>
+        </span>
+        <span class="wing-card__title">学情周报</span>
+        <span class="wing-card__meta" id="wr-range">—</span>
+      </div>
+      <div class="wr-weeks" id="wr-weeks"></div>
+      <p class="wr-summary" id="wr-summary">加载中…</p>
+      <p class="state-line" id="wr-empty" hidden>本周暂无学习记录，先从每天 10 个复习词开始吧。</p>
+    </div>
+
+    <!-- v1.5.1-T003：AI 建议是周报核心内容，置顶突出展示 -->
+    <div class="wing-card wr-ai-card">
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l1.8 4.9L19 9.7l-4.2 3.1L16.3 18 12 15.2 7.7 18l1.5-5.2L5 9.7l5.2-1.8z"/></svg>
+        </span>
+        <span class="wing-card__title">AI 学习教练 · 下周建议</span>
+        <span class="wing-card__meta">GLM-4-Flash 实时生成</span>
+      </div>
+      <div class="wr-ai" id="wr-ai"></div>
+    </div>
+
+    <div class="lc-grid">
+      <div class="lc-col">
+        <div class="wing-card">
+          <div class="wing-card__cap">
+            <span class="wing-card__title">课规完成率</span>
+            <span class="wing-card__meta" id="wr-goal-meta">—</span>
+          </div>
+          <div class="wr-goal" id="wr-goal"></div>
+          <div class="lc-chart-wrap">
+            <svg id="wr-chart" viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
+          <div class="u-muted u-flex-row" id="wr-chart-legend"></div>
+        </div>
+
+        <div class="wing-card">
+          <div class="wing-card__cap">
+            <span class="wing-card__title">错题分布</span>
+            <span class="wing-card__meta">按词去重 · 点击查看错题本</span>
+          </div>
+          <div id="wr-wrong"></div>
+        </div>
+      </div>
+
+      <div class="lc-col">
+        <div class="wing-card">
+          <div class="wing-card__cap">
+            <span class="wing-card__title">词表进度</span>
+            <label class="wr-toggle">
+              <input type="checkbox" id="wr-wl-toggle">
+              <span>显示词表进度</span>
+            </label>
+          </div>
+          <div id="wr-wl"><p class="state-line">开启后显示课规绑定词表的掌握进度</p></div>
+        </div>
+
+        <div class="wing-card">
+          <div class="wing-card__cap">
+            <span class="wing-card__title">规则建议</span>
+            <span class="wing-card__meta">按本周数据自动匹配</span>
+          </div>
+          <div class="wr-rules" id="wr-rules"></div>
+          <p class="wr-note" id="wr-anchor-note" hidden>同一动作全页只显示一个快捷入口</p>
+        </div>
+      </div>
+    </div>
+  </div><!-- /lc-panel-weekly -->
 
 </div><!-- /.page -->
 
@@ -183,6 +279,20 @@
     const d = document.createElement('div');
     d.textContent = s == null ? '' : String(s);
     return d.innerHTML;
+  }
+  // 属性值转义（路由来自后端动作词典，仍按不可信输入处理）
+  function escAttr(s) {
+    return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  // v1.5.1-T005 T6：建议条目（text + 可选动作锚点）
+  function suggestionHtml(items) {
+    return (items || []).map(s => {
+      const a = s && s.action;
+      const go = a && a.route
+        ? `<a class="wr-rule__go" href="${escAttr(a.route)}" title="打开：${escAttr(a.label || '前往')}">${esc(a.label || '前往')} →</a>`
+        : '';
+      return `<div class="wr-rule">${esc(s && s.text)}${go}</div>`;
+    }).join('');
   }
   function setMsg(id, cls, t) {
     const e = document.getElementById(id);
@@ -329,7 +439,279 @@ ${xLabels}`;
     document.getElementById('streak-num').textContent = c.streak || 0;
   }
 
-  // —— 3. 备份 / 重置 / 清理（维护抽屉） ——
+  // ==================== v1.5.1-T003：学情周报 ====================
+  const WR_TYPE_LABEL = { spelling: '拼写', meaning: '词义', collocation: '搭配', grammar: '语法', unknown: '未知' };
+  const WR_TYPE_ORDER = ['spelling', 'meaning', 'collocation', 'grammar', 'unknown'];
+  const wrState = { week: '', loaded: false, includeWordlist: false, aiRequested: {}, poll: null, data: null };
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function fmtDate(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+  function addDays(d, n) {
+    const x = new Date(d);
+    x.setDate(x.getDate() + n);
+    return x;
+  }
+  function mondayOf(d) {
+    const x = new Date(d);
+    x.setHours(0, 0, 0, 0);
+    x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+    return x;
+  }
+  function weekOptions() {
+    const base = mondayOf(new Date());
+    return ['上周', '前一周', '3 周前', '4 周前'].map((label, i) => ({
+      label, value: fmtDate(addDays(base, -7 * (i + 1)))
+    }));
+  }
+  function stopPoll() {
+    if (wrState.poll) { clearInterval(wrState.poll); wrState.poll = null; }
+  }
+  function setAi(html) { document.getElementById('wr-ai').innerHTML = html; }
+
+  function renderWeekButtons() {
+    document.getElementById('wr-weeks').innerHTML = weekOptions().map(o =>
+      `<button class="wr-week${o.value === wrState.week ? ' is-active' : ''}" data-week="${o.value}">${o.label}</button>`
+    ).join('');
+  }
+
+  function renderTrend(trend) {
+    const arr = Array.isArray(trend) ? trend : [];
+    const W = 700, H = 200, LX = 40, RX = 20, TY = 15, BY = 25;
+    const plotW = W - LX - RX, plotH = H - TY - BY;
+    const maxCount = Math.max(1, ...arr.map(a => a.count || 0));
+    const step = plotW / Math.max(1, arr.length - 1);
+    const points = arr.map((a, i) => ({
+      x: LX + i * step,
+      y: TY + plotH - ((a.count || 0) / maxCount * plotH),
+      count: a.count || 0,
+      date: a.date || ''
+    }));
+    let grid = '';
+    for (let i = 0; i < 4; i++) {
+      const y = TY + (plotH * i / 3);
+      grid += `<line class="lc-chart__grid" x1="${LX}" y1="${y}" x2="${W - RX}" y2="${y}"/>`;
+    }
+    if (!points.length) {
+      document.getElementById('wr-chart').innerHTML = grid + '<text class="lc-chart__label" x="350" y="100" text-anchor="middle">暂无数据</text>';
+      return;
+    }
+    const poly = points.map(p => `${p.x},${p.y}`).join(' ');
+    const area = `M${points[0].x},${TY + plotH} L${poly.replace(/ /g, ' L')} L${points[points.length - 1].x},${TY + plotH} Z`;
+    const dots = points.map(p => `<circle class="lc-chart__dot" cx="${p.x}" cy="${p.y}" r="3.5"/>`).join('');
+    const labels = points.map(p => {
+      const [, m, d] = p.date.split('-');
+      return `<text class="lc-chart__label" x="${p.x}" y="${H - BY + 16}" text-anchor="middle">${Number(m)}/${Number(d)}</text>`;
+    }).join('');
+    let peak = '';
+    const maxIdx = points.reduce((mi, p, i, a) => p.count > a[mi].count ? i : mi, 0);
+    if (points[maxIdx].count > 0) {
+      peak = `<text class="lc-chart__value" x="${points[maxIdx].x}" y="${points[maxIdx].y - 6}" text-anchor="middle" fill="var(--accent)" font-size="11">峰值 ${points[maxIdx].count} 词</text>`;
+    }
+    document.getElementById('wr-chart').innerHTML =
+      `${grid}<path class="lc-chart__area" d="${area}"/><polyline class="lc-chart__line" points="${poly}"/>${dots}${labels}${peak}`;
+    const total = points.reduce((s, p) => s + p.count, 0);
+    document.getElementById('wr-chart-legend').innerHTML =
+      `<span>每日复习词数</span><span>本周共 ${total} 次</span>`;
+  }
+
+  function renderGoal(goal) {
+    const g = goal || {};
+    const total = g.total || 0, done = g.done || 0, rate = g.rate || 0;
+    document.getElementById('wr-goal-meta').textContent = total ? `${done}/${total}` : '未设课规';
+    document.getElementById('wr-goal').innerHTML = total
+      ? `<div class="wr-goal__num">${rate}%</div>
+         <div class="wr-goal__bar"><span style="width:${rate}%"></span></div>
+         <p class="u-muted">课规完成 ${done}/${total}</p>`
+      : '<p class="state-line">本周未设课规，下周可以先定一个小目标。</p>';
+  }
+
+  function renderWrong(wrong) {
+    const w = wrong || {};
+    const total = w.total_words || 0;
+    const by = w.by_type || {};
+    const rows = WR_TYPE_ORDER.filter(t => (by[t] || 0) > 0).map(t => {
+      const c = by[t] || 0;
+      const pct = total ? Math.round(c / total * 100) : 0;
+      return `<a class="wr-wrong__row" href="/pages/wrongbook.html?error_type=${encodeURIComponent(t)}&days=7">
+        <span class="wr-wrong__label">${WR_TYPE_LABEL[t] || t}</span>
+        <span class="wr-wrong__bar"><span style="width:${pct}%"></span></span>
+        <span class="wr-wrong__count">${c}</span>
+      </a>`;
+    });
+    document.getElementById('wr-wrong').innerHTML = rows.length
+      ? rows.join('')
+      : '<p class="state-line">本周没有错题记录</p>';
+  }
+
+  function renderWordlist(w) {
+    const el = document.getElementById('wr-wl');
+    if (!wrState.includeWordlist) { el.innerHTML = '<p class="state-line">开启后显示课规绑定词表的掌握进度</p>'; return; }
+    if (!w || !w.enabled) { el.innerHTML = '<p class="state-line">暂未开启词表统计</p>'; return; }
+    if (!w.bound) { el.innerHTML = `<p class="state-line">${esc(w.guide || '当前课规未绑定词表')}</p>`; return; }
+    const total = w.total || 0, mastered = w.mastered || 0;
+    const pct = total ? Math.round(mastered / total * 100) : 0;
+    const units = (w.units || []).map(u =>
+      `<div class="wr-wl__unit"><span>${esc(u.unit)}</span><span>${u.mastered || 0}/${u.total || 0}</span></div>`
+    ).join('');
+    el.innerHTML =
+      `<div class="wr-wl__title">${esc(w.title || '绑定词表')}</div>
+       <div class="wr-goal__bar"><span style="width:${pct}%"></span></div>
+       <p class="u-muted">已掌握 ${mastered}/${total}</p>
+       ${units ? `<div class="wr-wl__units">${units}</div>` : ''}`;
+  }
+
+  function renderAi(d, aiSugs) {
+    const ai = d.ai || {};
+    const st = ai.status || 'none';
+    if (st === 'done' && aiSugs && aiSugs.length) {
+      // v1.5.1-T005 T6：AI 建议逐行展示，命中的动作按行挂锚点
+      setAi(`<div class="wr-ai__text">${suggestionHtml(aiSugs)}</div>`);
+      return;
+    }
+    if (st === 'done' && ai.text) {
+      setAi(`<div class="wr-ai__text">${esc(ai.text).replace(/\n/g, '<br>')}</div>`);
+      return;
+    }
+    if (st === 'queued' || st === 'running') {
+      setAi('<p class="state-line">AI 正在生成下周建议…</p>');
+      if (ai.task_id) startPoll(ai.task_id);
+      return;
+    }
+    if (st === 'failed') {
+      setAi(`
+        <p class="state-line state-line--danger">AI 建议生成失败，规则建议仍可参考。</p>
+        <button class="btn btn-secondary u-btn-sm" id="wr-ai-retry">重试 AI 建议</button>`);
+      return;
+    }
+    if (d.has_data && !wrState.aiRequested[d.week_start]) {
+      setAi('<p class="state-line">正在生成…</p>');
+      requestAi(d.week_start);
+      return;
+    }
+    setAi(`<p class="state-line">${d.has_data ? 'AI 建议暂不可用，可稍后重试。' : '本周暂无学习记录，暂不生成 AI 建议。'}</p>`);
+  }
+
+  function renderWeekly(d) {
+    wrState.data = d;
+    document.getElementById('wr-range').textContent = `${d.week_start || ''} ~ ${d.week_end || ''}`;
+    document.getElementById('wr-summary').textContent = d.summary_line || '';
+    document.getElementById('wr-empty').hidden = !!d.has_data;
+    renderWeekButtons();
+    renderGoal(d.goal);
+    renderTrend(d.trend);
+    renderWrong(d.wrong);
+    renderWordlist(d.wordlist);
+    // v1.5.1-T005 T6：规则与 AI 建议统一从 suggestions[] 渲染，动作锚点由后端判定
+    const sugs = Array.isArray(d.suggestions) ? d.suggestions : [];
+    const ruleSugs = sugs.filter(s => s && s.source === 'rule');
+    const aiSugs = sugs.filter(s => s && s.source === 'ai');
+    document.getElementById('wr-rules').innerHTML =
+      suggestionHtml(ruleSugs.length ? ruleSugs : (d.rules || []).map(r => ({ text: r })))
+      || '<p class="state-line">暂无建议</p>';
+    renderAi(d, aiSugs);
+    const note = document.getElementById('wr-anchor-note');
+    if (note) note.hidden = !sugs.some(s => s && s.action && s.action.route);
+  }
+
+  async function loadWeekly(week) {
+    wrState.week = week;
+    stopPoll();
+    renderWeekButtons();
+    const qs = new URLSearchParams({ week, include_wordlist: wrState.includeWordlist ? '1' : '0' });
+    const res = await fetch('/api/weekly-reports?' + qs.toString(), { cache: 'no-store' }).catch(() => null);
+    if (!res) { document.getElementById('wr-summary').textContent = '加载失败，请稍后重试'; return; }
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok || d.error) {
+      if (res.status === 401) {
+        location.assign('/pages/login.html?redirect=' + encodeURIComponent(location.pathname + location.search));
+        return;
+      }
+      document.getElementById('wr-summary').textContent = d.error || '加载失败';
+      return;
+    }
+    wrState.loaded = true;
+    renderWeekly(d);
+  }
+
+  async function requestAi(week, force) {
+    if (!week) return;
+    if (!force && wrState.aiRequested[week]) return;
+    wrState.aiRequested[week] = true;
+    try {
+      const res = await fetch('/api/weekly-reports/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ week_start: week })
+      });
+      const r = await res.json().catch(() => ({}));
+      if (!res.ok || r.error) throw new Error(r.error || '提交失败');
+      if (r.status === 'done' && r.text) { loadWeekly(week); return; }
+      if (r.task_id) {
+        setAi('<p class="state-line">AI 正在生成下周建议…</p>');
+        startPoll(r.task_id);
+      }
+    } catch (e) {
+      setAi(`
+        <p class="state-line state-line--danger">${esc(e.message || 'AI 建议生成失败')}</p>
+        <button class="btn btn-secondary u-btn-sm" id="wr-ai-retry">重试 AI 建议</button>`);
+    }
+  }
+
+  function startPoll(taskId) {
+    stopPoll();
+    let tries = 0;
+    wrState.poll = setInterval(async () => {
+      tries++;
+      if (tries > 60) {
+        stopPoll();
+        setAi('<p class="state-line state-line--danger">AI 生成超时，可重试。</p><button class="btn btn-secondary u-btn-sm" id="wr-ai-retry">重试 AI 建议</button>');
+        return;
+      }
+      const t = await fetch('/api/ai-tasks/' + taskId, { cache: 'no-store' }).then(x => x.json()).catch(() => null);
+      if (!t) return;
+      if (t.status === 'done') { stopPoll(); loadWeekly(wrState.week); }
+      else if (t.status === 'failed' || t.status === 'partial') {
+        stopPoll();
+        setAi('<p class="state-line state-line--danger">AI 建议生成失败，规则建议仍可参考。</p><button class="btn btn-secondary u-btn-sm" id="wr-ai-retry">重试 AI 建议</button>');
+      }
+    }, 2000);
+  }
+
+  function switchTab(name) {
+    document.querySelectorAll('.lc-tab').forEach(b => b.classList.toggle('is-active', b.dataset.tab === name));
+    document.getElementById('lc-panel-overview').hidden = name !== 'overview';
+    document.getElementById('lc-panel-weekly').hidden = name !== 'weekly';
+    if (name === 'weekly') {
+      if (!wrState.week) wrState.week = weekOptions()[0].value;
+      if (!wrState.loaded) loadWeekly(wrState.week);
+    } else stopPoll();
+  }
+
+  document.addEventListener('click', (e) => {
+    const tab = e.target.closest('.lc-tab');
+    if (tab) { switchTab(tab.dataset.tab); return; }
+    const wb = e.target.closest('.wr-week');
+    if (wb) { loadWeekly(wb.dataset.week); return; }
+    if (e.target.closest('#wr-ai-retry')) { requestAi(wrState.week, true); }
+  });
+  document.getElementById('wr-wl-toggle').addEventListener('change', (e) => {
+    wrState.includeWordlist = e.target.checked;
+    if (wrState.week) loadWeekly(wrState.week);
+  });
+
+  // —— 3. 错题本入口摘要 ——
+  async function loadWrongbookMeta() {
+    try {
+      const s = await fetch('/api/wrongbook/summary', { cache: 'no-store' }).then(x => x.json());
+      if (s && s.error) { document.getElementById('lc-wb-meta').textContent = '登录后查看'; return; }
+      document.getElementById('lc-wb-meta').textContent =
+        `错题 ${s.total_count || 0} · 待重练 ${s.due_count || 0}`;
+    } catch (e) {
+      document.getElementById('lc-wb-meta').textContent = '—';
+    }
+  }
+
+  // —— 4. 备份 / 重置 / 清理（维护抽屉） ——
   async function doBackup() {
     const btn = document.getElementById('btn-backup');
     btn.disabled = true;
@@ -388,8 +770,12 @@ ${xLabels}`;
 
   loadStats();
   loadChart();
+  loadWrongbookMeta();
   loadBackups();
   loadResetList();
+
+  // 支持首页提示直达周报页签
+  if (new URLSearchParams(location.search).get('tab') === 'weekly') switchTab('weekly');
 })();
 </script>
 </body>

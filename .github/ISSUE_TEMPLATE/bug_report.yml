@@ -15,7 +15,7 @@ body:
       placeholder: |
         例如：
         - 系统：macOS 15.8 / Windows 11
-        - 项目版本：v1.4.1
+        - 项目版本：v1.5.3
         - 运行方式：Docker / 本机 / Codespaces
         - 浏览器：Chrome 130
         - MySQL：8.0.x

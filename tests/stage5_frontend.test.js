@@ -282,7 +282,15 @@ async function main() {
     const ex = await req('POST', '/api/exercise/generate', { knowledge_ids: [kp1.json.id, kp2.json.id], mode: 'daily' });
     if (ex.json && ex.json.ok) ok('出题成功', `ex_id=${ex.json.exercise_id}`);
     else ko('出题', JSON.stringify(ex.json).slice(0,100));
-    if (ex.json && ex.json.word_path && fs.existsSync(ex.json.word_path)) ok('习题 Word 生成');
+    if (ex.json && ex.json.word_path) ko('出题不再自动生成 Word', ex.json.word_path);
+    else if (ex.json && ex.json.ok) {
+      const paper = await req('POST', '/api/exercise/export-word', {
+        exercises: (ex.json.exercises && ex.json.exercises.exercises) || ex.json.exercises || [],
+        knowledge_points: [], quick_memo: {}
+      });
+      if (paper.json && paper.json.word_path && fs.existsSync(paper.json.word_path)) ok('习题按需导出 Word');
+      else ko('习题按需导出', JSON.stringify(paper.json).slice(0,100));
+    }
 
     // 步骤5: 答题 & 批改
     console.log('  [2.5] 答题 & 批改');

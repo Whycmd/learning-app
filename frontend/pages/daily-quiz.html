@@ -6,7 +6,7 @@
 <title>每日小测 · 学习圣殿</title>
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/style.css">
-<link rel="stylesheet" href="/static/components.css">
+<link rel="stylesheet" href="/static/components.css?v=20261121">
 <script src="/static/theme.js"></script>
 <script src="/static/nav.js"></script>
 </head>
@@ -317,6 +317,8 @@
 
     const resultByNo = {};
     (r.results || []).forEach(x => resultByNo[x.no] = x);
+    const attrByNo = {};
+    (r.attributions || []).forEach(x => attrByNo[x.no] = x);
     const candidateByNo = {};
     (r.solidify_candidates || []).forEach(x => candidateByNo[x.no] = x);
 
@@ -328,9 +330,11 @@
       const catLabel = CATEGORY_LABEL[q.category] || q.category;
       const typeLabel = TYPE_LABEL[q.type] || q.type;
 
+      const attr = attrByNo[q.no];
       let detail = `<div class="quiz-answer grade-card ${res.correct ? 'is-correct' : 'is-wrong'}">
         <strong>${res.correct ? '✓ 正确' : '✗ ' + esc(res.analysis || '未作答')}</strong>
         ${!res.correct ? '<div class="state-line">正确答案：' + esc(res.correct_answer) + '</div>' : ''}
+        ${!res.correct && attr ? '<div class="error-attr">错因：<strong>' + esc(attr.error_label) + '</strong> · ' + esc(attr.reason) + (attr.pending ? '（AI 复核中…）' : '') + '</div>' : ''}
       </div>`;
 
       if (cand)
@@ -389,6 +393,19 @@
 
   loadHistory();
 })();
+</script>
+<script src="/static/tour.js"></script>
+<script>
+// v1.5.3-T003 页面内导览（首次自动播放；?tour=1 重放）
+Tour.init({
+  key: 'eng_tour_quiz_v1',
+  steps: [
+    { target: '#entry-card', title: '每天一套小测',
+      text: '每天 3 道复习题 + 1 道新词题 + 1 道拓展题，按你的学情自动生成。' },
+    { target: '#btn-start', title: '开始小测',
+      text: '提交即判分，答对得点金，所得计入今日所得。' }
+  ]
+});
 </script>
 </body>
 </html>

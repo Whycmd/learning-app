@@ -14,6 +14,23 @@
     "min_new_words": 5,
     "default_quiz_count": 2
   },
+  "goal_tasks": {
+    "item": 5,
+    "complete": 15,
+    "multi_plan_decay": 0.5,
+    "challenge_ratio": 1.5,
+    "week_cap": 60,
+    "threshold_ratio": 0.6,
+    "lookback_weeks": 4,
+    "up_ratio": 2.0,
+    "up_factor": 1.2,
+    "down_rate": 0.5,
+    "down_factor": 0.8
+  },
+  "retry": {
+    "amount": 5,
+    "max_per_day": 10
+  },
   "expense": {
     "base_divisor": 2000,
     "base_cap": 6,

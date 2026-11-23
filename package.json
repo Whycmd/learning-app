@@ -1,6 +1,6 @@
 {
   "name": "english-learning-app",
-  "version": "1.4.1",
+  "version": "1.5.3",
   "description": "Local English learning software with spaced repetition",
   "private": true,
   "type": "commonjs",

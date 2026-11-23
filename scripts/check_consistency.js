@@ -13,7 +13,8 @@ const CFG = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'db.json'), 'ut
 const HOME_MYSQL_BIN = path.join(os.homedir(), '.local', 'mysql', 'bin', 'mysql');
 const MYSQL_BIN = process.env.MYSQL_BIN || (fs.existsSync(HOME_MYSQL_BIN) ? HOME_MYSQL_BIN : 'mysql');
 const SOCKET = process.env.DB_SOCKET || CFG.socket;
-const DATABASE = process.env.DB_NAME || CFG.database;
+// 测试隔离：run_all.js 注入 TEST_DB_NAME 时必须指向测试库，避免 --fix 误改开发库（stage14 曾因此污染 english_learning）
+const DATABASE = process.env.TEST_DB_NAME || process.env.DB_NAME || CFG.database;
 const DB_USER = process.env.DB_USER || 'root';
 const PW_FILE = process.env.DB_PASSWORD_FILE || path.resolve(ROOT, 'config', CFG.password_file);
 
@@ -37,7 +38,7 @@ const RELATIONS = [
   { name: 'solidify_job_items→knowledge_points', child: 'solidify_job_items', column: 'knowledge_id', parent: 'knowledge_points' },
 ];
 
-// 用户归属：user_id 指向不存在的用户（数据不删，--fix 时改挂游客 id=1）
+// 用户归属：user_id 指向不存在的用户（数据不删，--fix 时改挂系统账号 id=1）
 const OWNER_RELATIONS = [
   { table: 'knowledge_points', allowNull: false },
   { table: 'user_learning', allowNull: false },
@@ -65,7 +66,7 @@ function printHelp() {
 选项:
   --json [路径]   输出 JSON 报告（默认 logs/consistency_<时间>.json）
   --limit <n>     每条关系的示例 id 数量（默认 5）
-  --fix           自动修复孤儿：删除结构孤儿；用户归属改挂游客 id=1
+  --fix           自动修复孤儿：删除结构孤儿；用户归属改挂系统账号 id=1
   --help          显示本帮助
 
 退出码: 0=无孤儿  2=仍有孤儿  1=运行错误`);
@@ -146,7 +147,7 @@ function scan(opts) {
   const warnings = [];
   const guestCount = Number(runMysql('SELECT COUNT(*) FROM users WHERE id = 1;') || 0);
   if (!guestCount && owners.some(o => o.count > 0)) {
-    warnings.push('users 缺少 id=1（游客）；--fix 会按库表约定自动创建游客 id=1 并改挂这些数据');
+    warnings.push('users 缺少 id=1（系统账号）；--fix 会按库表约定自动创建系统账号 id=1 并改挂这些数据');
   }
   return {
     database: DATABASE,
@@ -171,13 +172,13 @@ function fixOrphans(report) {
     } catch (e) { fixed.errors.push(`${rel.name}: ${e.message}`); }
   }
   if (!report.guest_exists) {
-    // 库表约定：id=1 永久保留给「默认本地用户（游客）」（见 scripts/sql/03_auth.sql 头部注释）
+    // 库表约定：id=1 为系统账号（历史数据归属 + 测试会话专用）（见 scripts/sql/03_auth.sql 头部注释）
     try {
       runMysql(`INSERT INTO users (id, username, password_hash, salt, display_name)
-        VALUES (1, 'guest', REPEAT('0', 64), REPEAT('0', 32), '本地游客');`);
+        VALUES (1, 'system', REPEAT('0', 64), REPEAT('0', 32), '系统账号');`);
       report.guest_exists = true;
       fixed.guest_created = true;
-    } catch (e) { fixed.errors.push(`创建游客: ${e.message}`); }
+    } catch (e) { fixed.errors.push(`创建系统账号: ${e.message}`); }
   }
   if (report.guest_exists) {
     for (const rel of OWNER_RELATIONS) {

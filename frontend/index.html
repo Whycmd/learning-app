@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-ui-mode="function">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>学习圣殿 · 首页仪表盘</title>
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/style.css">
-<link rel="stylesheet" href="/static/components.css">
+<link rel="stylesheet" href="/static/components.css?v=20261123">
+<link rel="stylesheet" href="/static/plan-panel.css?v=20261117b">
 <script src="/static/theme.js"></script>
 <script src="/static/nav.js"></script>
 </head>
@@ -17,8 +18,8 @@
      结构来源：设计稿 01D-设计稿-仪表盘首页-融合方案.html（样式类全部取自 components.css） -->
 <div class="page">
 
-  <!-- 一、微剧情五幕叙事轴（入殿 → 课规 → 观卷 → 留印 → 登阶） -->
-  <ol class="narr">
+  <!-- 一、微剧情五幕叙事轴（入殿 → 课规 → 观卷 → 留印 → 登阶）· 计划模式专属 -->
+  <ol class="narr plan-only">
     <li class="narr__node done">
       <span class="narr__dot">
         <svg viewBox="0 0 24 24"><path d="M4 21V11.5C4 7 7.6 4 12 4s8 3 8 7.5V21"/><path d="M9 21v-7h6v7"/></svg>
@@ -54,8 +55,74 @@
   <!-- 二、圣殿主屏：中轴对称三开间（左厢 · 明间 · 右厢） -->
   <div class="hall">
 
-    <!-- 西厢：本周课规 + 今日所得 -->
-    <div class="hall__wing">
+    <!-- 西厢 · 功能模式：直接开始（与计划模式同款厢房卡片，仅内容不同） -->
+    <div class="hall__wing function-only">
+
+      <div class="wing-card">
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><path d="M4 20h5v-5h5v-5h5V5"/><path d="M2 22h20"/></svg>
+          </span>
+          <span class="wing-card__title">直接开始</span>
+          <span class="wing-card__meta">六入口</span>
+        </div>
+        <div class="task-list">
+          <a class="task-item" href="/pages/kp-entry.html">
+            <span class="task-check"></span>
+            <span class="task-text u-truncate">AI 讲解</span>
+            <span class="task-flag">录入即讲</span>
+          </a>
+          <a class="task-item" href="/pages/review.html">
+            <span class="task-check"></span>
+            <span class="task-text u-truncate">定制练习</span>
+            <span class="task-flag">按学情</span>
+          </a>
+          <a class="task-item" href="/pages/review.html">
+            <span class="task-check now"></span>
+            <span class="task-text u-truncate">每日复习</span>
+            <span class="task-flag">到期词条</span>
+          </a>
+          <a class="task-item" href="/pages/daily-quiz.html">
+            <span class="task-check"></span>
+            <span class="task-text u-truncate">每日小测</span>
+          </a>
+          <a class="task-item" href="/pages/wrongbook.html">
+            <span class="task-check"></span>
+            <span class="task-text u-truncate">错题本</span>
+            <span class="task-flag" id="wrongbook-flag">–</span>
+          </a>
+          <a class="task-item" href="/pages/wordbook.html">
+            <span class="task-check"></span>
+            <span class="task-text u-truncate">词表库</span>
+            <span class="task-flag">整包学</span>
+          </a>
+        </div>
+        <div class="wing-card__foot">需要长期计划时，可在右上角切换到「计划模式」。</div>
+      </div>
+
+      <!-- 功能模式：计划模式提醒（满足条件时由脚本显示） -->
+      <div class="wing-card" id="mode-hint" hidden>
+        <div class="wing-card__cap">
+          <span class="wing-card__ico">
+            <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 8h5M9 12h6M9 16h6"/></svg>
+          </span>
+          <span class="wing-card__title">计划模式</span>
+          <span class="wing-card__meta">可随时切换</span>
+        </div>
+        <p class="state-line">你在功能模式。设定课规后，可以按天安排复习与新词。</p>
+        <div class="wing-card__foot u-row-sm">
+          <span>不强制，随时可切回。</span>
+          <span class="u-push-end u-row-sm">
+            <button class="btn btn-secondary u-btn-sm" type="button" id="mode-hint-close">暂不</button>
+            <button class="btn btn-primary u-btn-sm" type="button" id="mode-hint-go">看看计划模式</button>
+          </span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 西厢：本周课规 + 今日所得 · 计划模式专属 -->
+    <div class="hall__wing plan-only">
 
       <div class="wing-card">
         <div class="wing-card__cap">
@@ -147,6 +214,7 @@
           <small>写作</small>
         </button>
       </div>
+      <p class="u-muted">听力、口语、阅读、写作 · 即将开放</p>
     </div>
 
     <!-- 东厢：观卷（今日复习队列） -->
@@ -172,8 +240,72 @@
 
   </div>
 
-  <!-- 三、登阶（圣殿称谓五级：书童 → 秀才 → 举人 → 进士 → 状元） -->
-  <section class="terrace">
+  <!-- 导出中心（v1.5.0-T009 T5）：极小单卡，点击打开抽屉，两种模式都显示 -->
+  <section class="export-center" aria-labelledby="export-center-title">
+    <div class="export-center__card">
+      <span class="export-center__ico">
+        <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>
+      </span>
+      <div class="export-center__text">
+        <span class="export-center__title" id="export-center-title">导出中心</span>
+        <span class="export-center__desc">精讲讲义 · 练习卷 · 单词本，A4 打印带走</span>
+      </div>
+      <button class="export-center__go" type="button" id="export-open">进入导出中心 →</button>
+    </div>
+  </section>
+
+  <!-- v1.5.1-T003：上周学情周报提示（仅上周有记录时显示） -->
+  <section class="weekly-hint" id="weekly-hint" hidden>
+    <a class="weekly-hint__card" href="/pages/learning-center.html?tab=weekly">
+      <span class="weekly-hint__ico">
+        <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h6"/></svg>
+      </span>
+      <span class="weekly-hint__text">
+        <span class="weekly-hint__title">上周学情周报已生成 →</span>
+        <span class="weekly-hint__desc" id="weekly-hint-desc">课规完成 · 错题分布 · 下周建议</span>
+      </span>
+      <span class="weekly-hint__go">查看</span>
+    </a>
+  </section>
+
+  <!-- 今日概览（v1.5.1-T005 T5）：今日到期 / 待学新词 / 今日小测 / 金桂余额 · 两种模式都显示 -->
+  <section class="today-study" aria-labelledby="today-title">
+    <div class="wing-card">
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+        </span>
+        <span class="wing-card__title" id="today-title">今日概览</span>
+        <span class="wing-card__meta" id="today-meta">–</span>
+      </div>
+      <div class="today-study__grid">
+        <a class="today-study__stat" href="/pages/review.html">
+          <span class="today-study__num" id="today-due">–</span>
+          <span class="today-study__label">今日到期</span>
+        </a>
+        <a class="today-study__stat" href="/pages/review.html">
+          <span class="today-study__num" id="today-to-learn">–</span>
+          <span class="today-study__label">待学新词</span>
+        </a>
+        <a class="today-study__stat" href="/pages/daily-quiz.html">
+          <span class="today-study__num today-study__num--sm" id="quiz-flag">–</span>
+          <span class="today-study__label">今日小测</span>
+        </a>
+        <button class="today-study__stat today-study__stat--btn" type="button" data-treasury-open>
+          <span class="today-study__num" id="today-coin">–</span>
+          <span class="today-study__label">金桂余额</span>
+        </button>
+        <div class="today-study__acts">
+          <a class="btn btn-primary" id="today-start-review" href="/pages/review.html" data-today-act>开始复习</a>
+          <a class="btn btn-secondary" id="today-start-learn" href="/pages/review.html" data-today-act>开始学习</a>
+        </div>
+      </div>
+      <p class="today-study__foot" id="today-foot">正在读取今日安排…</p>
+    </div>
+  </section>
+
+  <!-- 三、登阶（圣殿称谓五级：书童 → 秀才 → 举人 → 进士 → 状元）· 计划模式专属 -->
+  <section class="terrace plan-only">
     <div class="terrace__head">
       <h3>登阶</h3>
       <span class="terrace__hint" id="terrace-hint">圣殿称谓 · –</span>
@@ -192,8 +324,8 @@
     </div>
   </section>
 
-  <!-- 四、留印（朱砂印墙：3 掌握成就 + 4 课规里程碑） -->
-  <section class="terrace">
+  <!-- 四、留印（朱砂印墙：3 掌握成就 + 4 课规里程碑）· 计划模式专属 -->
+  <section class="terrace plan-only">
     <div class="terrace__head">
       <h3>留印</h3>
       <span class="terrace__hint" id="seal-hint">朱砂印 · –</span>
@@ -218,28 +350,49 @@
 
 </div>
 
-<!-- 设定课规 · 抽屉浮层（T103：由宝库页迁至仪表盘页，不整屏覆盖，保持上下文） -->
-<div class="drawer-overlay" id="goal-drawer">
-  <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="goal-drawer-title">
+<!-- 设定课规：v1.5.1-T001 起由共享计划面板（plan-panel.js）承载 -->
+
+<!-- 导出中心 · 抽屉浮层（v1.5.0-T009 T5：三行入口 + 汇总 + 软登录） -->
+<div class="drawer-overlay" id="export-drawer">
+  <aside class="drawer-panel is-med" role="dialog" aria-modal="true" aria-labelledby="export-drawer-title">
     <div class="drawer-header">
-      <h3 class="drawer-title" id="goal-drawer-title">设定本周课规</h3>
-      <button class="drawer-close" type="button" data-goal-close aria-label="关闭">×</button>
+      <h3 class="drawer-title" id="export-drawer-title">导出中心</h3>
+      <button class="drawer-close" type="button" data-export-close aria-label="关闭">×</button>
     </div>
     <div class="drawer-body">
-      <label class="field-label" for="goal-type-select">课规类型</label>
-      <select class="input" id="goal-type-select">
-        <option value="review_items">复习 X 条</option>
-        <option value="new_words">学习 X 个新词</option>
-        <option value="quiz_count">完成 X 次小测</option>
-      </select>
-      <label class="field-label" for="goal-target-input">目标数量</label>
-      <input class="input" type="number" id="goal-target-input" min="1" placeholder="例如 30">
-      <p class="state-line u-mt-md" id="goal-drawer-msg"></p>
-      <button class="btn btn-primary btn-block u-mt-md" type="button" id="goal-save">保存课规</button>
+      <p class="state-line" id="export-sub">A4 纸质材料，可打印带走。导出不扣 AI 额度。</p>
+      <div class="export-rows">
+        <div class="export-row">
+          <div class="export-row__main">
+            <span class="export-row__title">精讲讲义</span>
+            <span class="export-row__meta" id="export-kp-meta">读取中…</span>
+          </div>
+          <button class="btn btn-primary u-btn-sm" type="button" id="export-kp">导出全部讲义</button>
+        </div>
+        <div class="export-row">
+          <div class="export-row__main">
+            <span class="export-row__title">练习卷</span>
+            <span class="export-row__meta" id="export-paper-meta">读取中…</span>
+          </div>
+          <button class="btn btn-primary u-btn-sm" type="button" id="export-paper">导出最近练习卷</button>
+        </div>
+        <div class="export-row">
+          <div class="export-row__main">
+            <span class="export-row__title">单词本</span>
+            <span class="export-row__meta" id="export-cards-meta">读取中…</span>
+            <select class="input export-row__select" id="export-list-select" hidden aria-label="选择要导出的词表"></select>
+          </div>
+          <button class="btn btn-primary u-btn-sm" type="button" id="export-cards">导出单词卡</button>
+        </div>
+      </div>
+      <p class="state-line u-mt-md" id="export-msg"></p>
+      <a class="btn btn-secondary u-btn-sm u-mt-md" id="export-login" href="/pages/login.html?redirect=%2F" hidden>去登录</a>
     </div>
   </aside>
 </div>
 
+<script src="/static/export-estimator.js"></script>
+<script src="/static/plan-panel.js?v=20261117b"></script>
 <script>
 // ============================================================
 // v1.3.0-T103 首页仪表盘：真实 API 驱动
@@ -257,8 +410,6 @@ const TITLES = [
   { threshold: 2000, name: '状元' }
 ];
 const SEAL_TIERS = ['bronze', 'silver', 'gold', 'bronze', 'silver', 'gold', 'gilt'];
-const GOAL_REWARD = 30;   // rewards.json income.goal_done
-const GOAL_TYPES = { review_items: '复习', new_words: '学习新词', quiz_count: '完成小测' };
 const REASONS = {
   quiz_done: '应试（小测完成）',
   quiz_perfect: '妙笔（小测满分）',
@@ -295,33 +446,41 @@ function daysLeftInWeek() {
   return 7 - (day === 0 ? 7 : day);     // 周一为 6，周日为 0
 }
 
-// ---------- 西厢一：本周课规 ----------
-function renderWeekly(goal) {
+// ---------- 西厢一：本周课规（v1.5.1-T001：3 条任务卡） ----------
+function renderWeekly(plans, week) {
   const foot = $('weekly-foot');
-  if (!goal) {
+  if (!plans) {
     $('weekly-meta').textContent = '–';
     $('weekly-body').innerHTML = errorBox('本周课规读取失败');
     foot.textContent = '圣殿为你订下每周课规，钟响达成，即落印为证。';
     return;
   }
-  const target = Math.max(1, goal.target || 1);
-  const pct = Math.min(100, Math.round((goal.progress || 0) / target * 100));
-  const label = GOAL_TYPES[goal.goal_type] || '完成';
-  $('weekly-meta').textContent = label + ' · 目标 ' + goal.target + (goal.achieved ? ' · 已达成' : '');
-  $('weekly-body').innerHTML =
-    '<div class="u-row-sm">' +
-      '<span class="u-strong">已' + label + ' ' + (goal.progress || 0) + ' / ' + goal.target + '</span>' +
-      '<span class="u-gold u-push-end">' + pct + '%</span>' +
-    '</div>' +
-    '<div class="meter"><div class="meter__fill" id="weekly-fill"></div></div>';
-  $('weekly-fill').style.width = pct + '%';
-  const rest = daysLeftInWeek();
-  foot.textContent = goal.achieved
-    ? '本周课规已达成，印已落。新的一周重新起规 · 未达成不惩罚。'
-    : '圣殿为你订下每周课规，钟响达成，即落印为证。达成 +' + GOAL_REWARD + ' 金桂 · 剩余 ' + rest + ' 天 · 未达成自动作废不惩罚。';
-  // 同步抽屉表单初值
-  $('goal-type-select').value = goal.goal_type;
-  $('goal-target-input').value = goal.target;
+  const plan = plans.find(p => p.is_current) || plans[0];
+  if (!plan || !plan.tasks || !plan.tasks.length) {
+    $('weekly-meta').textContent = '尚未设定';
+    $('weekly-body').innerHTML = emptyBox('尚未设定课规。设定后，圣殿会为你订下每周课规。');
+    foot.textContent = '圣殿为你订下每周课规，钟响达成，即落印为证。';
+    return;
+  }
+  const done = plan.tasks.filter(t => t.achieved).length;
+  $('weekly-meta').textContent = (plan.plan_name || '本周课规') + ' · ' + done + '/' + plan.tasks.length + ' 已完成';
+  $('weekly-body').innerHTML = plan.tasks.map(t => {
+    const target = Math.max(1, t.target || 1);
+    const pct = Math.min(100, Math.round((t.progress || 0) / target * 100));
+    return '<div class="u-row-sm">' +
+        '<span class="u-strong">' + esc(t.metric_name) + '</span>' +
+        '<span class="u-gold u-push-end">' + (t.progress || 0) + ' / ' + target + ' ' + esc(t.unit || '') + '</span>' +
+      '</div>' +
+      '<div class="meter"><div class="meter__fill" data-pct="' + pct + '"></div></div>';
+  }).join('');
+  $('weekly-body').querySelectorAll('.meter__fill').forEach(el => {
+    el.style.width = el.getAttribute('data-pct') + '%';
+  });
+  const claimable = week ? (week.claimable || 0) : 0;
+  foot.textContent = plan.all_done
+    ? '本周课规已达成，印已落。' + (claimable > 0 ? '打开课规可领 ' + claimable + ' 金桂。' : '')
+    : '剩余 ' + daysLeftInWeek() + ' 天。'
+      + (claimable > 0 ? '可领 ' + claimable + ' 金桂。' : '');
 }
 
 // ---------- 西厢二：今日所得 ----------
@@ -417,24 +576,129 @@ function renderQueue(res) {
   }).join('');
 }
 
+// ---------- 今日概览（T5）：今日到期 / 待学新词 / 今日小测 / 金桂余额 ----------
+function setTodayActions(learnOn, reviewOn) {
+  [['today-start-learn', learnOn], ['today-start-review', reviewOn]].forEach(([id, on]) => {
+    const el = $(id);
+    el.classList.toggle('is-disabled', !on);
+    el.setAttribute('aria-disabled', on ? 'false' : 'true');
+  });
+}
+
+function renderTodayCoin() {
+  const el = $('today-coin');
+  if (!el) return;
+  el.textContent = coinBalance === undefined ? '–' : (coinBalance === null ? '—' : coinBalance);
+}
+
+// 金桂余额（v1.5.0-T010）：undefined=未读取，null=读取失败/未登录，number=余额
+let coinBalance;
+function coinSuffix() {
+  if (coinBalance === undefined) return '';
+  return ' · 金桂 ' + (coinBalance === null ? '—' : coinBalance);
+}
+
+// 当日小测状态（v1.5.0-T010）：今日未测 / 继续作答 / 今日已完成
+async function renderQuizStatus() {
+  const el = $('quiz-flag');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/quiz/daily/history', { cache: 'no-store' });
+    if (r.status === 401 || r.status === 403) { el.textContent = '登录后查看'; return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const h = await r.json();
+    const total = Number(h.today_count || 0), done = Number(h.today_finished || 0);
+    el.textContent = !total ? '今日未测' : (done < total ? '继续作答' : '今日已完成');
+  } catch (e) {
+    el.textContent = '—';
+  }
+}
+
+// 错题本状态（v1.5.1-T002）：今日应重练条数
+async function renderWrongbookStatus() {
+  const el = $('wrongbook-flag');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/wrongbook/summary', { cache: 'no-store' });
+    if (r.status === 401 || r.status === 403) { el.textContent = '登录后查看'; return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const s = await r.json();
+    const due = Number(s.due_count || 0);
+    el.textContent = due > 0 ? '待重练 ' + due : '暂无待练';
+  } catch (e) {
+    el.textContent = '—';
+  }
+}
+
+async function renderTodayStudy() {
+  try {
+    const r = await fetch('/api/learn/summary', { cache: 'no-store' });
+    if (r.status === 401 || r.status === 403) {
+      $('today-meta').textContent = '未登录';
+      $('today-to-learn').textContent = '–';
+      $('today-due').textContent = '–';
+      $('quiz-flag').textContent = '登录后查看';
+      renderTodayCoin();
+      setTodayActions(false, false);
+      $('today-foot').textContent = '登录后可查看今日待学与到期安排。';
+      return;
+    }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const s = await r.json();
+    if (typeof s.to_learn !== 'number') throw new Error('数据异常');
+    $('today-to-learn').textContent = s.to_learn;
+    $('today-due').textContent = s.due_today;
+    $('today-meta').textContent = '在学 ' + (s.learning || 0) + ' · 已掌握 ' + (s.mastered || 0);
+    renderTodayCoin();
+    setTodayActions(s.to_learn > 0, s.due_today > 0);
+    $('today-foot').textContent = (!s.to_learn && !s.due_today)
+      ? '今天没有待学与到期词条 —— 去单词本收些新词吧。'
+      : '待学 ' + s.to_learn + ' 个新词 · 今日到期 ' + s.due_today + ' 个词条';
+  } catch (e) {
+    $('today-meta').textContent = '–';
+    $('today-foot').innerHTML = errorBox('今日概览读取失败');
+    renderTodayCoin();
+    setTodayActions(false, false);
+  }
+}
+
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-today-act]');
+  if (a && a.classList.contains('is-disabled')) e.preventDefault();
+});
+
 // ---------- 主加载：逐区独立容错，任一路失败不影响其余区块 ----------
+function uiModeNow() {
+  return document.documentElement.getAttribute('data-ui-mode') || 'function';
+}
+let kpCount = 0;   // 知识点总数，作为「已使用 AI 讲解」的本地判定依据
+
 async function load() {
+  const planMode = uiModeNow() === 'plan';
   try {
     const t = await (await fetch('/api/treasury', { cache: 'no-store' })).json();
-    renderWeekly(t.weekly_goal);
-    renderEarnings(t.txns);
+    coinBalance = (typeof t.balance === 'number') ? t.balance : null;
     renderTier(t.solidify_count || 0);
-    renderSeals(t.seals);
+    // 计划模式专属区块被隐藏时不渲染，避免无谓 DOM 操作
+    if (planMode) {
+      renderWeekly(t.weekly_plans, t.week_reward);
+      renderEarnings(t.txns);
+      renderSeals(t.seals);
+    }
   } catch (e) {
-    renderWeekly(null);
-    $('earn-meta').textContent = '–';
-    $('earn-list').innerHTML = errorBox('今日所得读取失败');
+    coinBalance = null;
     $('tier-label').textContent = '称谓载入失败';
-    $('terrace-hint').textContent = '圣殿称谓 · –';
-    renderSeals(null);
+    if (planMode) {
+      renderWeekly(null);
+      $('earn-meta').textContent = '–';
+      $('earn-list').innerHTML = errorBox('今日所得读取失败');
+      $('terrace-hint').textContent = '圣殿称谓 · –';
+      renderSeals(null);
+    }
   }
   try {
     const s = await (await fetch('/api/learn/stats', { cache: 'no-store' })).json();
+    kpCount = (s.distribution || []).reduce((n, d) => n + (d.count || 0), 0);
     renderProficiency(s.distribution);
   } catch (e) {
     $('prof-num').textContent = '–';
@@ -446,63 +710,488 @@ async function load() {
     $('queue-meta').textContent = '–';
     $('queue-list').innerHTML = errorBox('复习队列读取失败');
   }
+  await renderTodayStudy();
+  // 今日小测在「今日概览」两种模式下都显示；错题本仅功能模式有对应区块
+  await renderQuizStatus();
+  if (!planMode) await renderWrongbookStatus();
 }
 
-// ---------- 设定课规 · 抽屉浮层（T103：由宝库页迁入本页） ----------
-function openGoal() {
-  const msg = $('goal-drawer-msg');
-  msg.className = 'state-line u-mt-md';
-  msg.textContent = '';
-  $('goal-drawer').classList.add('open');
+// ---------- 设定课规 · 共享计划面板（v1.5.1-T001） ----------
+// 面板模块自行处理打开/关闭与领取；关闭后刷新首页课规与金桂
+if (window.PlanPanel) {
+  window.PlanPanel.onClose = () => { load(); };
 }
-function closeGoal() { $('goal-drawer').classList.remove('open'); }
 
-async function saveWeeklyGoal() {
-  const msg = $('goal-drawer-msg'), btn = $('goal-save');
-  const type = $('goal-type-select').value;
-  const target = parseInt($('goal-target-input').value, 10);
-  if (!target || target <= 0) {
-    msg.className = 'state-line state-line--danger u-mt-md';
-    msg.textContent = '请输入大于 0 的目标数。';
+// ---------- 导出中心（v1.5.0-T009 T5）：三行入口 + summary 渲染 + 软登录 ----------
+const exportCenter = { logged: false, lists: [], busy: false };
+
+function exportSetMsg(text, danger) {
+  const el = $('export-msg');
+  el.className = 'state-line u-mt-md' + (danger ? ' state-line--danger' : '');
+  el.textContent = text || '';
+}
+
+function exportOpen() {
+  $('export-drawer').classList.add('open');
+  loadExportSummary();
+}
+
+function exportClose() { $('export-drawer').classList.remove('open'); }
+
+function fmtCount(n) { return n >= 10000 ? (n / 10000).toFixed(1) + ' 万' : String(n); }
+
+async function loadExportSummary() {
+  ['export-kp-meta', 'export-paper-meta', 'export-cards-meta'].forEach(id => {
+    $(id).textContent = '读取中…';
+  });
+  exportSetMsg('');
+  $('export-login').hidden = true;
+  let me = null;
+  try { me = await (await fetch('/api/auth/me', { cache: 'no-store' })).json(); } catch (e) {}
+  exportCenter.logged = !!(me && !me.guest && me.user_id);
+  if (!exportCenter.logged) {
+    ['export-kp-meta', 'export-paper-meta', 'export-cards-meta'].forEach(id => {
+      $(id).textContent = '登录后查看';
+    });
+    $('export-list-select').hidden = true;
+    $('export-login').hidden = false;
     return;
   }
-  btn.disabled = true;
-  msg.className = 'state-line u-mt-md';
-  msg.textContent = '保存中…';
   try {
-    const r = await fetch('/api/treasury/weekly-goal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ goal_type: type, target: target })
-    });
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error || '保存失败');
-    msg.className = 'state-line state-line--success u-mt-md';
-    msg.textContent = '课规已更新。';
-    await load();
-    setTimeout(closeGoal, 700);
+    const r = await fetch('/api/exports/summary', { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const s = await r.json();
+    const kp = s.kp || {}, wb = s.wordbook || {}, ce = s.custom_exercise || {};
+    exportCenter.summary = { kp: kp, wordbook: wb, custom_exercise: ce };
+    $('export-kp-meta').textContent = kp.count
+      ? kp.count + ' 篇 · 约 ' + fmtCount(kp.chars || 0) + ' 字' : '暂无可导出内容';
+    $('export-paper-meta').textContent = ce.count
+      ? ce.count + ' 份 · 约 ' + fmtCount(ce.chars || 0) + ' 字' : '暂无可导出内容';
+    $('export-cards-meta').textContent = wb.count
+      ? wb.count + ' 词 · 约 ' + fmtCount(wb.chars || 0) + ' 字' : '暂无可导出内容';
+    await loadExportLists();
   } catch (e) {
-    msg.className = 'state-line state-line--danger u-mt-md';
-    msg.textContent = '保存失败：' + e.message;
-  } finally {
-    btn.disabled = false;
+    ['export-kp-meta', 'export-paper-meta', 'export-cards-meta'].forEach(id => {
+      $(id).textContent = '读取失败';
+    });
+    exportSetMsg('导出汇总读取失败，请稍后重试。', true);
   }
 }
 
-document.addEventListener('click', e => {
-  if (e.target.closest('[data-goal-open]')) { openGoal(); return; }
-  if (e.target.closest('[data-goal-close]')) { closeGoal(); return; }
-  if (e.target.id === 'goal-drawer') { closeGoal(); return; }   // 点遮罩关闭
+async function loadExportLists() {
+  const sel = $('export-list-select');
+  try {
+    const [a, b] = await Promise.all([
+      (await fetch('/api/wordlists?source=user', { cache: 'no-store' })).json(),
+      (await fetch('/api/wordlists?source=range', { cache: 'no-store' })).json()
+    ]);
+    exportCenter.lists = [...(a.data || []), ...(b.data || [])];
+    sel.innerHTML = exportCenter.lists.map(l =>
+      '<option value="' + l.id + '">' + esc(l.title || '未命名词表') +
+      ' · ' + (l.item_count || 0) + ' 词</option>').join('');
+    sel.hidden = !exportCenter.lists.length;
+  } catch (e) {
+    exportCenter.lists = [];
+    sel.hidden = true;
+  }
+}
+
+function exportNeedLogin() {
+  exportSetMsg('请先登录后再导出。');
+  $('export-login').hidden = false;
+}
+
+async function exportDownload(res, label) {
+  let j = {};
+  try { j = await res.json(); } catch (e) {}
+  if (!res.ok || !j.word_path) {
+    exportSetMsg(j.error || (label + '失败，可重试。'), true);
+    return;
+  }
+  exportSetMsg('');
+  window.open('/api/word/download?path=' + encodeURIComponent(j.word_path), '_blank');
+}
+
+async function exportKpBatch() {
+  if (!exportCenter.logged) return exportNeedLogin();
+  if (exportCenter.busy) return;
+  const sum = exportCenter.summary && exportCenter.summary.kp;
+  if (!sum || !sum.count) { exportSetMsg('暂无可导出内容'); return; }
+  const est = ExportEstimator.explanation(sum.count, sum.chars);
+  if (!await ExportEstimator.confirm({ title: '导出全部讲义', pages: est.pages, chars: est.chars })) return;
+  const btn = $('export-kp');
+  exportCenter.busy = true;
+  btn.disabled = true;
+  exportSetMsg('正在生成讲义…');
+  try {
+    const res = await fetch('/api/kp/export-batch-word', { method: 'POST' });
+    if (res.status === 404) { exportSetMsg('暂无可导出内容'); return; }
+    await exportDownload(res, '导出讲义');
+  } catch (e) {
+    exportSetMsg('导出服务暂不可用，可重试。', true);
+  } finally { exportCenter.busy = false; btn.disabled = false; }
+}
+
+async function exportLatestPaper() {
+  if (!exportCenter.logged) return exportNeedLogin();
+  if (exportCenter.busy) return;
+  const btn = $('export-paper');
+  exportCenter.busy = true;
+  exportSetMsg('正在查找练习卷…');
+  try {
+    const h = await (await fetch('/api/custom-exercise/history?limit=50', { cache: 'no-store' })).json();
+    const done = (h.items || []).find(x => x.status === 'done');
+    if (!done) { exportSetMsg('暂无可导出内容'); return; }
+    const sum = (exportCenter.summary && exportCenter.summary.custom_exercise) || {};
+    const est = ExportEstimator.paper(sum.chars || 0, done.item_count || 0);
+    exportCenter.busy = false;
+    if (!await ExportEstimator.confirm({ title: '导出最近练习卷', pages: est.pages, chars: est.chars })) return;
+    exportCenter.busy = true;
+    btn.disabled = true;
+    exportSetMsg('正在生成练习卷…');
+    const res = await fetch('/api/custom-exercise/' + done.id + '/export-word', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+    });
+    await exportDownload(res, '导出练习卷');
+  } catch (e) {
+    exportSetMsg('导出服务暂不可用，可重试。', true);
+  } finally { exportCenter.busy = false; btn.disabled = false; }
+}
+
+async function exportWordCards() {
+  if (!exportCenter.logged) return exportNeedLogin();
+  const sel = $('export-list-select');
+  const id = Number(sel.value || 0);
+  if (!id) { exportSetMsg('暂无可导出内容'); return; }
+  if (exportCenter.busy) return;
+  const opt = sel.options[sel.selectedIndex];
+  const count = opt ? Number((opt.textContent.match(/·\s*(\d+)\s*词/) || [])[1] || 0) : 0;
+  const est = ExportEstimator.cards(count, 0);
+  if (!await ExportEstimator.confirm({ title: '导出单词卡', pages: est.pages, chars: est.chars })) return;
+  const btn = $('export-cards');
+  exportCenter.busy = true;
+  btn.disabled = true;
+  exportSetMsg('正在生成单词卡…');
+  try {
+    const res = await fetch('/api/wordlists/' + id + '/export-word', { method: 'POST' });
+    await exportDownload(res, '导出单词卡');
+  } catch (e) {
+    exportSetMsg('导出服务暂不可用，可重试。', true);
+  } finally { exportCenter.busy = false; btn.disabled = false; }
+}
+
+$('export-open').addEventListener('click', exportOpen);
+document.querySelectorAll('[data-export-close]').forEach(b => b.addEventListener('click', exportClose));
+$('export-drawer').addEventListener('click', e => {
+  if (e.target === $('export-drawer')) exportClose();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeGoal(); });
-$('goal-save').addEventListener('click', saveWeeklyGoal);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') exportClose(); });
+$('export-kp').addEventListener('click', exportKpBatch);
+$('export-paper').addEventListener('click', exportLatestPaper);
+$('export-cards').addEventListener('click', exportWordCards);
 
 // 错误态「重试」：全局委托（区块内按钮为动态渲染）
 document.addEventListener('click', e => {
   if (e.target.closest('[data-retry]')) load();
 });
 
-load();
+// ---------- 功能模式提醒：满足条件时显示一条可关闭提示 ----------
+const HINT_KEY = 'eng_ui_mode_hint';
+const HINT_COOLDOWN = 7 * 24 * 60 * 60 * 1000;   // 关闭后 7 天内不再出现
+
+function readHintMeta() {
+  try { return JSON.parse(localStorage.getItem(HINT_KEY) || '{}'); } catch (e) { return {}; }
+}
+function writeHintMeta(meta) {
+  try { localStorage.setItem(HINT_KEY, JSON.stringify(meta)); } catch (e) {}
+}
+function hideModeHint() {
+  const bar = $('mode-hint');
+  if (bar) bar.hidden = true;
+}
+
+async function maybeShowModeHint() {
+  if (uiModeNow() !== 'function') return;
+  if (onboard.active) return;   // v1.5.3-T003：导览展示期间互斥，关闭后按原规则恢复
+  const meta = readHintMeta();
+  const now = Date.now();
+  if (!meta.firstSeen) { meta.firstSeen = now; writeHintMeta(meta); }
+  if (meta.dismissedAt && now - meta.dismissedAt < HINT_COOLDOWN) return;
+
+  let me = null;
+  try { me = await (await fetch('/api/auth/me', { cache: 'no-store' })).json(); } catch (e) { return; }
+  if (!me || me.guest) return;   // 仅登录用户
+
+  const days = Math.floor((now - meta.firstSeen) / 86400000);
+  if (kpCount < 3 && days < 3) return;   // 至少 3 次 AI 讲解，或使用满 3 天
+
+  try {
+    const t = await (await fetch('/api/treasury', { cache: 'no-store' })).json();
+    const hasPlan = t.weekly_plans && t.weekly_plans.length > 0;
+    if (hasPlan) return;   // 已有课规不提示
+  } catch (e) { return; }
+
+  const bar = $('mode-hint');
+  if (bar) bar.hidden = false;
+}
+
+document.addEventListener('click', e => {
+  if (e.target.closest('#mode-hint-close')) {
+    const meta = readHintMeta();
+    meta.dismissedAt = Date.now();
+    writeHintMeta(meta);
+    hideModeHint();
+    return;
+  }
+  if (e.target.closest('#mode-hint-go')) {
+    hideModeHint();
+    if (typeof window.engSetUiMode === 'function') window.engSetUiMode('plan');
+    setTimeout(openGoal, 0);
+  }
+});
+
+// ---------- v1.5.3-T003 ONBOARDING：首页三步新手引导（按界面模式分流） ----------
+// [ONBOARDING] 两套文案分别服务功能模式 / 计划模式；记忆全部本机 localStorage，零后端。
+const FUNCTION_ONBOARD = {
+  key: 'eng_onboard_v1',
+  steps: [
+    { target: 'start', title: '点一个按钮，进到页面里',
+      text: 'AI 讲解、定制练习、每日复习、每日小测、错题本、词表库，点任意一个进入对应页面开始用。' },
+    { target: 'queue', title: '每天进来先点这里',
+      text: '待复习的词都排在里面，点「开始复习」进入答题页，几分钟练完。' },
+    { target: 'ainav', title: '卡住了？跟向导说一声',
+      text: '点我可以随时跳到想用的功能，也能问「怎么用」「今天学什么」。' }
+  ]
+};
+
+const PLAN_ONBOARD = {
+  key: 'eng_onboard_plan_v1',
+  steps: [
+    { target: 'week', title: '先定这周的课规',
+      text: '课规就是这周的小目标。点「设定课规」，圣殿按周替你排好复习和新词。' },
+    { target: 'review', title: '每天先看观卷',
+      text: '今天该复习的词都排在观卷里。点「前往复习」，几分钟就能过一遍。' },
+    { target: 'today', title: '每天看一眼今日概览',
+      text: '今日到期、待学新词、今天要不要小测，都在这里；上方课规和观卷会跟着更新。' }
+  ]
+};
+
+const onboard = { root: null, step: 0, active: false, replay: false, key: '', steps: [], fabTimer: 0, scrollY: 0 };
+
+function onboardTargetEl(name) {
+  if (name === 'start') return document.querySelector('.hall__wing.function-only .wing-card');
+  if (name === 'queue' || name === 'review') {
+    const wings = document.querySelectorAll('.hall__wing');
+    const east = wings[wings.length - 1];
+    return east ? east.querySelector('.wing-card') : null;
+  }
+  if (name === 'week') return document.querySelector('.hall__wing.plan-only .wing-card');
+  if (name === 'today') return document.querySelector('.today-study');
+  return document.getElementById('ai-nav-fab');
+}
+
+function onboardRead(key) { try { return localStorage.getItem(key) === '1'; } catch (e) { return false; } }
+
+function onboardStart(cfg, replay) {
+  onboard.active = true;
+  onboard.replay = !!replay;
+  onboard.key = cfg.key;
+  onboard.steps = cfg.steps;
+  onboard.step = 0;
+  onboard.scrollY = window.scrollY;
+  hideModeHint();
+  const root = document.createElement('div');
+  root.className = 'onboard';
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-modal', 'true');
+  root.setAttribute('aria-label', '新手引导');
+  root.innerHTML = '<div class="onboard-spot"></div>' +
+    '<div class="onboard-card">' +
+      '<div class="onboard-card__head"><span class="onboard-card__count"></span><span class="onboard-card__dots"></span></div>' +
+      '<div class="onboard-card__title"></div>' +
+      '<p class="onboard-card__text"></p>' +
+      '<div class="onboard-card__acts"></div>' +
+    '</div>';
+  document.body.appendChild(root);
+  onboard.root = root;
+  root.addEventListener('click', e => {
+    const b = e.target.closest('[data-ob-act]');
+    if (!b) return;
+    const act = b.getAttribute('data-ob-act');
+    if (act === 'close') return onboardClose();
+    if (act === 'prev' && onboard.step > 0) { onboard.step--; onboardRender(); }
+    if (act === 'next' && onboard.step < onboard.steps.length - 1) { onboard.step++; onboardRender(); }
+  });
+  document.addEventListener('keydown', onboardKey);
+  window.addEventListener('resize', onboardLayout);
+  window.addEventListener('scroll', onboardLayout, true);
+  onboard.fabTimer = setInterval(() => {   // 步 3 锚点由 ai-nav.js 异步注入，注入完成后再定位（D10）
+    if (onboard.root && onboard.steps[onboard.step].target === 'ainav' && document.getElementById('ai-nav-fab')) onboardLayout();
+  }, 200);
+  onboardRender();
+}
+
+function onboardKey(e) { if (e.key === 'Escape') onboardClose(); }
+
+function onboardClose() {
+  if (!onboard.root) return;
+  clearInterval(onboard.fabTimer);
+  onboard.root.remove();
+  onboard.root = null;
+  onboard.active = false;
+  document.removeEventListener('keydown', onboardKey);
+  window.removeEventListener('resize', onboardLayout);
+  window.removeEventListener('scroll', onboardLayout, true);
+  if (!onboard.replay) { try { localStorage.setItem(onboard.key, '1'); } catch (e) {} }
+  if (window.scrollY !== onboard.scrollY) { try { window.scrollTo(0, onboard.scrollY); } catch (e) {} }
+  onboard.scrollY = 0;
+  maybeShowModeHint();
+}
+
+function onboardRender() {
+  const s = onboard.steps[onboard.step];
+  const last = onboard.step === onboard.steps.length - 1;
+  const root = onboard.root;
+  root.querySelector('.onboard-card__count').textContent = (onboard.step + 1) + ' / ' + onboard.steps.length;
+  root.querySelector('.onboard-card__dots').innerHTML = onboard.steps.map((_, i) =>
+    '<span class="onboard-dot' + (i <= onboard.step ? ' is-on' : '') + '"></span>').join('');
+  root.querySelector('.onboard-card__title').textContent = s.title;
+  root.querySelector('.onboard-card__text').textContent = s.text;
+  const acts = [];
+  if (onboard.step > 0) acts.push('<button class="btn btn-secondary" type="button" data-ob-act="prev">上一步</button>');
+  acts.push(last
+    ? '<button class="btn btn-primary" type="button" data-ob-act="close">开始使用</button>'
+    : '<button class="btn btn-primary" type="button" data-ob-act="next">下一步</button>' +
+      '<button class="btn btn-secondary" type="button" data-ob-act="close">跳过</button>');
+  root.querySelector('.onboard-card__acts').innerHTML = acts.join('');
+  onboardLayout();
+}
+
+function onboardLayout() {
+  if (!onboard.root) return;
+  const mobile = window.matchMedia('(max-width: 640px)').matches;
+  const spot = onboard.root.querySelector('.onboard-spot');
+  const card = onboard.root.querySelector('.onboard-card');
+  const target = onboard.steps[onboard.step].target;
+  const el = onboardTargetEl(target);
+  if (!el) {   // 目标未就绪：全屏遮罩，卡片居中（桌面）/ 贴底（移动）
+    spot.classList.add('is-full');
+    spot.style.left = '0'; spot.style.top = '0';
+    spot.style.width = '100vw'; spot.style.height = '100vh';
+    if (!mobile) { card.style.left = '50%'; card.style.top = '50%'; card.style.transform = 'translate(-50%,-50%)'; }
+    return;
+  }
+  spot.classList.remove('is-full');
+  if (target !== 'ainav') {   // 吸边入口为 fixed，不随页面滚动
+    const r0 = el.getBoundingClientRect();
+    window.scrollTo(0, Math.max(0, window.scrollY + r0.top - window.innerHeight * 0.4 + r0.height / 2));
+  }
+
+  if (mobile) {   // 贴底卡：目标滚到卡片上方，避免遮挡
+    card.style.left = ''; card.style.top = ''; card.style.transform = '';
+    const limit = card.getBoundingClientRect().top - 12;
+    let r = el.getBoundingClientRect();
+    if (r.bottom > limit || r.top < 8) {
+      const delta = r.bottom > limit ? r.bottom - limit : r.top - 8;
+      window.scrollTo(0, Math.max(0, window.scrollY + delta));
+      r = el.getBoundingClientRect();
+    }
+    const pad = 6;
+    spot.style.left = (r.left - pad) + 'px';
+    spot.style.top = (r.top - pad) + 'px';
+    spot.style.width = (r.width + pad * 2) + 'px';
+    spot.style.height = (r.height + pad * 2) + 'px';
+    return;
+  }
+
+  let r = el.getBoundingClientRect();
+  const pad = 6;
+  if (r.width > window.innerWidth * 0.7) {   // 整段区块：先留出卡片放上/下方的空间
+    const need = r.bottom + 16 + card.offsetHeight - (window.innerHeight - 16);
+    if (need > 0) {
+      const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const nextY = Math.min(maxY, window.scrollY + need);
+      if (nextY > window.scrollY) { window.scrollTo(0, nextY); r = el.getBoundingClientRect(); }
+    }
+  }
+  spot.style.left = (r.left - pad) + 'px';
+  spot.style.top = (r.top - pad) + 'px';
+  spot.style.width = (r.width + pad * 2) + 'px';
+  spot.style.height = (r.height + pad * 2) + 'px';
+  const cw = card.offsetWidth, ch = card.offsetHeight;
+  let left = r.right + pad + 16;
+  if (left + cw > window.innerWidth - 16) left = r.left - cw - pad - 16;
+  let top;
+  if (r.width > window.innerWidth * 0.7) {   // 整段区块：卡片放上/下方，避免盖住聚光内容
+    left = Math.max(16, Math.min((window.innerWidth - cw) / 2, window.innerWidth - cw - 16));
+    const below = r.bottom + 16;
+    const above = r.top - ch - 16;
+    top = (below + ch <= window.innerHeight - 16) ? below
+      : (above >= 16 ? above : Math.max(16, Math.min(r.top + r.height / 2 - ch / 2, window.innerHeight - ch - 16)));
+  } else {
+    if (left < 16) left = Math.max(16, Math.min((window.innerWidth - cw) / 2, window.innerWidth - cw - 16));
+    top = Math.max(16, Math.min(r.top + r.height / 2 - ch / 2, window.innerHeight - ch - 16));
+  }
+  card.style.transform = '';
+  card.style.left = left + 'px';
+  card.style.top = top + 'px';
+}
+
+async function onboardModeSettled() {
+  let mode = uiModeNow();
+  try {
+    const me = await Promise.race([
+      fetch('/api/auth/me', { cache: 'no-store' }).then(r => r.json()),
+      new Promise(resolve => setTimeout(() => resolve(null), 900))
+    ]);
+    if (me && !me.guest) mode = me.ui_mode === 'plan' ? 'plan' : 'function';
+  } catch (e) {}
+  for (let i = 0; i < 20 && uiModeNow() !== mode; i++) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  return uiModeNow();
+}
+
+async function maybeStartOnboard() {
+  if (onboard.root) return;
+  const replay = new URLSearchParams(location.search).get('onboard') === '1';
+  if (replay) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
+  const mode = await onboardModeSettled();
+  if (onboard.root) return;
+  if (document.querySelector('#ai-nav-drawer.open, .plan-overlay.open, #export-drawer.open')) return;
+  const cfg = mode === 'plan' ? PLAN_ONBOARD : FUNCTION_ONBOARD;
+  if (!replay && onboardRead(cfg.key)) return;
+  onboardStart(cfg, replay);
+}
+
+// ---------- v1.5.1-T003：上周学情周报提示 ----------
+async function loadWeeklyHint() {
+  try {
+    const r = await fetch('/api/weekly-reports?summary=1', { cache: 'no-store' });
+    if (!r.ok) return;
+    const d = await r.json();
+    const el = $('weekly-hint');
+    if (!el || !d || !d.has_data) return;
+    $('weekly-hint-desc').textContent =
+      `${d.week_start} ~ ${d.week_end} · 课规完成 · 错题分布 · 下周建议`;
+    el.hidden = false;
+  } catch (e) {}
+}
+
+// 模式切换后补载计划模式区块（同页即时切换，无需刷新）
+let lastLoadedMode = uiModeNow();
+new MutationObserver(() => {
+  const mode = uiModeNow();
+  if (mode === lastLoadedMode) return;
+  lastLoadedMode = mode;
+  load();
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-ui-mode'] });
+
+const homeLoaded = load();
+homeLoaded.then(maybeShowModeHint);
+// ONBOARDING：首屏数据加载完成触发，1.2s 超时兜底（计划 4.5）
+Promise.race([homeLoaded.catch(() => {}), new Promise(r => setTimeout(r, 1200))]).then(maybeStartOnboard);
+loadWeeklyHint();
 
 // ---------- AI 健康状态徽章（每 30s 轮询） ----------
 async function updateAiStatus() {

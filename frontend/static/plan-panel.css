@@ -1,0 +1,451 @@
+/* 计划面板 · 共享样式（v1.5.1-T001）
+   桌面：右侧抽屉；移动：全屏上滑；深链页：整页形态 */
+.plan-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: none;
+}
+.plan-overlay.open { display: block; }
+.plan-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(28, 25, 23, .32);
+  opacity: 0;
+  transition: opacity var(--dur-mid) var(--ease-out);
+}
+.plan-overlay.open .plan-scrim { opacity: 1; }
+.plan-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-solid);
+  box-shadow: var(--sh-float);
+  transform: translateX(24px);
+  opacity: 0;
+  transition: transform var(--dur-mid) var(--ease-out), opacity var(--dur-mid) var(--ease-out);
+}
+.plan-overlay.open .plan-panel { transform: none; opacity: 1; }
+
+/* 深链整页形态 */
+.plan-overlay.is-page {
+  position: static;
+  display: block;
+  z-index: auto;
+}
+.plan-overlay.is-page .plan-scrim { display: none; }
+.plan-overlay.is-page .plan-panel {
+  position: static;
+  width: 100%;
+  max-width: 960px;
+  margin: 24px auto 48px;
+  transform: none;
+  opacity: 1;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-card);
+}
+.plan-overlay.is-page .plan-close { display: none; }
+
+.plan-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.plan-head h3 {
+  margin: 0;
+  font: 600 17px/1.3 var(--font-display);
+  color: var(--ink);
+}
+.plan-close {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-circle);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.plan-close:hover { background: var(--paper-deep); }
+
+.plan-body {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 18px 24px;
+}
+
+.plan-claim {
+  margin: 0 0 12px;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--gold-wash);
+  color: var(--gold-dark);
+  font-size: 12px;
+}
+.plan-card {
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--r-md);
+  background: var(--surface-solid);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.plan-card__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.plan-card__name {
+  font: 600 15px/1.4 var(--font-display);
+  color: var(--ink);
+}
+.plan-badge {
+  font-size: 10px;
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  background: var(--paper-deep);
+}
+.plan-badge--current {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
+.plan-badge--expired {
+  border-color: rgba(192, 57, 43, .3);
+  background: var(--vermillion-wash);
+  color: var(--vermillion);
+}
+.plan-card__meta {
+  margin: 6px 0 10px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.plan-ops {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.plan-panel .plan-del {
+  color: var(--vermillion);
+  border-color: rgba(192, 57, 43, .3);
+  background: var(--vermillion-wash);
+}
+.plan-panel .plan-del:hover {
+  border-color: var(--vermillion);
+  color: var(--vermillion);
+}
+
+.plan-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 8px;
+  font: 600 13px/1.4 var(--font-body);
+  color: var(--ink-soft);
+}
+
+.plan-task {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 9px 12px;
+  margin-bottom: 8px;
+  background: #fff;
+}
+.plan-task__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.plan-task__name { font-weight: 600; color: var(--ink); }
+.plan-task__num {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+.plan-task__num.is-done { color: var(--success); }
+.plan-bar {
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin: 8px 0 6px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: rgba(28, 25, 23, .08);
+  overflow: hidden;
+  appearance: none;
+}
+.plan-bar::-webkit-progress-bar { background: rgba(28, 25, 23, .08); border-radius: var(--r-pill); }
+.plan-bar::-webkit-progress-value { background: var(--accent); border-radius: var(--r-pill); }
+.plan-bar::-moz-progress-bar { background: var(--accent); border-radius: var(--r-pill); }
+.plan-task__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: var(--muted);
+}
+.plan-task__foot input {
+  width: 58px;
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.plan-other {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #fff;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.plan-other__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.plan-other__name { font-weight: 600; color: var(--ink); }
+.plan-other__meta {
+  margin: 6px 0 8px;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.plan-form {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-solid);
+  padding: 12px;
+  margin: 12px 0;
+}
+.plan-form__title {
+  margin: 0 0 10px;
+  font: 600 13px/1.4 var(--font-body);
+  color: var(--ink);
+}
+.plan-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.plan-grid--full { grid-template-columns: 1fr; }
+.plan-field { display: block; }
+.plan-field span {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.plan-field input,
+.plan-field select,
+.plan-field textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: #fff;
+  color: var(--ink);
+}
+.plan-field textarea { min-height: 62px; resize: vertical; }
+.plan-step { display: none; }
+.plan-step.active { display: block; }
+.plan-step__no {
+  margin: 0 0 6px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.plan-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.plan-msg {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.plan-msg--danger { color: var(--danger); }
+.plan-msg--success { color: var(--success); }
+
+.plan-empty {
+  margin: 0 0 12px;
+  padding: 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md);
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* D27：向导步骤条 + 类型卡片 */
+.plan-wizard { padding: 14px; }
+.plan-steps {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+.plan-steps__item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--paper-deep);
+  color: var(--muted);
+  font-size: 10px;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.plan-steps__no {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-circle);
+  background: #fff;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.plan-steps__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-steps__item.is-on {
+  border-color: var(--gold);
+  background: var(--gold-wash);
+  color: var(--gold-dark);
+}
+.plan-steps__item.is-on .plan-steps__no {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.plan-steps__item.is-done {
+  border-color: var(--line-strong);
+  color: var(--ink-soft);
+}
+
+.plan-picks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.plan-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px;
+  text-align: left;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: #fff;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.plan-pick:hover {
+  border-color: var(--gold);
+  box-shadow: var(--sh-card);
+  transform: translateY(-1px);
+}
+.plan-pick svg {
+  width: 22px;
+  height: 22px;
+  margin-bottom: 4px;
+  color: var(--muted);
+}
+.plan-pick__name {
+  font: 600 12px/1.4 var(--font-body);
+  color: var(--ink);
+}
+.plan-pick__desc {
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.plan-pick.is-on {
+  border-color: var(--accent);
+  background: var(--gold-wash);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.plan-pick.is-on svg { color: var(--gold-dark); }
+.plan-pick.is-on .plan-pick__desc { color: var(--gold-dark); }
+.plan-field--wide { display: block; margin-top: 2px; }
+.plan-form__hint {
+  margin: 2px 0 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.plan-actions--foot {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+/* D25：其他课规的本周记录 */
+.plan-other__reward {
+  margin: 2px 0 8px;
+  font-size: 10px;
+  color: var(--gold-dark);
+}
+.plan-other__idle {
+  margin: 2px 0 8px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .plan-panel {
+    top: auto;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    transform: translateY(32px);
+  }
+  .plan-overlay.open .plan-panel { transform: none; }
+  .plan-body { padding: 12px 14px 28px; }
+  .plan-grid { grid-template-columns: 1fr; }
+  .plan-picks { grid-template-columns: 1fr; }
+  .plan-overlay.is-page .plan-panel { margin: 0; border-radius: 0; border: 0; }
+}

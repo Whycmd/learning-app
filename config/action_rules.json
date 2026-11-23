@@ -1,0 +1,81 @@
+{
+  "_comment": "v1.5.1-T005 HOME-NAV 动作词典：周报锚点与 AI 导航共用。threshold=命中词权重之和的最小值；forbid=出现即不挂；params=按文本补查询参数。改本文件后重启后端生效。",
+  "threshold": 2,
+  "actions": [
+    {
+      "id": "review",
+      "label": "去复习",
+      "route": "/pages/review.html",
+      "keywords": { "复习": 3, "背单词": 2, "过一遍": 2, "到期": 2, "遗忘": 1 },
+      "forbid": ["不复习", "别复习"]
+    },
+    {
+      "id": "quiz",
+      "label": "去小测",
+      "route": "/pages/daily-quiz.html",
+      "keywords": { "小测": 3, "测验": 3, "测试": 2 },
+      "forbid": []
+    },
+    {
+      "id": "retry",
+      "label": "去重练",
+      "route": "/pages/review.html?retry=1",
+      "keywords": { "重练": 3, "再练": 3, "再做一遍": 2, "清空队列": 2 },
+      "forbid": []
+    },
+    {
+      "id": "wrongbook",
+      "label": "去错题本",
+      "route": "/pages/wrongbook.html",
+      "keywords": { "错题": 4, "错因": 2, "拼写": 1, "词义": 1, "搭配": 1, "语法": 1 },
+      "forbid": [],
+      "params": [
+        { "match": "拼写", "query": "error_type=spelling" },
+        { "match": "词义", "query": "error_type=meaning" },
+        { "match": "搭配", "query": "error_type=collocation" },
+        { "match": "语法", "query": "error_type=grammar" }
+      ]
+    },
+    {
+      "id": "wordbook",
+      "label": "去词表库",
+      "route": "/pages/wordbook.html",
+      "keywords": { "词表": 3, "单词本": 2, "背词": 1 },
+      "forbid": []
+    },
+    {
+      "id": "plan",
+      "label": "去订课规",
+      "route": "/pages/plan.html",
+      "keywords": { "课规": 3, "目标": 2, "计划": 2 },
+      "forbid": []
+    },
+    {
+      "id": "weekly",
+      "label": "看周报",
+      "route": "/pages/learning-center.html?tab=weekly",
+      "keywords": { "周报": 3, "上周": 2, "学情": 2 },
+      "forbid": []
+    },
+    {
+      "id": "kp",
+      "label": "去知识点",
+      "route": "/pages/kp-entry.html",
+      "keywords": { "知识点": 3, "精讲": 2, "讲解": 2 },
+      "forbid": []
+    },
+    {
+      "id": "onboard",
+      "label": "新手引导",
+      "route": "/?onboard=1",
+      "keywords": { "再看一遍引导": 4, "再看一遍导览": 4, "新手引导": 3, "本页引导": 4, "本页导览": 4 },
+      "forbid": ["不想要引导", "别引导"],
+      "pageRoutes": {
+        "/pages/review.html": "/pages/review.html?tour=1",
+        "/pages/kp-entry.html": "/pages/kp-entry.html?tour=1",
+        "/pages/daily-quiz.html": "/pages/daily-quiz.html?tour=1",
+        "/pages/wordbook.html": "/pages/wordbook.html?tour=1"
+      }
+    }
+  ]
+}

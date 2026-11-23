@@ -1,0 +1,16 @@
+{
+  "_comment": "v1.5.0-T006 AI 使用限额：guest 为游客按自然日计数（Cookie 标识）；user 为登录用户按自然日计数（讲解+练习合计 15 次、50 万 tokens 先到先限）；idle_on_exceed=true 表示超额转空闲队列降速处理",
+  "guest": {
+    "explain": 10,
+    "custom_exercise": 1
+  },
+  "user": {
+    "explain_plus_exercise": 15,
+    "tokens_per_day": 500000
+  },
+  "queue": {
+    "idle_hint_min_items": 5,
+    "idle_hint_min_eta_sec": 60
+  },
+  "idle_on_exceed": true
+}

@@ -197,6 +197,6 @@ git push -u origin feature/v1.5.0-T001-team-list
 ## 八、文档与人工修改渠道
 
 - 迭代流程（需求确认 → 计划 → 开发 → 自测 → 全量回归 → 文档同步 → 版本号）见 [AGENTS.md](AGENTS.md)；各阶段执行细则见 `documents/skills/`。
-- 任务完成后需同步 `documents/devlog/`：`产品现状.md`、`开发计划.md`、`工作总结.md`、`核心参数.md`。
+- 任务完成后需同步 `documents/devlog/`：`产品现状.md`、`工作计划/02-已完成任务摘要.md`、`工程日记/`、`核心参数.md`。
 - 可直接人工修改、无需改代码的配置：`config/db.json`、`config/ai.json`、`config/app.json`、`config/rewards.json`。
 - 文档中的文件路径、接口与函数名必须与代码一致；发现文档冲突请提 Issue，不要自行猜测。

@@ -17,12 +17,13 @@
 namespace eng
 {
 
-// 请求级身份上下文：beforeDispatch 中按 Cookie 设置；未登录=1（游客）
+// 请求级身份上下文：beforeDispatch 中按 Cookie 设置；未登录=0（无账号）
+// id=1 为系统账号（仅供测试），不再代表游客
 // C++17 inline thread_local，头文件被多个翻译单元包含也安全
 class RequestContext
 {
 public:
-  static inline thread_local int userId = 1;
+  static inline thread_local int userId = 0;
 
   static int currentUserId()
   {

@@ -6,7 +6,7 @@
 <title>登录 · 英语学习</title>
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/style.css">
-<link rel="stylesheet" href="/static/components.css">
+<link rel="stylesheet" href="/static/components.css?v=20261123">
 <script src="/static/theme.js"></script>
 </head>
 <body>
@@ -21,6 +21,13 @@
     <div class="auth-tabs" role="tablist">
       <button class="auth-tab is-active" data-tab="login" role="tab" aria-selected="true">登录</button>
       <button class="auth-tab" data-tab="register" role="tab" aria-selected="false">注册</button>
+    </div>
+
+    <div class="auth-judge">
+      <b>第一次来？</b>账号已填好，直接点「登录」即可用体验账号逛一逛；登录后有 3 步引导，约 5 分钟走完主流程。
+      <span style="display:block;margin-top:4px;color:var(--muted);font-size:12px">
+        正式使用请切换到「注册」，学习数据会独立保存。备用体验账号 <code>templecat</code>、<code>goldfox</code>，密码同为 <code>demo1234</code>。
+      </span>
     </div>
 
     <!-- 登录 -->
@@ -59,17 +66,31 @@
     </form>
 
     <div class="auth-msg" id="auth-msg"></div>
-    <div class="auth-back"><a href="/">← 返回首页（游客身份继续使用）</a></div>
+    <div class="auth-back">
+      <a href="/">← 返回首页浏览</a>
+      <span class="auth-legal">
+        <a href="/pages/privacy.html">隐私政策</a> · <a href="/pages/terms.html">用户协议</a>
+      </span>
+    </div>
   </div>
 </div>
 
 <script>
 (() => {
-  // —— 已登录访问：提示并回首页 ——
+  // —— 登录成功后的回跳地址（仅允许站内路径，防开放跳转） ——
+  const REDIRECT = (() => {
+    const p = new URLSearchParams(location.search).get('redirect') || '/';
+    return (p.startsWith('/') && !p.startsWith('//')) ? p : '/';
+  })();
+
+  // v1.5.0-T006-T7：keep=1 时把游客本次讲解/练习一次性挂到登录账号
+  const KEEP = new URLSearchParams(location.search).get('keep') === '1';
+
+  // —— 已登录访问：直接回目标页 ——
   async function checkAlreadyLogin() {
     try {
       const me = await (await fetch('/api/auth/me', { cache: 'no-store' })).json();
-      if (me && !me.guest) location.replace('/');
+      if (me && !me.guest) location.replace(REDIRECT);
     } catch (e) {}
   }
 
@@ -133,7 +154,8 @@
     showMsg('', '登录中…');
     const body = {
       username: document.getElementById('login-username').value.trim(),
-      password: document.getElementById('login-password').value
+      password: document.getElementById('login-password').value,
+      keep: KEEP
     };
     try {
       const r = await fetch('/api/auth/login', {
@@ -143,7 +165,7 @@
       const data = await r.json().catch(() => ({}));
       if (r.ok && data.ok) {
         showMsg('auth-msg--ok', '登录成功，正在进入…');
-        setTimeout(() => location.replace('/'), 500);
+        setTimeout(() => location.replace(REDIRECT), 500);
       } else {
         showMsg('auth-msg--err', data.error || '登录失败');
       }
@@ -178,10 +200,10 @@
       showMsg('auth-msg--ok', '注册成功，正在自动登录…');
       const lr = await fetch('/api/auth/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password, keep: KEEP })
       });
       const loginData = await lr.json().catch(() => ({}));
-      if (lr.ok && loginData.ok) setTimeout(() => location.replace('/'), 500);
+      if (lr.ok && loginData.ok) setTimeout(() => location.replace(REDIRECT), 500);
       else {
         showMsg('auth-msg--err', '注册成功，但自动登录失败：' + (loginData.error || '请手动登录'));
         switchTab('login');
@@ -193,7 +215,13 @@
     btn.disabled = false;
   }
 
-  // 启动
+  // 启动：预填评委体验账号（可用 ?nofill=1 关闭）
+  if (!new URLSearchParams(location.search).has('nofill')) {
+    const u = document.getElementById('login-username');
+    const p = document.getElementById('login-password');
+    if (!u.value) u.value = 'wordninja';
+    if (!p.value) p.value = 'demo1234';
+  }
   checkAlreadyLogin();
   loadLearnerIdentities();
 })();

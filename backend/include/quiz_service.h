@@ -57,10 +57,10 @@ public:
       + " AND quiz_date=CURDATE()");
     r.attemptNo = cntRows.empty() ? 1 : std::stoi(cntRows[0]["c"]) + 1;
 
-    // 已固化知识点池（随机抽 6 个）
+    // 已固化知识点池（随机抽 6 个；v1.5.0-T005：只取手工录入，教材词不参与小测）
     auto poolRows = db_.query(
       "SELECT id FROM knowledge_points WHERE user_id=" + std::to_string(uid)
-      + " AND is_solidified=1 ORDER BY RAND() LIMIT 6");
+      + " AND is_solidified=1 AND origin='manual' ORDER BY RAND() LIMIT 6");
     if (poolRows.empty())
     {
       r.error = "请先录入并固化至少 1 个知识点";
@@ -107,7 +107,7 @@ public:
       {{"role", "system"}, {"content", prompts::DAILY_QUIZ_SYSTEM}},
       {{"role", "user"}, {"content", userPrompt}}
     };
-    auto resp = ai_.postChat(msgs, true, 1600, 0.6);
+    auto resp = ai_.postChat(msgs, true, 1600, 0.6, "quiz_generate");
     if (!resp.ok)
     {
       r.code = 500;
@@ -372,6 +372,12 @@ public:
         ua.empty() ? "未作答。"
                    : correct ? "回答正确。"
                              : "回答错误，正确答案为 " + correctAnswer + "。");
+      // v1.5.1-T002：供错题归因使用的题目上下文
+      res["knowledge_id"] = JsonValue::makeInt(q.getInt("knowledge_id", 0));
+      res["question_type"] = JsonValue::makeString(type);
+      res["user_answer"] = JsonValue::makeString(ua);
+      if (const JsonValue* opts = q.find("options"); opts && opts->isArray())
+        res["options"] = *opts;
       r.results.push_back(JsonValue::makeObject(res));
 
       JsonObject log;

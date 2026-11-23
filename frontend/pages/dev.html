@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>开发者看板 · 学习圣殿</title>
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/components.css?v=20261121">
+<link rel="stylesheet" href="/static/dev.css">
+<script src="/static/theme.js"></script>
+<script src="/static/nav.js"></script>
+<script>
+// ===== 人工修改渠道：界面展示名映射（代码内部保留英文枚举，此处只改显示） =====
+window.DEV_LABELS = {
+  status: {
+    backlog: { new: "新提交", triage: "待分拣", accepted: "已采纳", planned: "已排期", shipped: "已上线", rejected: "已拒绝" },
+    bugs:    { new: "新提交", triage: "待分拣", confirmed: "已确认", fixing: "修复中", fixed: "已修复", closed: "已关闭", duplicate: "重复" }
+  },
+  priority: { P0: "P0", P1: "P1", P2: "P2" },
+  severity: { blocker: "阻断", major: "严重", minor: "轻微" },
+  category: {
+    backlog: { feature: "新功能", enhancement: "改进" },
+    bugs:    { ui: "界面", api: "接口", data: "数据", export: "导出", content: "内容" }
+  }
+};
+</script>
+<script src="/static/dev.js"></script>
+</head>
+<body>
+<div id="topbar-slot"></div>
+
+<div class="page" id="dv-main">
+  <h1 class="section-title">开发者看板</h1>
+  <p class="section-sub">用户反馈的需求与问题都在这里分拣</p>
+
+  <div class="dv-tabs" id="dv-tabs">
+    <button class="dv-tab is-active" data-tab="backlog" type="button">开发计划 <span class="dv-badge" id="dv-badge-backlog">0</span></button>
+    <button class="dv-tab" data-tab="bugs" type="button">Bug 列表 <span class="dv-badge" id="dv-badge-bugs">0</span></button>
+    <button class="dv-tab" data-tab="triage" type="button">待分拣 <span class="dv-badge" id="dv-badge-triage">0</span></button>
+  </div>
+
+  <div class="dv-filter" id="dv-filter"></div>
+
+  <div id="dv-list" class="dv-list"></div>
+  <p class="dv-empty" id="dv-empty" hidden>暂无记录</p>
+</div>
+
+<div class="page" id="dv-denied" hidden>
+  <section class="wing-card dv-denied-card">
+    <p class="dv-denied-text">此页面仅开发者可访问</p>
+  </section>
+</div>
+</body>
+</html>

@@ -197,6 +197,10 @@ private:
 class MockAiProvider : public IAiProvider {
   AiConfig cfg_;
   JsonValue fixture_ = JsonValue::makeObject({});
+  // [TEST] 按 base_url 指定前 N 次请求失败（用于验证主备切换）
+  int failRemaining_ = 0;
+  // [TEST] 每次请求固定延迟，用于队列超时用例
+  int delayMs_ = 0;
 
   static std::string fillWord(const std::string& s, const std::string& word) {
     std::string out = s;
@@ -364,6 +368,44 @@ class MockAiProvider : public IAiProvider {
     return JsonValue::makeObject(root);
   }
 
+  JsonValue buildWordlist(const std::string& user) {
+    std::string topic = "mock topic";
+    const std::string topicKey = "主题：";
+    size_t tp = user.find(topicKey);
+    if (tp != std::string::npos) {
+      size_t start = tp + topicKey.size();
+      size_t e = user.find('\n', start);
+      std::string v = user.substr(start, e == std::string::npos ? std::string::npos : e - start);
+      size_t b = v.find_first_not_of(" \t\r\n");
+      if (b != std::string::npos) topic = v.substr(b);
+    }
+    int count = 5;
+    const std::string countKey = "目标词数：";
+    size_t cp = user.find(countKey);
+    if (cp != std::string::npos) {
+      try { count = std::stoi(user.substr(cp + countKey.size())); } catch (...) {}
+    }
+    if (count < 1) count = 5;
+    if (count > 50) count = 50;
+
+    static const std::vector<std::string> base = {
+      "apple", "book", "change", "develop", "effort", "famous", "grow", "help", "important", "journey"
+    };
+    JsonArray words;
+    for (int i = 0; i < count; ++i) {
+      std::string w = i < (int)base.size() ? base[i] : ("term_" + std::to_string(i + 1));
+      JsonObject o;
+      o["word"] = JsonValue::makeString(w);
+      o["meaning"] = JsonValue::makeString(secStr("wordlist", "meaning", "（模拟）释义"));
+      o["pos"] = JsonValue::makeString(secStr("wordlist", "pos", "n."));
+      words.push_back(JsonValue::makeObject(o));
+    }
+    JsonObject root;
+    root["title"] = JsonValue::makeString("Mock · " + topic);
+    root["words"] = JsonValue::makeArray(words);
+    return JsonValue::makeObject(root);
+  }
+
   JsonValue buildGrade(const std::string& user) {
     std::string ref = secStr("grade", "reference_answer", "（模拟）参考译文");
     size_t p = user.find("参考答案：");
@@ -426,6 +468,75 @@ class MockAiProvider : public IAiProvider {
     return JsonValue::makeObject(root);
   }
 
+  JsonValue buildExplain(const std::string& user) {
+    std::string text = "mock";
+    size_t p = user.find("学习内容：");
+    if (p != std::string::npos) {
+      size_t e = user.find('\n', p);
+      text = user.substr(p + 15, e == std::string::npos ? std::string::npos : e - (p + 15));
+    }
+    std::string summary = fillWord(secStr("explain", "summary", "（模拟）{WORD} 的核心释义"), text);
+    std::string md = fillWord(secStr("explain", "markdown", "# 单词精讲：{WORD}\n\n- （模拟）核心含义"), text);
+    JsonObject s1;
+    s1["title"] = JsonValue::makeString("核心含义");
+    s1["content"] = JsonValue::makeString("（模拟）这是核心含义讲解");
+    JsonObject s2;
+    s2["title"] = JsonValue::makeString("用法要点");
+    s2["content"] = JsonValue::makeString("（模拟）这是用法要点");
+    JsonObject o;
+    o["summary"] = JsonValue::makeString(summary);
+    o["markdown_content"] = JsonValue::makeString(md);
+    o["sections"] = JsonValue::makeArray({JsonValue::makeObject(s1), JsonValue::makeObject(s2)});
+    return JsonValue::makeObject(o);
+  }
+
+  // 从 "题型数量：cloze_choice×2 ..." 还原题型与数量
+  JsonValue buildCustomExercise(const std::string& user) {
+    std::vector<std::pair<std::string, int>> plan;
+    size_t p = user.find("题型数量：");
+    std::string seg;
+    if (p != std::string::npos) {
+      size_t e = user.find("；", p);
+      seg = user.substr(p + 15, e == std::string::npos ? std::string::npos : e - (p + 15));
+    }
+    std::istringstream is(seg);
+    std::string tok;
+    while (is >> tok) {
+      size_t x = tok.find("×");
+      if (x == std::string::npos) continue;
+      std::string type = tok.substr(0, x);
+      int n = 0;
+      try { n = std::stoi(tok.substr(x + 2)); } catch (...) { continue; }
+      if (n > 0) plan.push_back({type, n});
+    }
+    if (plan.empty()) plan.push_back({"cloze_choice", 1});
+    JsonArray items;
+    for (auto& kv : plan) {
+      for (int i = 0; i < kv.second && items.size() < 100; i++) {
+        std::string type = kv.first;
+        std::string word = secStr("custom_exercise", "word", "mock");
+        JsonObject it;
+        it["type"] = JsonValue::makeString(type);
+        it["word"] = JsonValue::makeString(word);
+        it["stem"] = JsonValue::makeString(
+            fillWord(secStr("custom_exercise", "stem", "He ___ to school every day. ({WORD})"), word));
+        if (type == "word_match" || type == "cloze_choice") {
+          it["options"] = JsonValue::makeArray({
+              JsonValue::makeString("A. optionA"), JsonValue::makeString("B. optionB"),
+              JsonValue::makeString("C. optionC"), JsonValue::makeString("D. optionD")});
+          it["answer"] = JsonValue::makeString("A");
+        } else {
+          it["answer"] = JsonValue::makeString(secStr("custom_exercise", "answer", "mock"));
+        }
+        it["explanation"] = JsonValue::makeString("（模拟）解析");
+        items.push_back(JsonValue::makeObject(it));
+      }
+    }
+    JsonObject o;
+    o["items"] = JsonValue::makeArray(items);
+    return JsonValue::makeObject(o);
+  }
+
 public:
   void setConfig(const AiConfig& c) override {
     cfg_ = c;
@@ -440,6 +551,24 @@ public:
     } catch (...) {
       // fixture 缺失/损坏时使用内置默认值，不影响 Mock 启动
     }
+    // 主备切换测试：fail_by_base_url 为 { "<base_url>": N }，N 次请求内返回 5xx
+    failRemaining_ = 0;
+    if (auto* byUrl = fixture_.find("fail_by_base_url"); byUrl && byUrl->isObject()) {
+      if (auto* n = byUrl->find(c.base_url); n) failRemaining_ = (int)n->asInt();
+    }
+    // [TEST] 环境变量覆写，避免修改共享 fixture 影响其他套件
+    if (const char* v = std::getenv("ENG_AI_MOCK_FAIL_BY_URL"); v && *v) {
+      try {
+        auto arr = parseJson(v);
+        if (arr.isObject()) {
+          if (auto* n = arr.find(c.base_url); n) failRemaining_ = (int)n->asInt();
+        }
+      } catch (...) {}
+    }
+    delayMs_ = topInt("delay_ms", 0);
+    if (const char* v = std::getenv("ENG_AI_MOCK_DELAY_MS"); v && *v) {
+      try { delayMs_ = std::max(0, std::stoi(v)); } catch (...) {}
+    }
   }
   AiProviderType getProviderType() const override { return AiProviderType::MOCK; }
   bool isDegraded() const override {
@@ -451,6 +580,15 @@ public:
 
   AiResponse postChat(const AiRequest& req) override {
     AiResponse r;
+    if (delayMs_ > 0)
+      std::this_thread::sleep_for(std::chrono::milliseconds(delayMs_));
+    if (failRemaining_ > 0) {
+      failRemaining_--;
+      r.status = topInt("server_error_status", 503);
+      r.body = "mock upstream error (provider fail plan)";
+      r.ok = false;
+      return r;
+    }
     if (cfg_.mock_mode == "timeout") {
       int ms = topInt("timeout_delay_ms", 300);
       if (ms > 0) std::this_thread::sleep_for(std::chrono::milliseconds(ms));
@@ -475,9 +613,78 @@ public:
     }
 
     JsonValue out;
-    if (sys.find("grading assistant") != std::string::npos ||
+    if (sys.find("continuing an existing explanation") != std::string::npos) {
+      // v1.5.0-T008：精讲追问
+      JsonObject o;
+      o["answer_md"] = JsonValue::makeString(
+          secStr("followup", "answer_md", "## （模拟）追问回答\n\n- 这是模拟追问内容"));
+      o["section_title"] = JsonValue::makeString(secStr("followup", "section_title", "（模拟）追问"));
+      out = JsonValue::makeObject(o);
+    } else if (sys.find("grading a subjective exercise") != std::string::npos) {
+      JsonObject o;
+      o["score"] = JsonValue::makeInt(90);
+      o["correct"] = JsonValue::makeBool(true);
+      o["feedback"] = JsonValue::makeString("（模拟）批改通过");
+      o["reference"] = JsonValue::makeString(secStr("grade", "reference_answer", "（模拟）参考答案"));
+      out = JsonValue::makeObject(o);
+    } else if (sys.find("English tutor") != std::string::npos) {
+      out = buildExplain(user);
+    } else if (sys.find("English test item writer") != std::string::npos) {
+      out = buildCustomExercise(user);
+    } else if (sys.find("grading assistant") != std::string::npos ||
         user.find("请批改以下英语主观题答案") != std::string::npos) {
       out = buildGrade(user);
+    } else if (sys.find("vocabulary list generator") != std::string::npos) {
+      out = buildWordlist(user);
+    } else if (sys.find("英语学习教练") != std::string::npos) {
+      // v1.5.1-T003：学情周报下周建议（返回 answer 形状，验证前端/服务端兼容）
+      JsonArray arr;
+      arr.push_back(JsonValue::makeString("（模拟）每天复习 10 个易错词，先清空重练队列。"));
+      arr.push_back(JsonValue::makeString("（模拟）把课规目标拆小，保证每天不断档。"));
+      JsonObject o;
+      o["answer"] = JsonValue::makeArray(arr);
+      out = JsonValue::makeObject(o);
+    } else if (sys.find("站内导航助手") != std::string::npos) {
+      // v1.5.1-T005：AI 导航；v1.5.2-T001：判定 JSON 夹具（按最后一条用户消息关键词分支，
+      // 默认 answerable 保持 stage33 行为；关键词改动需与 tests/stage34_dev_intake.test.js 同步）
+      std::string navText;
+      for (const auto& m : req.messages)
+        if (m.count("role") && m.at("role") != "system" && m.count("content")) navText = m.at("content");
+      auto navOut = [](const std::string& reply, const std::string& kind,
+                       const std::string& title, const std::string& category, double conf) {
+        JsonObject o;
+        o["reply"] = JsonValue::makeString(reply);
+        o["kind"] = JsonValue::makeString(kind);
+        if (!title.empty()) o["title"] = JsonValue::makeString(title);
+        if (!category.empty()) o["category"] = JsonValue::makeString(category);
+        o["confidence"] = JsonValue::makeDouble(conf);
+        return JsonValue::makeObject(o);
+      };
+      if (navText.find("日语") != std::string::npos)
+        out = navOut("这个暂不在本应用范围，本站只做英语学习。", "out_of_scope", "支持日语听力练习", "", 0.9);
+      else if (navText.find("点了没反应") != std::string::npos)
+        out = navOut("操作没响应确实不正常，我帮你记录下来。", "bug", "导出单词卡按钮无反应", "export", 0.9);
+      else if (navText.find("数据不显示") != std::string::npos)
+        out = navOut("数据没显示确实不正常，我帮你记录下来。", "bug", "错题本数据不显示", "data", 0.9);
+      else if (navText.find("横版") != std::string::npos)
+        out = navOut("这个功能现在还没有，你的建议我帮你记录下来。", "feature_request", "想要横版单词卡", "enhancement", 0.9);
+      else if (navText.find("听写") != std::string::npos)
+        out = navOut("听写练习现在还没有，你的建议我帮你记录下来。", "feature_request", "支持听写练习", "feature", 0.9);
+      else if (navText.find("低置信") != std::string::npos)
+        out = navOut("这个我不太确定，先帮你记下来。", "feature_request", "低置信测试需求", "enhancement", 0.2);
+      else if (navText.find("纯文本") != std::string::npos)
+        out = JsonValue::makeString("（模拟）这是一段纯文本回复"); // 非对象 → 判定缺失，走降级
+      else if (navText.find("坏JSON") != std::string::npos)
+      {
+        r.status = 200;
+        r.ok = true;
+        r.body = "{\"content\":\"（模拟）坏JSON降级回复\"}";
+        r.extractedJson = "{这不是合法 JSON";
+        return r;
+      }
+      else
+        out = navOut(secStr("ai_nav", "reply", "（模拟）今天有 3 个到期词，先完成每日复习，再做一次小测。"),
+                     "answerable", "", "", 0.95);
     } else if (sys.find("exercise generator") != std::string::npos) {
       out = buildExercise(user);
     } else if (sys.find("daily-quiz") != std::string::npos) {

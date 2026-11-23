@@ -50,6 +50,23 @@ start_log_rotate() {
   okmsg "日志轮转已启动（$log_dir）"
 }
 
+# 每日备份守护（v1.5.0-T011）：mysqldump 每日一次，保留 7 天
+start_backup_daily() {
+  local log_dir="${APP_LOG_DIR:-$HOME/.local/log}"
+  local pid_file="$HOME/.local/run/backup_daily.pid"
+  mkdir -p "$log_dir" "$HOME/.local/run"
+  if [ -f "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+    return 0
+  fi
+  if ! command -v node >/dev/null 2>&1; then
+    warn "未找到 node，跳过每日备份"
+    return 0
+  fi
+  nohup node "$ROOT/scripts/backup_daily.js" --watch >> "$log_dir/backup_daily.out" 2>&1 &
+  echo $! > "$pid_file"
+  okmsg "每日备份已启动（保留 7 天）"
+}
+
 cmd_up() {
   local mode="${1:-docker}"
   if [ "$mode" = "--host" ] || [ "$mode" = "host" ]; then
@@ -66,6 +83,7 @@ cmd_up() {
       host_backend_running && okmsg "后端已启动 http://127.0.0.1:8088" || err "后端启动失败，查看 ./dev logs"
     fi
     start_log_rotate
+    start_backup_daily
     return 0
   fi
 

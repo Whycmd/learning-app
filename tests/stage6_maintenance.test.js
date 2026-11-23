@@ -213,7 +213,8 @@ async function main() {
     // 手动发送无效 JSON
     const e4r = await new Promise((resolve, reject) => {
       const r = http.request({ host:API_HOST, port:API_PORT, method:'POST', path:'/api/kp',
-        headers: {'Content-Type':'application/json','Content-Length':5} }, res => {
+        headers: { 'Content-Type':'application/json','Content-Length':5,
+          ...(COOKIE ? { 'Cookie': 'eng_session=' + COOKIE } : {}) } }, res => {
         let c=[]; res.on('data',d=>c.push(d)); res.on('end',()=>resolve({status:res.statusCode}));
       });
       r.on('error', reject);

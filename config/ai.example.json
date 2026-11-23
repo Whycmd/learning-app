@@ -10,5 +10,21 @@
   "temperature_default": 0.4,
   "retry_times": 2,
   "retry_interval_sec": 2,
-  "max_concurrency": 3
+  "max_concurrency": 3,
+  "_comment_providers": "主备模型数组，顺序即切换顺序；留空 [] 时用上方顶层字段组成单模型。每项字段：name/base_url/api_key/chat_model/provider_type",
+  "providers": [],
+  "fail_threshold": 3,
+  "degraded_cooldown_sec": 600,
+  "_comment_queue": "AI 队列：max_size 队列上限（超出返回 429）、task_timeout_sec 单任务累计超时、retry_max 队列层重试次数、backoff_base_sec 指数退避基数、avg_cost_cold_start_sec 冷启动平均耗时估计；idle_max_workers 空闲队列最多占用 worker 数、idle_max_level 空闲队列最大层级、idle_hint_min_items / idle_hint_min_eta_sec 前端提示转入空闲队列的阈值",
+  "queue": {
+    "max_size": 1024,
+    "task_timeout_sec": 180,
+    "retry_max": 2,
+    "backoff_base_sec": 2,
+    "avg_cost_cold_start_sec": 30,
+    "idle_max_workers": 1,
+    "idle_max_level": 3,
+    "idle_hint_min_items": 5,
+    "idle_hint_min_eta_sec": 60
+  }
 }

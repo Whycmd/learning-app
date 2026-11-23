@@ -30,6 +30,7 @@ function api(method, urlPath, body, timeoutMs=30000) {
     const data = body ? JSON.stringify(body) : null;
     const headers = { 'Content-Type': 'application/json',
                       'Content-Length': data ? Buffer.byteLength(data) : 0 };
+    require('./_system').withSystemCookie(headers);
     const req = http.request({
       host: u.hostname, port: u.port, method, path: u.pathname + u.search,
       headers, timeout: timeoutMs

@@ -92,8 +92,12 @@ async function main() {
   // ---- 0. 游客默认身份 ----
   console.log('[0] 游客默认身份');
   const guestMe = await api('GET', '/api/auth/me');
-  if (guestMe.json?.guest === true && guestMe.json.user_id === 1) ok('无 Cookie 时身份为游客 user_id=1');
+  if (guestMe.json?.guest === true && guestMe.json.user_id === 0) ok('无 Cookie 时身份为游客 user_id=0');
   else ko('无 Cookie 时身份为游客', JSON.stringify(guestMe.json));
+
+  const guestWrite = await api('POST', '/api/kp', { user_input_content: 'guest_should_fail' });
+  if (guestWrite.status === 401) ok('未登录写接口返回401');
+  else ko('未登录写接口返回401', `status=${guestWrite.status}`);
 
   const junkMe = await api('GET', '/api/auth/me', null, 'deadbeef0123456789abcdef');
   if (junkMe.json?.guest === true) ok('无效 Cookie 回退为游客');

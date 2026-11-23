@@ -1,0 +1,100 @@
+# ============================================================
+# 生产部署（比赛评审用）：数据库 + 应用
+#
+# 与 docker-compose.yml 的区别只有三处：
+#   1. 应用端口改为 80，纯公网 IP 直接访问（不做域名 / HTTPS）
+#   2. 容器重启策略改为 always，服务器重启后自动拉起
+#   3. 容器日志限 10MB × 3，避免 40G 系统盘被日志写满
+#
+# 用法：
+#   cp .env.prod.example .env.prod     ← 填强密码与 AI Key
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#
+# 安全边界：
+#   - 只对外暴露 80；MySQL 3306 不映射到宿主机
+#   - 数据库数据仍在命名卷 mysql_data 中，删容器不丢数据
+# ============================================================
+
+name: english-learning-app
+
+services:
+  # ---------- 数据库 ----------
+  db:
+    image: ${MYSQL_IMAGE:-docker.m.daocloud.io/library/mysql:8.0}
+    container_name: elf-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env.prod 中设置 MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-english_learning}
+      MYSQL_USER: ${MYSQL_USER:-eng_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env.prod 中设置 MYSQL_PASSWORD}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/sql:/docker-entrypoint-initdb.d:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --lower-case-table-names=2
+      - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - elf
+
+  # ---------- 应用 ----------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-docker.m.daocloud.io/library/node:20-slim}
+    container_name: elf-app
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-english_learning}
+      MYSQL_USER: ${MYSQL_USER:-eng_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env.prod 中设置 MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env.prod 中设置 MYSQL_ROOT_PASSWORD}
+      DB_HOST: db
+      DB_PORT: "3306"
+      MYSQL_BIN: /app/tests/_mysql_tcp_shim.sh
+      MYSQL_PW_FILE: /tmp/.mysql_root_pw
+      DB_PASSWORD_FILE: /tmp/.mysql_root_pw
+      ZHIPU_API_KEY: ${ZHIPU_API_KEY:-}
+      TZ: ${TZ:-Asia/Shanghai}
+      LOCALAI_LOG_DIR: /app/logs
+      APP_ROOT: /app
+    ports:
+      # 公网 80 直接映射到容器内 8088；纯 IP + HTTP，不做 HTTPS
+      - "80:8088"
+    volumes:
+      - ./word_tmp:/app/word_tmp
+      - ./backups:/app/backups
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - elf
+
+volumes:
+  mysql_data:
+
+networks:
+  elf:
+    driver: bridge

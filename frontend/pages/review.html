@@ -6,7 +6,8 @@
 <title>每日复习 · 学习圣殿</title>
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/style.css">
-<link rel="stylesheet" href="/static/components.css">
+<link rel="stylesheet" href="/static/components.css?v=20261121">
+<link rel="stylesheet" href="/static/ai-tutor.css">
 <script src="/static/theme.js"></script>
 <script src="/static/nav.js"></script>
 </head>
@@ -23,6 +24,13 @@
   <h1 class="section-title">每日复习</h1>
   <p class="section-sub">基于遗忘曲线推送到期知识点 · 候选池 → AI 出题 → 答题批改 → 完成复习</p>
 
+  <div class="segmented tutor-tabs" id="review-tabs">
+    <button type="button" data-tab="review" class="is-active">每日复习</button>
+    <button type="button" data-tab="practice">定制练习</button>
+  </div>
+
+  <div id="panel-review">
+
   <div class="review-layout">
 
     <!-- 左主栏：习题区 / 引导空态 -->
@@ -35,8 +43,8 @@
           </span>
           <span class="wing-card__title">候课池空</span>
         </div>
-        <p class="u-prose">暂无到期知识点。录入并固化新单词，或等待复习到期后自动进入候选。</p>
-        <a class="btn btn-primary u-mt-md" href="/pages/kp-entry.html">去录入知识点 →</a>
+        <p class="u-prose">今天没有要复习的词。录入新词后会自动排进复习。</p>
+        <a class="btn btn-primary u-mt-md" href="/pages/kp-entry.html">去录入新词 →</a>
       </section>
 
       <!-- 模式 + 技能说明 -->
@@ -52,13 +60,14 @@
           <button type="button" data-mode="daily" class="is-active">按日复习</button>
           <button type="button" data-mode="weekly">按周复习</button>
         </div>
-        <p class="u-muted u-mt-md text-sm">四个模式覆盖 听·说·读·写。当前题型实际考察 <strong>读 · 写</strong>（词义辨析、词性转换、翻译、仿写）。</p>
+        <p class="u-muted u-mt-md text-sm">听、说模块尚未开放；读、写由现有题型覆盖（词义辨析、词性转换、翻译、仿写）。</p>
         <div class="skill-grid">
-          <button class="skill-btn skill-btn--listen" type="button" data-skill="listen">听力</button>
-          <button class="skill-btn skill-btn--speak" type="button" data-skill="speak">口语</button>
+          <button class="skill-btn skill-btn--listen is-soon" type="button" disabled title="听力 · 即将开放">听力<span class="soon-badge">即将开放</span></button>
+          <button class="skill-btn skill-btn--speak is-soon" type="button" disabled title="口语 · 即将开放">口语<span class="soon-badge">即将开放</span></button>
           <button class="skill-btn skill-btn--read" type="button" data-skill="read">阅读</button>
           <button class="skill-btn skill-btn--write" type="button" data-skill="write">写作</button>
         </div>
+        <p class="state-line" id="mode-msg"></p>
       </section>
 
       <!-- 习题区（默认隐藏，出题成功后显示） -->
@@ -70,7 +79,8 @@
           <span class="wing-card__title">习题</span>
           <span class="wing-card__meta" id="q-count">–</span>
         </div>
-        <a class="btn btn-secondary u-mt-md" id="word-dl" download>下载习题 Word 文档</a>
+        <button class="btn btn-secondary u-mt-md" id="btn-export-paper" type="button">导出练习卷 Word</button>
+        <p class="state-line" id="export-msg"></p>
         <div id="questions"></div>
         <button class="btn btn-primary u-full u-mt-md" id="btn-finish" type="button">
           完成本次复习 · 计算下次复习时间
@@ -94,6 +104,8 @@
           <button class="btn btn-secondary u-btn-sm" type="button" id="btn-all">全选</button>
           <button class="btn btn-secondary u-btn-sm" type="button" id="btn-none">全不选</button>
         </div>
+        <button class="btn btn-primary btn-block u-mt-md" id="btn-gen" type="button">AI 生成习题</button>
+        <p class="state-line" id="gen-msg"></p>
         <div class="scroll">
           <div class="task-list" id="candidate-list">
             <div class="skeleton skeleton--text"></div>
@@ -101,15 +113,135 @@
             <div class="skeleton skeleton--text"></div>
           </div>
         </div>
-        <button class="btn btn-primary btn-block u-mt-md" id="btn-gen" type="button">AI 生成习题</button>
-        <p class="state-line" id="gen-msg"></p>
       </section>
     </aside>
 
   </div>
 
+  </div><!-- /panel-review -->
+
+  <!-- ==================== 页签二：定制练习 ==================== -->
+  <div id="panel-practice" hidden>
+
+    <section class="wing-card">
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/><circle cx="12" cy="12" r="4"/></svg>
+        </span>
+        <span class="wing-card__title">组题条</span>
+        <span class="wing-card__meta">取词 → 难度 → 题型</span>
+      </div>
+      <p class="tutor-notice">
+        组题条与你的作答会发送给 AI 用于出题和批改；本功能<strong>不写入学情与知识点</strong>，不改变复习进度。
+      </p>
+      <!-- v1.5.3-T003 首用提示：本机记忆 eng_tip_quiz_basis，关闭或任意操作后不再出现 -->
+      <div class="first-tip" id="tip-quiz-basis" data-tip-key="eng_tip_quiz_basis" hidden>
+        <span class="first-tip__text">选好依据，AI 按你的进度出题。</span>
+        <button class="btn btn-secondary u-btn-sm" type="button" data-tip-close>知道了</button>
+      </div>
+
+      <div class="ex-form-grid u-mt-md">
+        <label>
+          <span class="field-label">取词依据</span>
+          <select class="input" id="p-source">
+            <option value="theme">主题自选</option>
+            <option value="studying">我正在学的词</option>
+            <option value="wrong">我的错题</option>
+            <option value="wordlist">我的词表</option>
+          </select>
+        </label>
+        <label id="p-theme-wrap">
+          <span class="field-label">主题</span>
+          <input class="input" id="p-theme" placeholder="例如：校园生活 / 环境 / 科技">
+        </label>
+        <label id="p-wl-wrap" hidden>
+          <span class="field-label">词表</span>
+          <select class="input" id="p-wordlist"><option value="">暂无词表</option></select>
+        </label>
+        <label>
+          <span class="field-label">难度</span>
+          <select class="input" id="p-difficulty">
+            <option value="basic">基础</option>
+            <option value="advanced">进阶</option>
+            <option value="challenge">挑战</option>
+          </select>
+        </label>
+        <label>
+          <span class="field-label">出题风格</span>
+          <select class="input" id="p-style">
+            <option value="exam">应试</option>
+            <option value="situational">情景</option>
+            <option value="story">故事</option>
+            <option value="academic">学术</option>
+          </select>
+        </label>
+        <label>
+          <span class="field-label">额外事项（≤200 字）</span>
+          <input class="input" id="p-extra" maxlength="200" placeholder="例如：只考动词搭配">
+        </label>
+      </div>
+
+      <p class="field-label u-mt-md">题型数量</p>
+      <label class="ex-count-row"><span>不限题型（由 AI 按考试常见题型搭配）</span><input type="checkbox" id="p-auto-types"></label>
+      <label class="ex-count-row" id="p-auto-total-wrap" hidden><span>总题数</span><input class="input" type="number" min="1" max="100" value="10" id="p-auto-total"></label>
+      <div class="ex-counts" id="p-counts">
+        <label class="ex-count-row"><span>词义匹配</span><input class="input" type="number" min="0" max="100" value="2" data-type="word_match"></label>
+        <label class="ex-count-row"><span>词汇辨析选择</span><input class="input" type="number" min="0" max="100" value="2" data-type="cloze_choice"></label>
+        <label class="ex-count-row"><span>词性转换填空</span><input class="input" type="number" min="0" max="100" value="2" data-type="word_form_fill"></label>
+        <label class="ex-count-row"><span>语境选词填空</span><input class="input" type="number" min="0" max="100" value="2" data-type="context_blank_fill"></label>
+        <label class="ex-count-row"><span>中译英翻译</span><input class="input" type="number" min="0" max="100" value="2" data-type="cn_to_en_translation"></label>
+        <label class="ex-count-row"><span>例句仿写</span><input class="input" type="number" min="0" max="100" value="0" data-type="sentence_imitation"></label>
+        <label class="ex-count-row"><span>长篇阅读语法填空</span><input class="input" type="number" min="0" max="100" value="0" data-type="long_reading_cloze"></label>
+        <label class="ex-count-row"><span>完整完形填空</span><input class="input" type="number" min="0" max="100" value="0" data-type="full_cloze"></label>
+      </div>
+      <p class="state-line" id="p-total">共 10 题（游客上限 30，登录上限 100）</p>
+
+      <div class="u-row-sm u-mt-md">
+        <button class="btn btn-primary" id="p-generate" type="button">生成练习</button>
+      </div>
+      <p class="state-line" id="p-msg"></p>
+
+      <div class="ex-queue" id="p-queue" hidden>
+        <span id="p-queue-text"></span>
+        <span class="kp-expand__spacer"></span>
+        <button class="btn btn-secondary u-btn-sm" id="p-expedite" type="button" hidden>加急</button>
+        <button class="btn btn-secondary u-btn-sm" id="p-defer" type="button" hidden>转入空闲队列</button>
+      </div>
+    </section>
+
+    <section class="wing-card" id="p-exercise" hidden>
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M3 4h3v16H3zM18 4h3v16h-3z"/></svg>
+        </span>
+        <span class="wing-card__title">练习</span>
+        <span class="wing-card__meta" id="p-item-count">–</span>
+      </div>
+      <p class="state-line" id="p-score"></p>
+      <div id="p-items"></div>
+      <button class="btn btn-secondary u-mt-md" id="p-export" type="button">导出练习卷 Word</button>
+      <p class="state-line" id="p-export-msg"></p>
+      <button class="btn btn-primary u-full u-mt-md" id="p-submit" type="button">提交批改</button>
+      <p class="state-line" id="p-grade-msg"></p>
+    </section>
+
+    <section class="wing-card" id="p-history-card" hidden>
+      <div class="wing-card__cap">
+        <span class="wing-card__ico">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5l3 2"/></svg>
+        </span>
+        <span class="wing-card__title">历史练习</span>
+        <span class="wing-card__meta">只读</span>
+      </div>
+      <div id="p-history"></div>
+    </section>
+
+  </div>
+
 </div>
 
+<script src="/static/export-estimator.js"></script>
+<script src="/static/first-tip.js"></script>
 <script>
 (function ()
 {
@@ -118,7 +250,14 @@
   let candidates = [];
   let selectedIds = [];
   let exerciseData = null;
+  let exerciseId = '';
+  let wordToKid = {};
   const graded = {};
+  // v1.5.1-T002：错题重练模式
+  const RETRY_PARAMS = new URLSearchParams(location.search);
+  const RETRY = RETRY_PARAMS.get('retry') === '1';
+  const RETRY_KID = Number(RETRY_PARAMS.get('kid') || 0) || 0;
+  const retryMap = {};
 
   const TYPE_LABEL = {
     word_match: '词义匹配',
@@ -126,7 +265,9 @@
     context_blank_fill: '语境选词填空',
     cn_to_en_translation: '中译英翻译',
     cloze_choice: '词汇辨析完形选择',
-    sentence_imitation: '例句仿写'
+    sentence_imitation: '例句仿写',
+    long_reading_cloze: '长篇阅读语法填空',
+    full_cloze: '完整完形填空'
   };
 
   function setMsg(id, cls, t)
@@ -141,6 +282,32 @@
   {
     return String(s || '').replace(/[&<>"']/g, c =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // 选项去字母前缀、空位标记规范化（服务端已清洗，这里兼容历史数据）
+  function cleanOption(s)
+  {
+    return String(s == null ? '' : s).replace(/^\s*[A-Da-d]\s*[.、):：]\s*/, '')
+      .replace(/^\s*[Ａ-Ｄ]\s*[.．、)]\s*/, '');
+  }
+  function singleBlank(text)
+  {
+    const s = String(text || '');
+    const n = (s.match(/\[\[\s*\d+\s*\]\]/g) || []).length;
+    return n > 1 ? s.replace(/\[\[\s*(\d+)\s*\]\]/g, '______ ($1)')
+                 : s.replace(/\[\[\s*\d+\s*\]\]/g, '______');
+  }
+  function numberedBlank(text)
+  {
+    return String(text || '').replace(/\[\[\s*(\d+)\s*\]\]/g, '______ ($1)');
+  }
+  function formStem(q)
+  {
+    let s = singleBlank(q.stem || q.question || '').replace(/_{3,}/g, '______');
+    const w = String(q.word || '').trim();
+    if (w && s.indexOf('(' + w + ')') < 0 && s.indexOf('______') >= 0)
+      s = s.replace('______', '______ (' + w + ')');
+    return s;
   }
 
   function currentMode()
@@ -180,12 +347,10 @@
     {
       const skill = btn.dataset.skill;
       const map = {
-        listen: '听力功能为预留，当前以读写题型为主',
-        speak:  '口语功能为预留，翻译/仿写训练即口语输出',
-        read:   '阅读训练：词义匹配、完形选择（点击右侧候课池勾选后出题）',
-        write:  '写作训练：中译英、例句仿写（点击右侧候课池勾选后出题）'
+        read:  '阅读训练：勾选候课池的词后点「AI 生成习题」，词义辨析、完形选择即阅读题。',
+        write: '写作训练：勾选候课池的词后点「AI 生成习题」，中译英、例句仿写即写作题。'
       };
-      setMsg('gen-msg', '', map[skill] || '');
+      setMsg('mode-msg', '', map[skill] || '');
     });
   });
 
@@ -207,7 +372,7 @@
 
     if (!candidates.length)
     {
-      pool.innerHTML = '<p class="state-line">暂无到期知识点。</p>';
+      pool.innerHTML = '<p class="state-line">今天没有要复习的词。</p>';
       document.getElementById('mode-card').hidden = true;
       document.getElementById('exercise-card').hidden = true;
       emptyState.hidden = false;
@@ -254,12 +419,11 @@
 
   // ---------- 生成习题 ----------
 
-  document.getElementById('btn-gen').addEventListener('click', async () =>
+  async function generatePractice()
   {
-    onCheck();
     if (!selectedIds.length) { setMsg('gen-msg', 'state-line--danger', '请至少勾选一个候课'); return; }
     const btn = document.getElementById('btn-gen');
-    btn.disabled = true;
+    if (btn) btn.disabled = true;
     setMsg('gen-msg', '', 'AI 出题中，整段提示词一次发送…');
     try
     {
@@ -271,21 +435,96 @@
       if (!r.ok || !j.ok)
       {
         setMsg('gen-msg', 'state-line--danger', j.error || '出题失败');
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
         return;
       }
       setMsg('gen-msg', 'state-line--success', '习题生成成功');
+      exerciseId = j.exercise_id || '';
       exerciseData = j.exercises || {};
+      wordToKid = {};
+      candidates.filter(c => selectedIds.includes(c.knowledge_id)).forEach(c =>
+      {
+        const w = String(c.standard_content || c.user_input_content || '').trim().toLowerCase();
+        if (w) wordToKid[w] = c.knowledge_id;
+      });
       document.getElementById('exercise-card').hidden = false;
-      document.getElementById('word-dl').href = '/api/word/download?path=' + encodeURIComponent(j.word_path || '');
+      setMsg('export-msg', '', '');
       renderQuestions();
       document.getElementById('exercise-card').scrollIntoView({ behavior: 'smooth' });
     }
     catch (e) { setMsg('gen-msg', 'state-line--danger', '网络异常'); }
-    btn.disabled = false;
+    if (btn) btn.disabled = false;
+  }
+
+  document.getElementById('btn-gen').addEventListener('click', async () =>
+  {
+    onCheck();
+    await generatePractice();
+  });
+
+  // 导出练习卷（v1.5.0-T009 T6：按需生成 + 估算确认，不再随出题自动出 Word）
+  document.getElementById('btn-export-paper').addEventListener('click', async () =>
+  {
+    const qs = exerciseData && exerciseData.exercises;
+    if (!qs || !qs.length) return setMsg('export-msg', 'state-line--danger', '暂无可导出内容');
+    const chars = JSON.stringify(qs).length;
+    const est = ExportEstimator.paper(chars, qs.length);
+    if (!await ExportEstimator.confirm({ title: '导出练习卷', pages: est.pages, chars: est.chars })) return;
+    const words = candidates.filter(c => selectedIds.includes(c.knowledge_id))
+      .map(c => c.standard_content || c.user_input_content).filter(Boolean);
+    const btn = document.getElementById('btn-export-paper');
+    btn.disabled = true;
+    setMsg('export-msg', '', '正在生成练习卷…');
+    try
+    {
+      const r = await fetch('/api/exercise/export-word', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          exercises: qs,
+          knowledge_points: words,
+          quick_memo: {},
+          title: '复习练习卷'
+        })
+      });
+      const j = await r.json();
+      if (!r.ok || !j.word_path)
+      {
+        setMsg('export-msg', 'state-line--danger', j.error || '导出服务暂不可用，请重试');
+        return;
+      }
+      setMsg('export-msg', 'state-line--success', '已生成，开始下载');
+      window.open('/api/word/download?path=' + encodeURIComponent(j.word_path), '_blank');
+    }
+    catch (e) { setMsg('export-msg', 'state-line--danger', '导出服务暂不可用，请重试'); }
+    finally { btn.disabled = false; }
   });
 
   // ---------- 渲染习题 ----------
+
+  function renderLongPassage(q, i, disabled)
+  {
+    const raw = String(q.passage || '');
+    const blanks = Array.isArray(q.blanks) ? q.blanks : [];
+    const re = /\[\[\s*(\d+)\s*\]\]/g;
+    let html = '', last = 0, m;
+    while ((m = re.exec(raw)))
+    {
+      html += esc(raw.slice(last, m.index));
+      const no = m[1];
+      html += '<input class="input question-input blank-input" id="ans-' + i + '-' + no +
+        '" data-blank="' + no + '" placeholder="(' + no + ')"' + (disabled ? ' disabled' : '') + '>';
+      last = m.index + m[0].length;
+    }
+    html += esc(raw.slice(last));
+    if (!/\[\[\s*\d+\s*\]\]/.test(raw) && blanks.length)
+    {
+      html += '<div class="u-row-sm">' + blanks.map(b =>
+        '<label>(' + esc(b.no) + ') <input class="input question-input blank-input" id="ans-' + i + '-' + esc(b.no) +
+        '" data-blank="' + esc(b.no) + '"' + (disabled ? ' disabled' : '') + '></label>'
+      ).join('') + '</div>';
+    }
+    return html;
+  }
 
   function renderQuestions()
   {
@@ -309,31 +548,58 @@
 
   function renderQuestionBody(q, i)
   {
+    if (q.type === 'full_cloze')
+    {
+      const qs = Array.isArray(q.questions) ? q.questions : [];
+      const head = '<p class="question-prompt">' +
+        esc(q.stem || q.question || '阅读下面短文，从每题所给的 A、B、C、D 四个选项中选出最佳选项。') + '</p>';
+      const body = q.passage
+        ? '<p class="state-line" style="white-space:pre-wrap">' + esc(numberedBlank(q.passage)) + '</p>' : '';
+      const opts = qs.map(item =>
+      {
+        const no = item.no || '';
+        const os = (item.options || []).map((o, j) =>
+          `<label class="candidate"><input type="radio" name="fq${i}-${esc(no)}" value="${String.fromCharCode(65 + j)}">` +
+          `<span>${String.fromCharCode(65 + j)}. ${esc(cleanOption(o))}</span></label>`
+        ).join('');
+        return `<div class="u-row-sm"><strong>(${esc(no)})</strong>${os}</div>`;
+      }).join('');
+      return head + body + opts;
+    }
+    if (q.type === 'long_reading_cloze')
+    {
+      return '<p class="question-prompt">' + esc(q.question || q.stem || '根据短文内容，在空白处填入适当的词或所给词的正确形式。') + '</p>'
+        + '<p class="state-line" style="white-space:pre-wrap">' + renderLongPassage(q, i, false) + '</p>';
+    }
     if (q.type === 'word_match' || q.type === 'cloze_choice')
     {
       const opts = (q.options || []).map((o, j) =>
-        `<label class="candidate"><input type="radio" name="q${i}" value="${String.fromCharCode(65 + j)}"><span>${String.fromCharCode(65 + j)}. ${esc(o)}</span></label>`
+        `<label class="candidate"><input type="radio" name="q${i}" value="${String.fromCharCode(65 + j)}"><span>${String.fromCharCode(65 + j)}. ${esc(cleanOption(o))}</span></label>`
       ).join('');
-      return (q.passage ? `<p class="state-line">${esc(q.passage)}</p>` : '')
-        + `<p class="question-prompt">${esc(q.question || '')}</p>${opts}`;
+      return (q.passage ? `<p class="state-line" style="white-space:pre-wrap">${esc(singleBlank(q.passage))}</p>` : '')
+        + `<p class="question-prompt">${esc(q.question || q.stem || '')}</p>${opts}`;
     }
     if (q.type === 'word_form_fill' || q.type === 'context_blank_fill')
     {
-      return `<p class="question-prompt">${esc(q.question || q.passage || '')}</p>`
+      const text = q.type === 'word_form_fill'
+        ? formStem(q)
+        : singleBlank(q.question || q.stem || q.passage || '');
+      return `<p class="question-prompt">${esc(text)}</p>`
         + `<input class="input question-input" id="ans-${i}" placeholder="输入答案">`;
     }
     if (q.type === 'cn_to_en_translation')
     {
-      return `<p class="question-prompt">【中译英】${esc(q.prompt || q.question || '')}</p>`
+      const cn = q.prompt || q.word || q.question || q.stem || '';
+      return `<p class="question-prompt">【中译英】${esc(cn)}</p>`
         + `<textarea class="textarea question-input" id="ans-${i}" placeholder="输入英文翻译"></textarea>`;
     }
     if (q.type === 'sentence_imitation')
     {
       return (q.sample ? `<p class="state-line">范例：${esc(q.sample)}</p>` : '')
-        + `<p class="question-prompt">${esc(q.prompt || '')}</p>`
+        + `<p class="question-prompt">${esc(q.prompt || q.stem || '')}</p>`
         + `<textarea class="textarea question-input" id="ans-${i}" placeholder="仿写句子"></textarea>`;
     }
-    return `<p class="question-prompt">${esc(q.question || '')}</p><input class="input question-input" id="ans-${i}">`;
+    return `<p class="question-prompt">${esc(q.question || q.stem || '')}</p><input class="input question-input" id="ans-${i}">`;
   }
 
   // 批改（事件委托）
@@ -350,28 +616,115 @@
     box.innerHTML = '<p class="state-line">批改中…</p>';
     try
     {
+      const word = String(q.word || '').trim().toLowerCase();
+      const kid = q.knowledge_id || wordToKid[word] || 0;
+      const retryItemId = retryMap[word] || 0;
       const r = await fetch('/api/exercise/grade', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: q.type, user_answer: ans,
-          correct_answer: q.answer || '', reference_answer: q.reference_answer || ''
-        })
+        body: JSON.stringify((() =>
+        {
+          const payload = {
+            type: q.type, knowledge_id: kid, source_type: 'exercise', source_id: exerciseId,
+            question_no: i + 1, question_type: q.type, options: q.options || []
+          };
+          if (q.type === 'long_reading_cloze' || q.type === 'full_cloze')
+          {
+            try { payload.user_answers = JSON.parse(ans); } catch (e) { payload.user_answers = []; }
+            payload.correct_answers = q.type === 'full_cloze'
+              ? (q.questions || []).map(x => String(x.answer || ''))
+              : (q.blanks || []).map(b => String(b.answer || ''));
+          }
+          else
+          {
+            payload.user_answer = ans;
+            payload.correct_answer = q.answer || '';
+            payload.reference_answer = q.reference_answer || '';
+          }
+          return payload;
+        })())
       });
       const j = await r.json();
       if (!r.ok || !j.ok) { box.innerHTML = '<p class="state-line state-line--danger">批改失败</p>'; return; }
       const correct = !!j.correct;
-      if (q.knowledge_id) graded[q.knowledge_id] = correct;
+      if (kid) graded[kid] = correct;
+      const attr = j.attribution;
+      const attrHtml = attr
+        ? `<p class="error-attr" data-attr-id="${attr.id}">错因：<strong>${esc(attr.error_label)}</strong> · ${esc(attr.reason)}${attr.pending ? '（AI 复核中…）' : ''}</p>`
+        : '';
       box.innerHTML = `<div class="grade-card ${correct ? 'is-correct' : 'is-wrong'}">
         <strong>${correct ? '✓ 正确' : '✗ 待改进'}</strong> · 得分 ${j.score}
         ${j.error_analysis ? `<p>${esc(j.error_analysis)}</p>` : ''}
         ${j.reference_answer ? `<p class="state-line">参考答案：${esc(j.reference_answer)}</p>` : ''}
+        ${attrHtml}
       </div>`;
+
+      // 重练模式：逐题完成后记录结果并发奖
+      if (retryItemId)
+      {
+        try
+        {
+          const rr = await fetch('/api/retry-items/' + retryItemId + '/complete', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_correct: correct })
+          });
+          const rj = await rr.json();
+          if (rr.ok && rj.ok)
+          {
+            const reward = rj.reward || {};
+            const tip = reward.amount ? ' · 金桂 +' + reward.amount
+              : (reward.capped ? ' · 今日重练奖励已达上限' : '');
+            box.innerHTML += `<p class="state-line state-line--success">重练已记录${tip}${rj.archived ? ' · 该词已归档' : ''}</p>`;
+            delete retryMap[word];
+          }
+        }
+        catch (e) {}
+      }
+
+      // AI 异步复核：轮询一次归因结果
+      if (attr && attr.pending)
+      {
+        setTimeout(async () =>
+        {
+          try
+          {
+            const ar = await fetch('/api/error-attributions/' + attr.id, { cache: 'no-store' });
+            if (!ar.ok) return;
+            const aj = await ar.json();
+            if (aj && aj.error_type && aj.source !== 'fallback')
+            {
+              const p = box.querySelector('[data-attr-id="' + attr.id + '"]');
+              if (p) p.innerHTML = '错因：<strong>' + esc(aj.error_label) + '</strong> · ' + esc(aj.ai_reason || aj.rule_reason || '');
+            }
+          }
+          catch (e) {}
+        }, 5000);
+      }
     }
     catch (err) { box.innerHTML = '<p class="state-line state-line--danger">网络异常</p>'; }
   });
 
   function readAnswer(i, q)
   {
+    if (q.type === 'full_cloze')
+    {
+      const qs = Array.isArray(q.questions) ? q.questions : [];
+      const vals = qs.map(item =>
+      {
+        const sel = document.querySelector(`input[name="fq${i}-${item.no}"]:checked`);
+        return sel ? sel.value : '';
+      });
+      return vals.some(v => v) ? JSON.stringify(vals) : '';
+    }
+    if (q.type === 'long_reading_cloze')
+    {
+      const blanks = Array.isArray(q.blanks) ? q.blanks : [];
+      const vals = blanks.map(b =>
+      {
+        const el = document.getElementById('ans-' + i + '-' + b.no);
+        return el ? el.value.trim() : '';
+      });
+      return vals.some(v => v) ? JSON.stringify(vals) : '';
+    }
     const el = document.getElementById('ans-' + i);
     if (el) return el.value.trim();
     const sel = document.querySelector(`input[name=q${i}]:checked`);
@@ -420,8 +773,744 @@
     btn.disabled = false;
   });
 
-  loadCandidates();
+  // 重练模式：直接取今日到期错题，跳过后台候课池
+  async function startRetryMode()
+  {
+    setMsg('gen-msg', '', '正在加载今日重练词…');
+    try
+    {
+      const r = await fetch('/api/retry-items?due=1', { cache: 'no-store' });
+      if (!r.ok) { setMsg('gen-msg', 'state-line--danger', '请先登录后再重练'); return; }
+      const j = await r.json();
+      let items = Array.isArray(j) ? j : (j.data || []);
+      // 单题重练：错题本「立即再练」带 kid，只练该词
+      if (RETRY_KID) items = items.filter(it => Number(it.knowledge_id) === RETRY_KID);
+      if (!items.length)
+      {
+        setMsg('gen-msg', '', RETRY_KID ? '该词暂无到期的重练任务。' : '今日没有到期的重练词，改日再来。');
+        return;
+      }
+      candidates = items.map(it => ({
+        knowledge_id: it.knowledge_id,
+        standard_content: it.word || ('#' + it.knowledge_id),
+        user_input_content: it.word || '',
+        proficiency_level: 0,
+        proficiency_name: '',
+        review_mode: 'daily'
+      }));
+      selectedIds = candidates.map(c => c.knowledge_id);
+      items.forEach(it =>
+      {
+        const w = String(it.word || '').trim().toLowerCase();
+        if (w) retryMap[w] = it.id;
+      });
+      const side = document.querySelector('.review-layout__side');
+      if (side) side.hidden = true;
+      const fin = document.getElementById('btn-finish');
+      if (fin) fin.hidden = true;
+      document.getElementById('mode-card').hidden = true;
+      document.getElementById('empty-state').hidden = true;
+      setMsg('gen-msg', '', '今日待重练 ' + items.length + ' 词');
+      await generatePractice();
+    }
+    catch (e) { setMsg('gen-msg', 'state-line--danger', '网络异常'); }
+  }
+
+  if (RETRY) startRetryMode(); else loadCandidates();
 })();
+</script>
+
+<!-- v1.5.0-T006：定制练习页签 -->
+<script>
+(function ()
+{
+  'use strict';
+
+  const TYPE_LABEL = {
+    word_match: '词义匹配',
+    word_form_fill: '词性转换填空',
+    context_blank_fill: '语境选词填空',
+    cn_to_en_translation: '中译英翻译',
+    cloze_choice: '词汇辨析选择',
+    sentence_imitation: '例句仿写',
+    long_reading_cloze: '长篇阅读语法填空',
+    full_cloze: '完整完形填空'
+  };
+  const DIFF_LABEL = { basic: '基础', advanced: '进阶', challenge: '挑战' };
+  const STYLE_LABEL = { exam: '应试', situational: '情景', story: '故事', academic: '学术' };
+
+  const state = {
+    id: 0, data: null, graded: false, timer: null, answers: [],
+    taskId: 0, level: 0, position: 0, eta: 0, etaLeft: 0, etaTimer: null,
+    me: { guest: true }, wlLoaded: false
+  };
+
+  function esc(s)
+  {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // 选项去字母前缀、空位标记规范化（服务端已清洗，这里兼容历史数据）
+  function cleanOption(s)
+  {
+    return String(s == null ? '' : s).replace(/^\s*[A-Da-d]\s*[.、):：]\s*/, '')
+      .replace(/^\s*[Ａ-Ｄ]\s*[.．、)]\s*/, '');
+  }
+  function singleBlank(text)
+  {
+    const s = String(text || '');
+    const n = (s.match(/\[\[\s*\d+\s*\]\]/g) || []).length;
+    return n > 1 ? s.replace(/\[\[\s*(\d+)\s*\]\]/g, '______ ($1)')
+                 : s.replace(/\[\[\s*\d+\s*\]\]/g, '______');
+  }
+  function numberedBlank(text)
+  {
+    return String(text || '').replace(/\[\[\s*(\d+)\s*\]\]/g, '______ ($1)');
+  }
+  function formStem(q)
+  {
+    let s = singleBlank(q.stem || q.question || '').replace(/_{3,}/g, '______');
+    const w = String(q.word || '').trim();
+    if (w && s.indexOf('(' + w + ')') < 0 && s.indexOf('______') >= 0)
+      s = s.replace('______', '______ (' + w + ')');
+    return s;
+  }
+
+  function setMsg(id, cls, t)
+  {
+    const e = document.getElementById(id);
+    if (!e) return;
+    e.className = 'state-line' + (cls ? ' ' + cls : '');
+    e.textContent = t || '';
+  }
+
+  function loginTip(id, tip)
+  {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const back = encodeURIComponent(location.pathname + location.search);
+    el.className = 'state-line state-line--danger';
+    el.innerHTML = esc(tip) + ' · <a href="/pages/login.html?redirect=' + back + '&keep=1">去登录</a>';
+  }
+
+  // ---------- 页签 ----------
+
+  function activateTab(name)
+  {
+    document.querySelectorAll('#review-tabs button').forEach(b =>
+      b.classList.toggle('is-active', b.dataset.tab === name));
+    document.getElementById('panel-review').hidden = name !== 'review';
+    document.getElementById('panel-practice').hidden = name !== 'practice';
+    if (name === 'practice') { loadMe(); }
+  }
+
+  document.getElementById('review-tabs').addEventListener('click', e =>
+  {
+    const btn = e.target.closest('button[data-tab]');
+    if (btn) activateTab(btn.dataset.tab);
+  });
+
+  function loadMe()
+  {
+    fetch('/api/auth/me', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(me =>
+      {
+        state.me = { guest: !!me.guest, user_id: me.user_id || 0 };
+        document.getElementById('p-history-card').hidden = state.me.guest;
+        refreshTotal();
+        if (!state.me.guest) loadHistory();
+      })
+      .catch(() => {});
+  }
+
+  // ---------- 组题条 ----------
+
+  const countInputs = [...document.querySelectorAll('#p-counts input[data-type]')];
+  const autoTypesEl = document.getElementById('p-auto-types');
+  const autoTotalEl = document.getElementById('p-auto-total');
+
+  function isAutoTypes() { return !!(autoTypesEl && autoTypesEl.checked); }
+
+  function autoTotal()
+  {
+    const cap = state.me.guest ? 30 : 100;
+    const n = parseInt(autoTotalEl && autoTotalEl.value || '10', 10) || 10;
+    return Math.max(1, Math.min(cap, n));
+  }
+
+  function countsObject()
+  {
+    const out = {};
+    countInputs.forEach(inp =>
+    {
+      const n = Math.max(0, Math.min(100, parseInt(inp.value || '0', 10) || 0));
+      if (n > 0) out[inp.dataset.type] = n;
+    });
+    return out;
+  }
+
+  function refreshTotal()
+  {
+    const cap = state.me.guest ? 30 : 100;
+    if (isAutoTypes())
+    {
+      const n = autoTotal();
+      document.getElementById('p-total').textContent =
+        '共 ' + n + ' 题（不限题型，' + (state.me.guest ? '游客' : '登录') + '上限 ' + cap + '）';
+      return n;
+    }
+    const counts = countsObject();
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    document.getElementById('p-total').textContent =
+      '共 ' + total + ' 题（' + (state.me.guest ? '游客' : '登录') + '上限 ' + cap + '）';
+    return total;
+  }
+
+  countInputs.forEach(inp => inp.addEventListener('input', refreshTotal));
+
+  function syncTypeModeUi()
+  {
+    const auto = isAutoTypes();
+    document.getElementById('p-counts').hidden = auto;
+    document.getElementById('p-auto-total-wrap').hidden = !auto;
+    refreshTotal();
+  }
+  autoTypesEl.addEventListener('change', syncTypeModeUi);
+  autoTotalEl.addEventListener('input', refreshTotal);
+
+  document.getElementById('p-source').addEventListener('change', e =>
+  {
+    const v = e.target.value;
+    document.getElementById('p-theme-wrap').hidden = v !== 'theme';
+    document.getElementById('p-wl-wrap').hidden = v !== 'wordlist';
+    if (v === 'wordlist' && !state.wlLoaded) loadWordlists();
+  });
+
+  function loadWordlists()
+  {
+    state.wlLoaded = true;
+    fetch('/api/wordlists?source=user', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(j =>
+      {
+        const sel = document.getElementById('p-wordlist');
+        const list = j.data || [];
+        sel.innerHTML = list.length
+          ? list.map(w => '<option value="' + w.id + '">' + esc(w.title) + '（' + w.item_count + '）</option>').join('')
+          : '<option value="">暂无自建词表</option>';
+      })
+      .catch(() => { setMsg('p-msg', 'state-line--danger', '词表加载失败'); });
+  }
+
+  document.getElementById('p-generate').addEventListener('click', generate);
+
+  function buildSpec()
+  {
+    const srcType = document.getElementById('p-source').value;
+    const auto = isAutoTypes();
+    const counts = auto ? {} : countsObject();
+    const total = auto ? autoTotal() : Object.values(counts).reduce((a, b) => a + b, 0);
+    if (!total) return { error: '请至少设置 1 道题' };
+    const cap = state.me.guest ? 30 : 100;
+    if (total > cap) return { error: '题量超出上限（游客 30 / 登录 100）' };
+
+    let source = { type: srcType };
+    if (srcType === 'theme')
+    {
+      const theme = document.getElementById('p-theme').value.trim();
+      source.theme = theme || '通用';
+    }
+    else if (srcType === 'wordlist')
+    {
+      const id = Number(document.getElementById('p-wordlist').value || 0);
+      if (!id) return { error: '请选择一个词表' };
+      source.id = id;
+    }
+
+    const spec = {
+      source,
+      difficulty: document.getElementById('p-difficulty').value,
+      style: document.getElementById('p-style').value,
+      extra_requirements: document.getElementById('p-extra').value.trim(),
+      queue_level: 0
+    };
+    if (auto)
+    {
+      spec.types_mode = 'auto';
+      spec.total = total;
+    }
+    else
+    {
+      spec.types_mode = 'counts';
+      spec.counts = counts;
+    }
+    return { spec };
+  }
+
+  async function generate()
+  {
+    const built = buildSpec();
+    if (built.error) { setMsg('p-msg', 'state-line--danger', built.error); return; }
+
+    const btn = document.getElementById('p-generate');
+    btn.disabled = true;
+    setMsg('p-msg', '', '提交组题条…');
+    try
+    {
+      const r = await fetch('/api/custom-exercise', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(built.spec)
+      });
+      const j = await r.json();
+      if (r.status === 401)
+      {
+        loginTip('p-msg', j.error || '游客额度已用完，登录后可继续');
+        btn.disabled = false;
+        return;
+      }
+      if (!r.ok || !j.ok)
+      {
+        setMsg('p-msg', 'state-line--danger', j.error || '提交失败');
+        btn.disabled = false;
+        return;
+      }
+      setMsg('p-msg', '', j.reused ? '命中 24 小时内同参练习，直接复用。' : '已提交，AI 出题中…');
+      startPoll(j.id);
+      if (!state.me.guest) loadHistory();
+    }
+    catch (e)
+    {
+      setMsg('p-msg', 'state-line--danger', '网络异常');
+    }
+    btn.disabled = false;
+  }
+
+  // ---------- 队列 / 拉取结果 ----------
+
+  function stopPoll()
+  {
+    if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+    if (state.etaTimer) { clearInterval(state.etaTimer); state.etaTimer = null; }
+  }
+
+  function fmtEta(sec)
+  {
+    const s = Number(sec || 0);
+    if (s <= 0) return '';
+    if (s < 60) return s + ' 秒';
+    return Math.ceil(s / 60) + ' 分钟';
+  }
+
+  function queueLine()
+  {
+    let line = state.position > 0 ? '排队中 · 前方 ' + state.position + ' 个任务' : 'AI 出题中';
+    if (state.level > 0) line += '（空闲队列 L' + state.level + '）';
+    const eta = fmtEta(state.etaLeft);
+    if (eta) line += ' · 预计等待 ' + eta;
+    return line;
+  }
+
+  function showQueue(hint)
+  {
+    const box = document.getElementById('p-queue');
+    box.hidden = false;
+    document.getElementById('p-queue-text').textContent = queueLine();
+    const logged = !state.me.guest;
+    document.getElementById('p-expedite').hidden = !logged || state.level <= 0;
+    document.getElementById('p-defer').hidden = !logged || state.level > 0 || !hint;
+    if (!state.etaTimer)
+      state.etaTimer = setInterval(() =>
+      {
+        if (state.etaLeft > 0) state.etaLeft--;
+        document.getElementById('p-queue-text').textContent = queueLine();
+      }, 1000);
+  }
+
+  function hideQueue()
+  {
+    document.getElementById('p-queue').hidden = true;
+    if (state.etaTimer) { clearInterval(state.etaTimer); state.etaTimer = null; }
+  }
+
+  function startPoll(id)
+  {
+    stopPoll();
+    state.id = id;
+    try { sessionStorage.setItem('p_last_id', String(id)); } catch (e) {}
+    document.getElementById('p-exercise').hidden = true;
+
+    async function tick()
+    {
+      try
+      {
+        const r = await fetch('/api/custom-exercise/' + id, { cache: 'no-store' });
+        const d = await r.json();
+        if (!r.ok || !d.ok)
+        {
+          stopPoll(); hideQueue();
+          setMsg('p-msg', 'state-line--danger', d.error || '查询失败');
+          return;
+        }
+        state.taskId = d.task_id || 0;
+        state.level = d.queue_level || 0;
+        state.position = d.position || 0;
+        state.eta = d.eta_sec || 0;
+        if (d.status === 'queued' || d.status === 'running')
+        {
+          state.etaLeft = state.etaLeft > 0 ? Math.min(state.etaLeft, state.eta) : state.eta;
+          showQueue(!!d.hint_transfer);
+          state.timer = setTimeout(tick, d.status === 'queued' ? 1500 : 1200);
+          return;
+        }
+        stopPoll(); hideQueue();
+        if (d.status === 'done')
+        {
+          setMsg('p-msg', 'state-line--success', '练习已生成');
+          renderExercise(d, { readOnly: !!d.grade });
+        }
+        else if (d.status === 'failed') setMsg('p-msg', 'state-line--danger', d.error || '生成失败');
+      }
+      catch (e)
+      {
+        stopPoll();
+        setMsg('p-msg', 'state-line--danger', '网络异常');
+      }
+    }
+    tick();
+  }
+
+  document.getElementById('p-expedite').addEventListener('click', () => taskOp('expedite'));
+  document.getElementById('p-defer').addEventListener('click', () => taskOp('defer'));
+
+  async function taskOp(kind)
+  {
+    if (!state.taskId || state.me.guest) return;
+    try
+    {
+      const r = await fetch('/api/ai-tasks/' + state.taskId + '/' + kind, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: kind === 'defer' ? JSON.stringify({ level: Math.max(1, state.level + 1) }) : '{}'
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) { setMsg('p-msg', 'state-line--danger', j.error || '操作失败'); return; }
+      setMsg('p-msg', '', kind === 'expedite' ? '已加急，回到正常队列' : '已转入空闲队列');
+      startPoll(state.id);
+    }
+    catch (e) { setMsg('p-msg', 'state-line--danger', '网络异常'); }
+  }
+
+  // ---------- 渲染答题 ----------
+
+  function renderCustomLong(q, i, saved, dis)
+  {
+    let vals = saved;
+    if (typeof vals === 'string') { try { vals = JSON.parse(vals); } catch (e) { vals = []; } }
+    if (!Array.isArray(vals)) vals = [];
+    const blanks = Array.isArray(q.blanks) ? q.blanks : [];
+    const raw = String(q.passage || '');
+    const re = /\[\[\s*(\d+)\s*\]\]/g;
+    let html = '', last = 0, m;
+    while ((m = re.exec(raw)))
+    {
+      html += esc(raw.slice(last, m.index));
+      const no = m[1];
+      html += '<input class="input ex-item__input" id="pa-' + i + '-' + no + '" data-blank="' + no +
+        '" value="' + esc(vals[Number(no) - 1] || '') + '" placeholder="(' + no + ')"' + dis + '>';
+      last = m.index + m[0].length;
+    }
+    html += esc(raw.slice(last));
+    if (!/\[\[\s*\d+\s*\]\]/.test(raw) && blanks.length)
+    {
+      html += '<div class="u-row-sm">' + blanks.map((b, j) =>
+        '<label>(' + esc(b.no) + ') <input class="input ex-item__input" id="pa-' + i + '-' + esc(b.no) +
+        '" data-blank="' + esc(b.no) + '" value="' + esc(vals[j] || '') + '"' + dis + '></label>'
+      ).join('') + '</div>';
+    }
+    return html;
+  }
+
+  function renderCustomFull(q, i, saved, dis)
+  {
+    let vals = saved;
+    if (typeof vals === 'string') { try { vals = JSON.parse(vals); } catch (e) { vals = []; } }
+    if (!Array.isArray(vals)) vals = [];
+    const qs = Array.isArray(q.questions) ? q.questions : [];
+    const passage = q.passage
+      ? '<p class="state-line" style="white-space:pre-wrap">' + esc(numberedBlank(q.passage)) + '</p>' : '';
+    return passage + qs.map((item, k) =>
+    {
+      const no = item.no || (k + 1);
+      const sel = String(vals[k] || '');
+      const opts = (item.options || []).map((o, j) =>
+      {
+        const letter = String.fromCharCode(65 + j);
+        return '<label class="ex-item__opt"><input type="radio" name="pf' + i + '-' + no + '" value="' + letter + '"' +
+          (sel === letter ? ' checked' : '') + dis + '> ' + letter + '. ' + esc(cleanOption(o)) + '</label>';
+      }).join('');
+      return '<div class="u-row-sm"><strong>(' + esc(no) + ')</strong>' + opts + '</div>';
+    }).join('');
+  }
+
+  function renderExercise(d, opt)
+  {
+    const readOnly = !!(opt && opt.readOnly);
+    if (!state.data || state.data.id !== d.id) state.answers = [];
+    state.data = d;
+    state.graded = readOnly || !!d.grade;
+
+    document.getElementById('p-exercise').hidden = false;
+    document.getElementById('p-item-count').textContent =
+      (d.items || []).length + ' 题 · ' + (DIFF_LABEL[d.difficulty] || d.difficulty) +
+      ' · ' + (STYLE_LABEL[d.style] || d.style);
+
+    const scoreEl = document.getElementById('p-score');
+    if (d.grade)
+      scoreEl.textContent = '得分 ' + d.grade.score + ' · 正确 ' + d.grade.correct + '/' + d.grade.total +
+        (readOnly ? ' · 历史只读' : '');
+    else scoreEl.textContent = readOnly ? '历史练习（未批改，只读）' : '';
+
+    const host = document.getElementById('p-items');
+    host.innerHTML = (d.items || []).map((q, i) =>
+    {
+      const label = TYPE_LABEL[q.type] || q.type;
+      const dis = state.graded ? ' disabled' : '';
+      const saved = state.answers[i] || '';
+      let body = '';
+
+      if (q.type === 'word_match' || q.type === 'cloze_choice')
+      {
+        body = (q.passage
+          ? '<p class="state-line" style="white-space:pre-wrap">' + esc(singleBlank(q.passage)) + '</p>'
+          : '') +
+          (q.options || []).map((o, j) =>
+        {
+          const letter = String.fromCharCode(65 + j);
+          return '<label class="ex-item__opt"><input type="radio" name="pq' + i + '" value="' + letter + '"' +
+            (saved === letter ? ' checked' : '') + dis + '> ' +
+            letter + '. ' + esc(cleanOption(o)) + '</label>';
+        }).join('');
+      }
+      else if (q.type === 'full_cloze')
+      {
+        body = renderCustomFull(q, i, saved, dis);
+      }
+      else if (q.type === 'long_reading_cloze')
+      {
+        body = renderCustomLong(q, i, saved, dis);
+      }
+      else if (q.type === 'cn_to_en_translation' || q.type === 'sentence_imitation')
+      {
+        body = '<textarea class="input ex-item__input" id="pa-' + i + '" rows="2" placeholder="输入答案"' + dis + '>' +
+          esc(saved) + '</textarea>';
+      }
+      else
+      {
+        body = '<input class="input ex-item__input" id="pa-' + i + '" placeholder="输入答案" value="' +
+          esc(saved) + '"' + dis + '>';
+      }
+
+      let stemText = q.stem || '';
+      if (q.type === 'word_form_fill') stemText = formStem(q);
+      else if (q.type === 'cloze_choice' || q.type === 'word_match') stemText = singleBlank(stemText);
+      else if (q.type === 'cn_to_en_translation') stemText = q.stem || q.prompt || q.word || '';
+      else if (q.type === 'context_blank_fill') stemText = singleBlank(stemText);
+
+      const g = d.grade && (d.grade.items || []).find(x => Number(x.index) === i);
+      const gHtml = g
+        ? '<div class="ex-grade ' + (g.correct ? 'ex-grade--ok' : 'ex-grade--bad') + '">' +
+            '<strong>' + (g.correct ? '✓ 正确' : '✗ 错误') + '</strong> · ' + g.score + ' 分' +
+            (g.feedback ? '<div>' + esc(g.feedback) + '</div>' : '') +
+            (!g.correct && g.reference ? '<div class="ex-grade--ref">参考答案：' + esc(g.reference) + '</div>' : '') +
+          '</div>'
+        : '';
+
+      return '<div class="ex-item" data-item="' + i + '">' +
+        '<div><strong>#' + (i + 1) + '</strong> · ' + esc(label) + '</div>' +
+        (stemText ? '<div class="ex-item__stem">' + esc(stemText) + '</div>' : '') +
+        body + gHtml +
+      '</div>';
+    }).join('');
+
+    document.getElementById('p-submit').hidden = state.graded;
+    document.getElementById('p-grade-msg').textContent = d.notice || '';
+    document.getElementById('p-exercise').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // 导出练习卷（v1.5.0-T009 T6：登录走本人练习，游客走当次导出）
+  document.getElementById('p-export').addEventListener('click', async () =>
+  {
+    const d = state.data;
+    const items = (d && d.items) || [];
+    if (!d || !d.id || !items.length) return setMsg('p-export-msg', 'state-line--danger', '暂无可导出内容');
+    const est = ExportEstimator.paper(JSON.stringify(items).length, items.length);
+    if (!await ExportEstimator.confirm({ title: '导出练习卷', pages: est.pages, chars: est.chars })) return;
+    const guest = !!(state.me && state.me.guest);
+    const url = guest
+      ? '/api/exports/exercise/' + d.id
+      : '/api/custom-exercise/' + d.id + '/export-word';
+    const btn = document.getElementById('p-export');
+    btn.disabled = true;
+    setMsg('p-export-msg', '', '正在生成练习卷…');
+    try
+    {
+      const r = await fetch(url, { method: 'POST' });
+      const j = await r.json();
+      if (!r.ok || !j.word_path)
+      {
+        setMsg('p-export-msg', 'state-line--danger', j.error || '导出服务暂不可用，请重试');
+        return;
+      }
+      setMsg('p-export-msg', 'state-line--success', '已生成，开始下载');
+      window.open('/api/word/download?path=' + encodeURIComponent(j.word_path), '_blank');
+    }
+    catch (e) { setMsg('p-export-msg', 'state-line--danger', '导出服务暂不可用，请重试'); }
+    finally { btn.disabled = false; }
+  });
+
+  function readAnswers()
+  {
+    const items = (state.data && state.data.items) || [];
+    return items.map((q, i) =>
+    {
+      if (q.type === 'full_cloze')
+      {
+        const qs = Array.isArray(q.questions) ? q.questions : [];
+        return {
+          index: i,
+          answer: qs.map(item =>
+          {
+            const sel = document.querySelector('input[name="pf' + i + '-' + item.no + '"]:checked');
+            return sel ? sel.value : '';
+          })
+        };
+      }
+      if (q.type === 'long_reading_cloze')
+      {
+        const blanks = Array.isArray(q.blanks) ? q.blanks : [];
+        return {
+          index: i,
+          answer: blanks.map(b =>
+          {
+            const el = document.getElementById('pa-' + i + '-' + b.no);
+            return el ? el.value.trim() : '';
+          })
+        };
+      }
+      const el = document.getElementById('pa-' + i);
+      let ans = el ? el.value.trim() : '';
+      if (!el)
+      {
+        const sel = document.querySelector('input[name=pq' + i + ']:checked');
+        ans = sel ? sel.value : '';
+      }
+      return { index: i, answer: ans };
+    });
+  }
+
+  function hasAnswer(v)
+  {
+    return Array.isArray(v) ? v.some(x => !!(x && String(x).trim())) : !!v;
+  }
+
+  document.getElementById('p-submit').addEventListener('click', async () =>
+  {
+    if (!state.id) return;
+    const answers = readAnswers();
+    state.answers = answers.map(a => a.answer);
+    if (answers.every(a => !hasAnswer(a.answer))) { setMsg('p-grade-msg', 'state-line--danger', '请先作答'); return; }
+
+    const btn = document.getElementById('p-submit');
+    btn.disabled = true;
+    setMsg('p-grade-msg', '', '批改中：客观题本地秒批，主观题逐题 AI 批改…');
+    try
+    {
+      const r = await fetch('/api/custom-exercise/' + state.id + '/grade', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers })
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) { setMsg('p-grade-msg', 'state-line--danger', j.error || '批改失败'); btn.disabled = false; return; }
+      const d = Object.assign({}, state.data, { grade: j.grade });
+      renderExercise(d, { readOnly: true });
+      setMsg('p-grade-msg', 'state-line--success', '批改完成：得分 ' + j.score + ' · 正确 ' +
+        j.grade.correct + '/' + j.grade.total);
+      if (!state.me.guest) loadHistory();
+    }
+    catch (e) { setMsg('p-grade-msg', 'state-line--danger', '网络异常'); }
+    btn.disabled = false;
+  });
+
+  // ---------- 历史（只读） ----------
+
+  function loadHistory()
+  {
+    if (state.me.guest) return;
+    const box = document.getElementById('p-history');
+    if (!box) return;
+    fetch('/api/custom-exercise/history?limit=10', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(j =>
+      {
+        const items = j.items || [];
+        if (!items.length) { box.innerHTML = '<p class="state-line">暂无定制练习记录。</p>'; return; }
+        box.innerHTML = items.map(it =>
+        {
+          const g = it.grade ? ' · 得分 ' + it.grade.score : '';
+          return '<div class="ex-history__row" data-id="' + it.id + '">' +
+            '<span class="ex-history__word">#' + it.id + ' · ' + (DIFF_LABEL[it.difficulty] || it.difficulty) + '</span>' +
+            '<span class="state-line">' + it.item_count + ' 题 · ' + (STYLE_LABEL[it.style] || it.style) + g + '</span>' +
+            '<span class="ex-history__meta">' + esc(it.created_at) + '</span>' +
+          '</div>';
+        }).join('');
+      })
+      .catch(() => { box.innerHTML = '<p class="state-line">加载失败</p>'; });
+  }
+
+  document.getElementById('p-history').addEventListener('click', async e =>
+  {
+    const row = e.target.closest('.ex-history__row');
+    if (!row) return;
+    try
+    {
+      const r = await fetch('/api/custom-exercise/' + row.dataset.id, { cache: 'no-store' });
+      const d = await r.json();
+      if (!r.ok || !d.ok) { setMsg('p-msg', 'state-line--danger', d.error || '加载失败'); return; }
+      if (d.status !== 'done') { setMsg('p-msg', '', '该练习尚未生成完成'); startPoll(d.id); return; }
+      renderExercise(d, { readOnly: true });
+    }
+    catch (err) { setMsg('p-msg', 'state-line--danger', '网络异常'); }
+  });
+
+  // ---------- 启动 ----------
+
+  loadMe();
+  refreshTotal();
+  if (new URLSearchParams(location.search).get('tab') === 'practice')
+  {
+    activateTab('practice');
+    // 登录回跳后继续查看刚才的练习
+    let last = 0;
+    try { last = Number(sessionStorage.getItem('p_last_id') || 0); } catch (e) {}
+    if (last > 0) startPoll(last);
+  }
+})();
+</script>
+<script src="/static/tour.js"></script>
+<script>
+// v1.5.3-T003 页面内导览（首次自动播放；?tour=1 重放）
+Tour.init({
+  key: 'eng_tour_review_v1',
+  steps: [
+    { target: '#candidate-list', title: '到期词条都在这里',
+      text: '按遗忘曲线排好，勾选要复习的词；右侧可全选或全不选。' },
+    { target: '#mode-card', title: '选择复习节奏',
+      text: '按日或按周复习，决定这些词下次什么时候再出现。' },
+    { target: '#btn-gen', title: '生成习题',
+      text: '点这里让 AI 按已选的词出题；做完提交后，答错的题会自动进入错题本。' }
+  ]
+});
 </script>
 </body>
 </html>

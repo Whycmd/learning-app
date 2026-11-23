@@ -12,20 +12,31 @@
 - 你是软件开发者，而不是软件接入的 AI。
 - 当不同文档存在冲突时，向我咨询，并修正错误文档。
 - 语言、代码简明。
+- 所有说明后期加入，当前不做的事项加入开发计划等
 
 ## 文档体系
 
 | 位置 | 文档 | 职责 |
 |------|------|------|
 | 根目录 | AGENTS.md | 本手册，迭代规范总则 |
-| documents/skills/ |   | AI 执行手册（按工作阶段阅读） |
+| documents/ | 项目说明书.md | 项目定位、模块、技术栈 |
+| documents/ | 开发者使用指南.md | 开发、调试、测试、部署操作手册 |
+| documents/ | 启动提示词.md | AI 开工提示词模板 |
+| documents/ | 功能介绍.md | 面向人的功能说明 |
+| documents/ | 宣传文案.md | 对外宣传口径 |
+| documents/操作指南/ | 多平台协同开发指南、Windows适配流程、人工修改渠道集合、代码结构示意图、功能结构示意图、prompts.h人工修改指南、UI定制指南 | 操作与修改类指南 |
+| documents/专题分析/ | 团队版改造分析、对deeptutor分析、改进建议、产品需求文档初版 | 竞品与需求分析材料 |
+| documents/skills/ | 02–08 执行手册、开发经验总结 | AI 执行手册（按工作阶段阅读） |
 | documents/devlog/产品现状.md | 当前功能完成状态、已知问题 |
-| documents/devlog/开发计划.md | 待开发任务与优先级 |
-| documents/devlog/工作总结.md | 面向人类阅读的工作总结 |
-| documents/devlog/功能介绍.md | 面向人类阅读的功能说明 |
 | documents/devlog/核心参数.md | 版本号、端口、关键配置 |
-| documents/devlog/人工修改渠道集合.md | 人工可修改的文件路径集合 |
-| documents/devlog/v{版本}-T{序号}-{任务名}/ | 单次迭代的计划与完成记录，完工后保留 |
+| documents/devlog/任务编号登记表.md | 任务编号唯一取号源 |
+| documents/devlog/问题集合.md | 已知不足与问题集合 |
+| documents/devlog/工作计划/ | 00 总体计划、01 未完成、02 已完成摘要、专项 | 计划与完成记录 |
+| documents/devlog/当前版本迭代记录/ | v{版本}-T{序号}-{任务名}/ | 只放当前版本未收口任务 |
+| documents/devlog/设计文档/ | PRD、长期设计资产 | 需求准绳与设计资产，不放过程交接 |
+| documents/devlog/专题报告/ | 接口单一性检查报告、离线功能确认报告 | 专项检查结论 |
+| documents/devlog/工程日记/ | README、v{中版本}.md | 面向非技术读者的连载式开发记录 |
+| documents/devlog/待审查登记.md | 文档改动待用户逐项审查的台账 |
 
 - 文档中的文件路径、接口、函数名必须与代码一致。
 - 任务编号统一使用 `v{版本}-T{序号}` 格式，如 `v1.4.0-T001`。
@@ -40,6 +51,7 @@
 | 学情/遗忘曲线 | ✅ | `GET /api/learn/candidates`、`POST /api/learn/:id/answer` |
 | AI 出题/批改 | ✅ | `POST /api/exercise/generate`、`POST /api/exercise/grade` |
 | 单词本 | ✅ | `GET/POST /api/wordbook/*` |
+| 词表库 | ✅ | `GET/POST/PUT/DELETE /api/wordlists/*` |
 | 多用户认证 | ✅ | `POST /api/auth/login`、`GET /api/auth/me` |
 | 播放复习 | ✅ | `GET /api/playback/queue` |
 | 每日小测 | ✅ | `POST /api/quiz/daily`、`POST /api/quiz/daily/submit` |
@@ -64,7 +76,7 @@
 - PATCH：缺陷修复
 - T 序号：版本号内任务序号，从 T001 起递增
 
-当前目标版本：v1.4.1
+当前目标版本：v1.5.3
 
 # 迭代流程：开始和更换迭代工作时，必须明确你要做的工作内容，读取documents/skills/目录下对应要求
 

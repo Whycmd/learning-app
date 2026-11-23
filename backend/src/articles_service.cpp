@@ -215,8 +215,8 @@ JsonValue ArticlesService::list(int page, int size,
   if (only_mine) {
     addCond("user_id=" + std::to_string(uid));
   } else {
-    // 默认返回：我的 + 公共（user_id=1 游客的文章视为公共）
-    addCond("(user_id=" + std::to_string(uid) + " OR user_id=1)");
+    // 默认返回：公开文章 + 我的文章（v1.5.0-T001 起由 visibility 判定公共）
+    addCond("(visibility='public' OR user_id=" + std::to_string(uid) + ")");
   }
 
   if (!category_filter.empty() && category_filter != "all") {
@@ -246,7 +246,7 @@ JsonValue ArticlesService::list(int page, int size,
   for (auto& r : rows) {
     JsonObject o;
     o["id"] = JsonValue::makeInt(std::stoll(r["id"]));
-    o["user_id"] = JsonValue::makeInt(std::stoll(r["user_id"]));
+    o["user_id"] = JsonValue::makeInt(std::stoll(r["user_id"].empty() ? "0" : r["user_id"]));
     o["title"] = JsonValue::makeString(r["title"]);
     o["source_name"] = r["source_name"].empty() ? JsonValue::makeNull() : JsonValue::makeString(r["source_name"]);
     o["category"] = JsonValue::makeString(r["category"]);
@@ -273,6 +273,13 @@ JsonValue ArticlesService::detail(int64_t id, int user_id) {
 
   auto rows = db_.query("SELECT * FROM articles WHERE id=" + std::to_string(id));
   if (rows.empty()) return JsonValue::makeNull();
+
+  // v1.5.0-T001：私有文章仅归属用户可读
+  if (rows[0]["visibility"] == "private")
+  {
+    std::string owner = rows[0]["user_id"];
+    if (owner.empty() || std::stoll(owner) != uid) return JsonValue::makeNull();
+  }
 
   auto& r = rows[0];
   JsonObject o;
@@ -332,8 +339,9 @@ ArticlesService::UpdateResult ArticlesService::update(int64_t id, const JsonObje
   // 检查归属
   auto check = db_.query("SELECT user_id FROM articles WHERE id=" + std::to_string(id));
   if (check.empty()) { r.error = "not found"; return r; }
-  // 允许更新自己的文章 或 公共文章（user_id=1）
-  if (std::stoi(check[0]["user_id"]) != uid && std::stoi(check[0]["user_id"]) != 1) {
+  // v1.5.0-T001：仅归属用户可修改，不再允许任意登录用户改公共文章
+  std::string owner = check[0]["user_id"];
+  if (owner.empty() || std::stoll(owner) != uid) {
     r.error = "forbidden"; return r;
   }
 
@@ -391,7 +399,8 @@ ArticlesService::UpdateResult ArticlesService::remove(int64_t id, int user_id) {
 
   auto check = db_.query("SELECT user_id FROM articles WHERE id=" + std::to_string(id));
   if (check.empty()) { r.error = "not found"; return r; }
-  if (std::stoi(check[0]["user_id"]) != uid) { r.error = "forbidden"; return r; }
+  std::string owner = check[0]["user_id"];
+  if (owner.empty() || std::stoll(owner) != uid) { r.error = "forbidden"; return r; }
 
   try {
     db_.exec("DELETE FROM article_sentences WHERE article_id=" + std::to_string(id));
@@ -411,8 +420,16 @@ JsonValue ArticlesService::difficultyReport(int64_t id, int user_id) {
   int uid = user_id > 0 ? user_id : RequestContext::currentUserId();
 
   auto rows = db_.query(
-    "SELECT a.cefr_level AS article_cefr, a.content FROM articles a WHERE a.id=" + std::to_string(id));
+    "SELECT a.cefr_level AS article_cefr, a.content, a.user_id, a.visibility "
+    "FROM articles a WHERE a.id=" + std::to_string(id));
   if (rows.empty()) return JsonValue::makeNull();
+
+  // v1.5.0-T001：私有文章仅归属用户可看难度报告
+  if (rows[0]["visibility"] == "private")
+  {
+    std::string owner = rows[0]["user_id"];
+    if (owner.empty() || std::stoll(owner) != uid) return JsonValue::makeNull();
+  }
 
   std::string content = rows[0]["content"];
   std::string article_cefr = rows[0]["article_cefr"];

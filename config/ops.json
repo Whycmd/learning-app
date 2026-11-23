@@ -1,0 +1,13 @@
+{
+  "_comment": "v1.5.0-T011 运维基线配置；改完重启备份进程与后端生效",
+  "backup": {
+    "_comment": "daily_time 本地时间 HH:MM；retain_days 只清理自动备份；mysqldump_bin 留空则自动查找",
+    "daily_time": "03:00",
+    "retain_days": 7,
+    "mysqldump_bin": ""
+  },
+  "ai_cost": {
+    "_comment": "GLM-4-Flash 免费，默认 0；仅统计 tokens 数量，不换算人民币",
+    "token_unit_price": 0
+  }
+}

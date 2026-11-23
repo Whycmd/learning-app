@@ -1,0 +1,35 @@
+{
+  "default_tasks": ["review_items", "new_words", "quiz_count"],
+  "metrics": [
+    {
+      "metric_key": "review_items",
+      "name": "复习",
+      "unit": "条",
+      "source": "review_logs",
+      "rule": "同一词条当日去重，仅计入复习完成事件",
+      "default_target": 30,
+      "abs_min": 10,
+      "abs_max": 200
+    },
+    {
+      "metric_key": "new_words",
+      "name": "学习新词",
+      "unit": "个",
+      "source": "user_learning",
+      "rule": "当周新建学情词条，同词仅计一次",
+      "default_target": 10,
+      "abs_min": 5,
+      "abs_max": 100
+    },
+    {
+      "metric_key": "quiz_count",
+      "name": "完成小测",
+      "unit": "次",
+      "source": "daily_quiz",
+      "rule": "同一份小测仅计一次，重复提交不计",
+      "default_target": 2,
+      "abs_min": 1,
+      "abs_max": 10
+    }
+  ]
+}

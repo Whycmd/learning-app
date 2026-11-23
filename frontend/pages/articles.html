@@ -6,7 +6,7 @@
 <title>文章阅读 · 英语学习</title>
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/style.css">
-<link rel="stylesheet" href="/static/components.css">
+<link rel="stylesheet" href="/static/components.css?v=20261121">
 <script src="/static/theme.js"></script>
 <script src="/static/nav.js"></script>
 </head>
@@ -19,7 +19,7 @@
     <svg viewBox="0 0 400 32"><path d="M0 32 L40 18 L60 28 L80 12 L100 24 L120 8 L140 20 L160 4 L180 16 L200 0 L220 16 L240 4 L260 20 L280 8 L300 24 L320 12 L340 28 L360 18 L400 32Z" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/></svg>
   </div>
 
-  <h1 class="section-title">文章阅读</h1>
+  <h1 class="section-title">文章阅读<span class="soon-badge" title="分句展示、点词查义、生词高亮、朗读、中英对照">即将开放</span></h1>
   <p class="section-sub">按分类 / CEFR 难度筛选 · AI 自动分析生词</p>
 
   <!-- 筛选 + 操作 -->
@@ -208,11 +208,12 @@
     state.total = data.total || 0;
     document.getElementById('art-count').textContent = state.total + ' 篇';
     if (!data.data || data.data.length === 0) {
+      // v1.5.3-T003：空态 = 说明 + 动作（定稿文案）
       list.innerHTML =
         '<div class="empty-state">' +
         '<div class="empty-state__icon">📚</div>' +
-        '<p>暂无文章</p>' +
-        '<p class="u-muted u-muted-xs">点击右上角「录入文章」开始</p>' +
+        '<p>还没有文章。添加一篇，就能边读边点词翻译。</p>' +
+        '<button class="btn btn-primary u-btn-sm" type="button" data-open="drawer-create">添加文章</button>' +
         '</div>';
       document.getElementById('pagination').innerHTML = '';
       return;
@@ -230,7 +231,7 @@
           ${art.read_at ? `<span>✓ 已读</span>` : ''}
         </div>
         <div class="art-card__actions">
-          <button class="art-card__btn" data-action="view" data-id="${art.id}">阅读</button>
+          <button class="art-card__btn" data-action="view" data-id="${art.id}" title="点词查义、生词高亮、朗读等完整阅读功能即将开放">阅读</button>
           <button class="art-card__btn" data-action="report" data-id="${art.id}">难度报告</button>
           <button class="art-card__btn is-danger" data-action="delete" data-id="${art.id}">删除</button>
         </div>

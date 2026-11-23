@@ -1,0 +1,13 @@
+{
+  "edit_distance_max": 2,
+  "archive_consecutive_correct": 3,
+  "archive_days": 90,
+  "retry_base_days": 1,
+  "skip_days": 1,
+  "ai": {
+    "enabled": true,
+    "timeout_sec": 15,
+    "max_tokens": 220,
+    "temperature": 0.2
+  }
+}

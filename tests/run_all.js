@@ -33,6 +33,8 @@ const DB_NAME = env('TEST_DB_NAME', 'eng_app_test');
 const API_PORT = Number(env('TEST_API_PORT', '18088'));
 const MOCK_MODE = env('TEST_AI_MOCK_MODE', 'success');
 const KEEP_TEST_DB = env('KEEP_TEST_DB', '0') === '1';
+// 系统账号（user_id=1）测试会话，注入给各套件使用
+const SYSTEM_TOKEN = 'f'.repeat(64);
 
 const SERVER_BIN = path.join(ROOT, 'backend/build/eng_app_server');
 const SQL_DIR = path.join(ROOT, 'scripts/sql');
@@ -207,6 +209,7 @@ async function runTest(file) {
         WORD_TMP: path.join(ARTIFACT_DIR, 'word_tmp'),
         BACKUP_DIR: path.join(ARTIFACT_DIR, 'backups'),
         TEST_ARTIFACT_DIR: ARTIFACT_DIR,
+        ENG_TEST_SYSTEM_TOKEN: SYSTEM_TOKEN,
       },
     });
     proc.on('close', code => resolve(code === 0));
@@ -268,6 +271,12 @@ async function main() {
     const sqlFiles = fs.readdirSync(SQL_DIR).filter(f => f.endsWith('.sql')).sort();
     for (const f of sqlFiles) mysqlFile(path.join(SQL_DIR, f), DB_NAME);
     console.log(`[isolate] 测试库 ${DB_NAME} 已重建（${sqlFiles.length} 个 SQL 文件）`);
+
+    // v1.5.0-T001：未登录不再共享 user_id=1，需要写入的旧套件改用系统账号会话
+    mysqlExec(
+      `INSERT INTO user_sessions (token,user_id,expires_at) VALUES ('${SYSTEM_TOKEN}',1,DATE_ADD(NOW(),INTERVAL 1 DAY));`,
+      DB_NAME
+    );
 
     // 启动独立后端（Mock success）
     serverProc = startBackend(API_PORT, MOCK_MODE, logFile);

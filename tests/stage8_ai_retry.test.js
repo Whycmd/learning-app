@@ -7,6 +7,7 @@ const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const { MYSQL_BIN, MYSQL_PW_FILE, SOCK, DB_NAME, API_HOST, API_PORT } = require('./_env');
+const { withSystemCookie } = require('./_system');
 const API = `http://${API_HOST}:${API_PORT}`;
 
 let pass = 0, fail = 0, skipped = 0;
@@ -30,6 +31,7 @@ function api(method, p, body) {
     const u = new URL(p, API);
     const data = body ? JSON.stringify(body) : null;
     const headers = { 'Content-Type': 'application/json' };
+    withSystemCookie(headers);
     if (data) headers['Content-Length'] = Buffer.byteLength(data);
     const req = http.request({
       host: u.hostname, port: u.port, method, path: u.pathname + u.search,

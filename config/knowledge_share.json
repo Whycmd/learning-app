@@ -1,0 +1,7 @@
+{
+  "_comment": "v1.5.0-T006 AI 讲解入库规则：auto_ingest 关闭后所有自动入池停止，仅保留手动保存；common_identities 为常见身份白名单；ingest_types 限定可自动入池的输入类型；origin 写入 knowledge_points.origin",
+  "auto_ingest": true,
+  "common_identities": ["高中生", "初中生", "大学生", "雅思", "托福", "考研"],
+  "ingest_types": ["word", "phrase", "sentence"],
+  "origin": "explain"
+}

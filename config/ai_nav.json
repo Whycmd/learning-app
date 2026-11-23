@@ -1,0 +1,31 @@
+{
+  "_comment": "v1.5.1-T005 HOME-NAV：AI 导航文案与运行参数；改本文件后重启后端生效",
+  "welcome": "你好，我是圣殿向导。可以带你复习、做小测、看错题，也能按你的目标排一份课规——直接说就行。",
+  "welcome_guest": "你好，我是圣殿向导。可以带你复习、做小测、看错题，也能按你的目标排一份课规——直接说就行。登录后可以保存对话。",
+  "quick_questions": [
+    "今天学什么",
+    "怎么用这个功能",
+    "帮我排个计划"
+  ],
+  "context_questions": {
+    "default": "这个页面能做什么",
+    "index": "今天从哪开始",
+    "review": "这轮复习要注意什么",
+    "wrongbook": "这些错题该怎么补",
+    "weekly": "这周我哪里弱",
+    "kp": "帮我讲讲这个词",
+    "wordbook": "我该背哪本词表",
+    "plan": "这个课规还能怎么调"
+  },
+  "fallback_reply": "AI 暂时没回应。你可以先去每日复习、每日小测，或在课规里定个目标。",
+  "proposal_hint": "确认后生效，之后可以随时在课规里修改。",
+  "max_chars": 500,
+  "rate_per_minute": 6,
+  "session_days": 7,
+  "max_history": 40,
+  "ctx_messages": 6,
+  "proposal_ttl_hours": 24,
+  "max_tokens": 800,
+  "temperature": 0.5,
+  "timeout_sec": 20
+}

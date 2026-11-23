@@ -8,6 +8,8 @@
 #include "learning_service.h"
 #include "json.h"
 #include "prompts.h"
+#include "article_excerpt.h"
+#include "exercise_sanitize.h"
 #include <utility>
 #include <string>
 #include <vector>
@@ -19,6 +21,7 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <algorithm>
+#include <cctype>
 
 namespace eng {
 
@@ -35,7 +38,7 @@ public:
                   const std::string& wordTmp, const std::string& root)
     : db_(db), ai_(ai), kpSvc_(kp), learnSvc_(ls), wordTmpDir_(wordTmp), rootDir_(root) {}
 
-  // 6 大题型定义
+  // 题型定义
   static const std::vector<std::string>& allTypes() {
     static const std::vector<std::string> types = {
       "word_match",          // 词义匹配综合题
@@ -43,7 +46,9 @@ public:
       "context_blank_fill",   // 语境选词填空
       "cn_to_en_translation", // 中译英翻译
       "cloze_choice",         // 词汇辨析完形选择
-      "sentence_imitation"    // 例句仿写
+      "sentence_imitation",   // 例句仿写
+      "long_reading_cloze",   // 长篇阅读语法填空
+      "full_cloze"            // 完整完形填空
     };
     return types;
   }
@@ -85,12 +90,16 @@ public:
   };
 
   // 原子任务1+2：AI 出题
-  GenerateResult generate(const std::vector<int>& knowledgeIds, const std::string& mode) {
+  GenerateResult generate(const std::vector<int>& inputIds, const std::string& mode) {
     GenerateResult r;
-    r.knowledgeIds = knowledgeIds;
     r.mode = (mode == "weekly") ? "weekly" : "daily";
 
-    if (knowledgeIds.empty()) { r.error = "no knowledge points selected"; return r; }
+    if (inputIds.empty()) { r.error = "no knowledge points selected"; return r; }
+
+    // v1.5.0-T005：出题只取手工录入的知识点，教材词(origin='wordlist')不参与
+    std::vector<int> knowledgeIds = manualIds(inputIds);
+    if (knowledgeIds.empty()) { r.error = "no manual knowledge points selected"; return r; }
+    r.knowledgeIds = knowledgeIds;
 
     // 生成唯一习题 ID（时间戳 + 随机后缀）
     std::string exId = "ex_" + std::to_string((int64_t)::time(nullptr)) + "_" + std::to_string(knowledgeIds.size());
@@ -114,6 +123,8 @@ public:
     std::string primaryMaster = masterReqs.empty() ? "会写" : masterReqs;
     // 构造 AI 提示：使用 prompts.h 模板（注释与提示词内容统一在 prompts.h 维护）
     std::string modeCn = (r.mode == "weekly") ? "按周（全题型）" : "按日（分层抽题）";
+    std::string articleExcerpt = pickArticleExcerpt(db_, RequestContext::currentUserId());
+    if (articleExcerpt.empty()) articleExcerpt = "（站内暂无可用文章节选，请按下方兜底规则自选语篇。）";
     std::string userPrompt = prompts::buildTemplate(
       prompts::EXERCISE_GENERATE_USER,
       {
@@ -121,6 +132,7 @@ public:
         {"{MASTER_REQ}", primaryMaster},
         {"{PAGE_LIMIT}", std::to_string(r.pageLimit)},
         {"{LEARNER_IDENTITY}", prompts::getLearnerIdentity(db_, RequestContext::currentUserId())},
+        {"{ARTICLE_EXCERPT}", articleExcerpt},
         {"{KP_JSON}",    JsonValue::makeArray(kpArray).dump()}
       }
     );
@@ -131,7 +143,7 @@ public:
     };
 
     // 调用 AI（异常兜底）
-    auto resp = ai_.postChat(msgs, true, 2048, 0.4);
+    auto resp = ai_.postChat(msgs, true, 2048, 0.4, "exercise_generate");
     if (!resp.ok) { r.error = "AI generation failed: " + resp.body; return r; }
 
     JsonValue aiJson;
@@ -142,78 +154,122 @@ public:
       r.error = std::string("JSON parse failed: ") + e.what();
       return r;
     }
-    r.exercises = aiJson;
+    auto extractArray = [](const JsonValue& root) -> JsonArray {
+      if (!root.isObject()) return {};
+      for (const char* key : {"exercises", "questions", "items"}) {
+        auto* v = root.find(key);
+        if (!v) continue;
+        if (v->isArray()) return v->asArray();
+        if (v->isObject()) {
+          for (const char* k2 : {"exercises", "questions", "items"}) {
+            auto* v2 = v->find(k2);
+            if (v2 && v2->isArray()) return v2->asArray();
+          }
+        }
+      }
+      return {};
+    };
 
-    // 生成 Word 文档
-    std::string jsonStr = aiJson.dump();
-    // 补充元信息
-    JsonObject metaObj;
-    if (aiJson.isObject()) {
-      metaObj = aiJson.asObject();
+    // 统一清洗：无效题丢弃，选项前缀与空位标记规范化
+    JsonArray raw = aiJson.isArray() ? aiJson.asArray() : extractArray(aiJson);
+    JsonArray cleaned;
+    for (auto& ex : raw) {
+      JsonValue n = exsan::normalizeItem(ex);
+      if (n.isObject()) cleaned.push_back(n);
     }
-    metaObj["mode"] = JsonValue::makeString(r.mode);
-    JsonArray kpMeta;
-    for (auto& kp : kpArray) kpMeta.push_back(kp);
-    metaObj["knowledge_points"] = JsonValue::makeArray(kpMeta);
-    jsonStr = JsonValue::makeObject(metaObj).dump();
 
-    std::string tmpPath = wordTmpDir_ + "/ex_input_" + exId + ".json";
-    std::ofstream f(tmpPath);
-    f << jsonStr;
-    f.close();
+    // 无效题按缺失数量补生成 1 轮
+    if (!raw.empty() && cleaned.size() < raw.size()) {
+      int missing = (int)raw.size() - (int)cleaned.size();
+      std::string supplement = userPrompt +
+        "\n\n【补充要求】上一轮有 " + std::to_string(missing) +
+        " 道题未通过格式校验，请只补充生成 " + std::to_string(missing) + " 道有效题目，题型不要与已有效题目重复。";
+      std::vector<std::map<std::string,std::string>> msgs2 = {
+        {{"role","system"},{"content",prompts::EXERCISE_GENERATE_SYSTEM}},
+        {{"role","user"},{"content",supplement}}
+      };
+      auto resp2 = ai_.postChat(msgs2, true, 2048, 0.4, "exercise_generate");
+      if (resp2.ok && !resp2.extractedJson.empty()) {
+        try {
+          JsonValue j2 = parseJson(resp2.extractedJson);
+          JsonArray raw2 = j2.isArray() ? j2.asArray() : extractArray(j2);
+          for (auto& ex : raw2) {
+            if (cleaned.size() >= raw.size()) break;
+            JsonValue n = exsan::normalizeItem(ex);
+            if (n.isObject()) cleaned.push_back(n);
+          }
+        } catch (...) {}
+      }
+    }
+
+    if (cleaned.empty()) { r.error = "AI 返回题目格式无效"; return r; }
+
+    JsonObject root = aiJson.isObject() ? aiJson.asObject() : JsonObject{};
+    root["exercises"] = JsonValue::makeArray(cleaned);
+    if (cleaned.size() < raw.size()) {
+      root["notice"] = JsonValue::makeString("部分题目生成失败，已保留有效题目，可重新生成。");
+    }
+    r.exercises = JsonValue::makeObject(root);
+
+    // v1.5.0-T009 D07：出题只返回题目，Word 改为点导出时生成
+    r.ok = true;
+    r.exerciseId = exId;
+
+    std::set<std::string> typeSet;
+    for (auto& ex : cleaned) {
+      auto* t = ex.find("type");
+      if (t && t->isString() && !t->asString().empty()) typeSet.insert(t->asString());
+    }
+    for (auto& t : typeSet) r.exerciseTypes.push_back(t);
+
+    if (r.exerciseTypes.empty()) {
+      if (r.mode == "weekly") {
+        r.exerciseTypes = {"word_match","word_form_fill","context_blank_fill","cn_to_en_translation",
+                           "cloze_choice","sentence_imitation","long_reading_cloze","full_cloze"};
+      } else {
+        r.exerciseTypes = {"word_match","word_form_fill","context_blank_fill"};
+      }
+    }
+
+    return r;
+  }
+
+  // v1.5.0-T009 D07/D08：复习卷按需导出（空白卷，不调 AI）
+  struct ExportResult {
+    bool ok=false;
+    int httpStatus=500;
+    std::string path, error;
+  };
+
+  ExportResult exportPaper(const JsonValue& payload) {
+    ExportResult r;
+    if (!payload.isObject()) { r.httpStatus = 400; r.error = "invalid payload"; return r; }
+    const JsonValue* arr = payload.find("exercises");
+    if (!arr || !arr->isArray() || arr->asArray().empty()) {
+      r.httpStatus = 400; r.error = "exercises required"; return r;
+    }
+    JsonObject o = payload.asObject();
+    o["kind"] = JsonValue::makeString("review");
+
+    std::string exId = "ex_" + std::to_string((int64_t)::time(nullptr));
+    std::string tmpPath = wordTmpDir_ + "/export_paper_" + exId + ".json";
+    {
+      std::ofstream f(tmpPath);
+      if (!f) { r.error = "export temp write failed"; return r; }
+      f << JsonValue::makeObject(o).dump();
+    }
 
     std::string scriptPath = rootDir_ + "/scripts/gen_word_exercise.js";
     const char* nodeEnv = std::getenv("NODE_BIN");
     std::string nodeBin = nodeEnv ? nodeEnv : "node";
     std::string cmd = nodeBin + " " + scriptPath + " " + exId + " " + tmpPath + " " + wordTmpDir_;
     int rc = std::system(cmd.c_str());
-    if (rc != 0) { r.error = "word generation failed (exit=" + std::to_string(rc) + ")"; return r; }
+    if (rc != 0) { r.error = "export service unavailable"; return r; }
 
     std::string outPath = wordTmpDir_ + "/exercise_" + exId + ".docx";
-    if (::access(outPath.c_str(), F_OK) != 0) { r.error = "word file not found after generation"; return r; }
-
+    if (::access(outPath.c_str(), F_OK) != 0) { r.error = "export file not found"; return r; }
     r.ok = true;
-    r.exerciseId = exId;
-    r.wordPath = outPath;
-
-    // 从 AI 返回的 exercises 里提取题型（去重）
-    // AI 返回的可能是 {"exercises":[...]} 或 {"exercises":{"exercises":[...]}} 嵌套
-    // 且每道题的 type 字段可能叫 "type"、"exercise_type" 等
-    std::set<std::string> typeSet;
-    auto collectFromArray = [&](const JsonValue& arr) {
-      if (!arr.isArray()) return;
-      for (auto& ex : arr.asArray()) {
-        if (!ex.isObject()) continue;
-        auto* t = ex.find("type");
-        if (t) { std::string tv = t->asString(); if (!tv.empty()) typeSet.insert(tv); }
-      }
-    };
-    if (aiJson.isObject()) {
-      for (const char* key : {"exercises", "questions", "items"}) {
-        auto* v = aiJson.find(key);
-        if (v) {
-          if (v->isArray()) collectFromArray(*v);
-          else if (v->isObject()) {
-            for (const char* k2 : {"exercises", "questions", "items"}) {
-              auto* v2 = v->find(k2);
-              if (v2 && v2->isArray()) collectFromArray(*v2);
-            }
-          }
-          break;
-        }
-      }
-    }
-    for (auto& t : typeSet) r.exerciseTypes.push_back(t);
-
-    // 如果从 AI 响应里还是没提取到（AI 可能不给 type 字段），按 mode 给默认值
-    if (r.exerciseTypes.empty()) {
-      if (r.mode == "weekly") {
-        r.exerciseTypes = {"word_match","word_form_fill","context_blank_fill","cn_to_en_translation","cloze_choice","sentence_imitation"};
-      } else {
-        r.exerciseTypes = {"word_match","word_form_fill","context_blank_fill"};
-      }
-    }
-
+    r.path = outPath;
     return r;
   }
 
@@ -235,6 +291,48 @@ public:
                     const std::string& correctAnswer, const std::string& referenceAnswer) {
     GradeResult r;
     if (userAnswer.empty()) { r.error = "empty answer"; return r; }
+
+    // 长篇阅读语法填空 / 完整完形填空：多空数组逐空比对（本地批改）
+    if (type == "long_reading_cloze" || type == "full_cloze") {
+      r.isObjective = true;
+      std::vector<std::string> gotVals, refVals;
+      try {
+        JsonValue gu = parseJson(userAnswer);
+        JsonValue gr = parseJson(correctAnswer);
+        if (gu.isArray()) for (auto& x : gu.asArray()) gotVals.push_back(x.isString() ? x.asString() : "");
+        if (gr.isArray()) for (auto& x : gr.asArray()) refVals.push_back(x.isString() ? x.asString() : "");
+      } catch (...) {}
+      if (refVals.empty()) { r.error = "missing blanks answer"; return r; }
+      auto normBlank = [](const std::string& s) {
+        std::string out;
+        for (char c : s) {
+          if (c == '"' || c == '\'' || c == '.' || c == ',' || c == ';') continue;
+          if (c == ' ' || c == '\t' || c == '\r' || c == '\n') { if (!out.empty() && out.back() != ' ') out += ' '; continue; }
+          out += (char)std::tolower((unsigned char)c);
+        }
+        while (!out.empty() && out.back() == ' ') out.pop_back();
+        return out;
+      };
+      int correctCount = 0;
+      std::string wrongNos, allRefs;
+      for (size_t i = 0; i < refVals.size(); ++i) {
+        std::string got = i < gotVals.size() ? gotVals[i] : "";
+        std::string ref = refVals[i];
+        bool ok = !normBlank(got).empty() && normBlank(got) == normBlank(ref);
+        if (ok) correctCount++;
+        else {
+          if (!wrongNos.empty()) wrongNos += "、";
+          wrongNos += std::to_string(i + 1);
+        }
+        allRefs += (allRefs.empty() ? "" : "  ") + std::to_string(i + 1) + ". " + ref;
+      }
+      r.ok = true;
+      r.score = (int)(correctCount * 100 / (int)refVals.size());
+      r.correct = correctCount == (int)refVals.size();
+      r.errorAnalysis = r.correct ? "全部填对。" : ("第 " + wrongNos + " 空错误；正确答案：" + allRefs);
+      r.referenceAnswer = allRefs;
+      return r;
+    }
 
     // 客观题（本地比对）
     if (type == "word_match" || type == "cloze_choice") {
@@ -285,7 +383,7 @@ public:
       {{"role","user"},{"content",userPrompt}}
     };
 
-    auto resp = ai_.postChat(msgs, true, 512, 0.2);
+    auto resp = ai_.postChat(msgs, true, 512, 0.2, "grade");
     if (!resp.ok) { r.error = "AI grading failed: " + resp.body; return r; }
 
     JsonValue json;
@@ -331,6 +429,10 @@ public:
       std::string correctAns = ans.getString("correct_answer");
       std::string refAns = ans.getString("reference_answer");
       int kpId = (int)ans.getInt("knowledge_id", 0);
+      if (type == "long_reading_cloze" || type == "full_cloze") {
+        if (const JsonValue* ua = ans.find("user_answers")) { if (ua->isArray()) userAns = ua->dump(); }
+        if (const JsonValue* ca = ans.find("correct_answers")) { if (ca->isArray()) correctAns = ca->dump(); }
+      }
 
       auto gr = grade(type, userAns, correctAns, refAns);
       std::map<std::string,std::string> d;
@@ -362,6 +464,19 @@ public:
   }
 
 private:
+  // v1.5.0-T005：过滤出当前用户手工录入的知识点 id
+  std::vector<int> manualIds(const std::vector<int>& ids) {
+    std::vector<int> out;
+    if (ids.empty()) return out;
+    std::ostringstream in;
+    for (size_t i = 0; i < ids.size(); ++i) { if (i) in << ","; in << ids[i]; }
+    auto rows = db_.query(
+      "SELECT id FROM knowledge_points WHERE user_id=" + std::to_string(RequestContext::currentUserId())
+      + " AND origin='manual' AND id IN (" + in.str() + ")");
+    for (auto& row : rows) out.push_back(std::stoi(row["id"]));
+    return out;
+  }
+
   static std::string toUpper(const std::string& s) {
     std::string r = s;
     std::transform(r.begin(), r.end(), r.begin(), ::toupper);

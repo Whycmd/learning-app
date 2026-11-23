@@ -20,6 +20,7 @@ function req(method, urlPath, body) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : null;
     const headers = { 'Content-Type': 'application/json' };
+    require('./_system').withSystemCookie(headers);
     if (data) headers['Content-Length'] = Buffer.byteLength(data);
     const r = http.request({ host: API_HOST, port: API_PORT, method, path: urlPath,
       headers, timeout: 130000 }, res => {
@@ -139,9 +140,12 @@ async function main() {
   console.log('\n[4] T13-2 重复词条固化合并');
   let mergeTargetId = 0;
   try {
+    // v1.5.0-T002：L1 复用按 normalized_key + identity_snapshot 命中，夹具需同步写入
     const ins = runMysql(`INSERT INTO knowledge_points (user_id, user_input_content, standard_content, `
-      + `difficulty, master_require, remark, is_solidified, create_time, solidify_time) VALUES `
-      + `(1,'${MERGE_WORD}','${MERGE_WORD}',2,'会写',NULL,1,NOW(),NOW());`);
+      + `difficulty, master_require, remark, is_solidified, create_time, solidify_time, `
+      + `normalized_key, identity_snapshot) VALUES `
+      + `(1,'${MERGE_WORD}','${MERGE_WORD}',2,'会写',NULL,1,NOW(),NOW(),'mergeprobeword', `
+      + `COALESCE(NULLIF((SELECT learner_identity FROM users WHERE id=1),''),'高中生'));`);
     if (ins.status !== 0) throw new Error(ins.stderr.trim());
     mergeTargetId = parseInt(runMysql(`SELECT id FROM knowledge_points WHERE user_input_content='${MERGE_WORD}' ORDER BY id DESC LIMIT 1;`).stdout.trim(), 10);
     if (mergeTargetId > 0) ok('构造已固化同名词条', `id=${mergeTargetId}`);

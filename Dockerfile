@@ -53,7 +53,7 @@ FROM ${BASE_IMAGE}
 #   libmariadb3  MySQL 客户端动态库（阶段 1 编译时链接的就是它）
 #   curl         健康检查、调试时用
 RUN apt-get update \
- && apt-get install -y --no-install-recommends libmariadb3 curl mariadb-client unzip \
+ && apt-get install -y --no-install-recommends libmariadb3 curl mariadb-client unzip gzip \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -72,6 +72,10 @@ COPY --from=builder /build/backend/build/eng_app_server ./backend/build/eng_app_
 COPY backend/data/ ./backend/data/
 # 前端页面与静态资源（字体、样式、脚本）
 COPY frontend/ ./frontend/
+# 构建期预压缩文本类静态资源：运行时按 Accept-Encoding 直接返回 .gz，不占 CPU、省带宽
+# 字体本身已压缩，不再重复 gzip
+RUN find /app/frontend -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' \) \
+      -exec gzip -9 -k {} \;
 # 脚本：AI 网关、Word 导出、数据库巡检等
 COPY scripts/ ./scripts/
 # 测试套件：随镜像一起进去，方便在容器内跑 node tests/run_all.js 做多平台一致性验证
